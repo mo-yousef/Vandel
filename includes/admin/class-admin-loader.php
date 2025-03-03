@@ -10,7 +10,6 @@ class AdminLoader {
      */
     public function __construct() {
         $this->initHooks();
-        $this->loadComponents();
     }
     
     /**
@@ -19,17 +18,28 @@ class AdminLoader {
     private function initHooks() {
         add_action('admin_menu', [$this, 'registerMenu']);
         add_action('admin_enqueue_scripts', [$this, 'enqueueAssets']);
-        add_action('admin_bar_menu', [$this, 'addAdminBarLink'], 100);
     }
     
     /**
      * Load admin components
      */
     private function loadComponents() {
-        new Dashboard();
-        new BookingDetails();
-        new ClientDetails();
-        new SettingsPage();
+        // Only load components that exist
+        if (class_exists('\\VandelBooking\\Admin\\Dashboard')) {
+            new Dashboard();
+        }
+        
+        if (class_exists('\\VandelBooking\\Admin\\BookingDetails')) {
+            new BookingDetails();
+        }
+        
+        if (class_exists('\\VandelBooking\\Admin\\ClientDetails')) {
+            new ClientDetails();
+        }
+        
+        if (class_exists('\\VandelBooking\\Admin\\SettingsPage')) {
+            new SettingsPage();
+        }
     }
     
     /**
@@ -42,8 +52,17 @@ class AdminLoader {
             'manage_options',
             'vandel-dashboard',
             [$this, 'renderDashboard'],
-            'dashicons-chart-area',
+            'dashicons-calendar-alt',
             26
+        );
+        
+        add_submenu_page(
+            'vandel-dashboard', 
+            __('Bookings', 'vandel-booking'), 
+            __('Bookings', 'vandel-booking'), 
+            'manage_options', 
+            'vandel-dashboard&tab=bookings', 
+            [$this, 'renderDashboard']
         );
         
         add_submenu_page(
@@ -69,8 +88,22 @@ class AdminLoader {
      * Render dashboard page
      */
     public function renderDashboard() {
-        $dashboard = new Dashboard();
-        $dashboard->render();
+        if (class_exists('\\VandelBooking\\Admin\\Dashboard')) {
+            $dashboard = new Dashboard();
+            if (method_exists($dashboard, 'render')) {
+                $dashboard->render();
+            } else {
+                echo '<div class="wrap">';
+                echo '<h1>' . __('Vandel Booking Dashboard', 'vandel-booking') . '</h1>';
+                echo '<p>' . __('Dashboard is under development.', 'vandel-booking') . '</p>';
+                echo '</div>';
+            }
+        } else {
+            echo '<div class="wrap">';
+            echo '<h1>' . __('Vandel Booking Dashboard', 'vandel-booking') . '</h1>';
+            echo '<p>' . __('Dashboard is under development.', 'vandel-booking') . '</p>';
+            echo '</div>';
+        }
     }
     
     /**
@@ -81,7 +114,7 @@ class AdminLoader {
     public function enqueueAssets($hook) {
         // Only load on plugin pages
         if ($hook === 'toplevel_page_vandel-dashboard' || 
-            (isset($_GET['page']) && $_GET['page'] === 'vandel-booking-details')) {
+            strpos($hook, 'page_vandel-dashboard') !== false) {
             
             wp_enqueue_style(
                 'vandel-admin-styles',
@@ -91,42 +124,15 @@ class AdminLoader {
             );
             
             wp_enqueue_script(
-                'chart-js',
-                'https://cdn.jsdelivr.net/npm/chart.js',
-                [],
-                null,
-                true
-            );
-            
-            wp_enqueue_script(
                 'vandel-admin-script',
                 VANDEL_PLUGIN_URL . 'assets/js/admin-script.js',
-                ['wp-color-picker'],
-                VANDEL_VERSION,
-                true
-            );
-        }
-        
-        // Custom post type specific scripts
-        global $post_type;
-        if ($post_type === 'vandel_service' || $post_type === 'vandel_sub_service') {
-            wp_enqueue_style(
-                'vandel-cpt-styles',
-                VANDEL_PLUGIN_URL . 'assets/css/cpt-style.css',
-                [],
-                VANDEL_VERSION
-            );
-            
-            wp_enqueue_script(
-                'vandel-cpt-scripts',
-                VANDEL_PLUGIN_URL . 'assets/js/cpt-custom.js',
-                ['jquery', 'jquery-ui-sortable'],
+                ['jquery'],
                 VANDEL_VERSION,
                 true
             );
         }
     }
-    
+
     /**
      * Add link to admin bar
      * 
@@ -146,4 +152,5 @@ class AdminLoader {
             ]);
         }
     }
+    
 }

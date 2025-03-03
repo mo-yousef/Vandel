@@ -12,12 +12,24 @@ function vandel_booking_autoloader($class_name) {
     $class_name = str_replace('VandelBooking\\', '', $class_name);
     
     // Convert class name to file path
-    $class_file = str_replace('\\', DIRECTORY_SEPARATOR, $class_name);
-    $class_file = VANDEL_PLUGIN_DIR . 'includes' . DIRECTORY_SEPARATOR . 'class-' . strtolower(str_replace('_', '-', $class_file)) . '.php';
+    $path_parts = explode('\\', $class_name);
+    $class_file = array_pop($path_parts); // Get the actual class name
+    
+    // Build directory path from namespace parts
+    $directory = '';
+    if (!empty($path_parts)) {
+        $directory = strtolower(implode(DIRECTORY_SEPARATOR, $path_parts)) . DIRECTORY_SEPARATOR;
+    }
+    
+    // Convert class name to file name (CamelCase to kebab-case with class- prefix)
+    $file_name = 'class-' . strtolower(str_replace('_', '-', $class_file)) . '.php';
+    
+    // Create full path
+    $file_path = VANDEL_PLUGIN_DIR . 'includes' . DIRECTORY_SEPARATOR . $directory . $file_name;
     
     // Load file if it exists
-    if (file_exists($class_file)) {
-        require_once $class_file;
+    if (file_exists($file_path)) {
+        require_once $file_path;
     }
 }
 

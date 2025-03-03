@@ -36,6 +36,19 @@ class BookingForm {
         ];
     }
     
+    // /**
+    //  * Render booking form
+    //  * 
+    //  * @param array $atts Shortcode attributes
+    //  * @return string Rendered form
+    //  */
+    // public function render($atts = []) {
+    //     ob_start();
+        
+    //     include VANDEL_PLUGIN_DIR . 'templates/booking-form.php';
+        
+    //     return ob_get_clean();
+    // }
     /**
      * Render booking form
      * 
@@ -45,11 +58,18 @@ class BookingForm {
     public function render($atts = []) {
         ob_start();
         
-        include VANDEL_PLUGIN_DIR . 'templates/booking-form.php';
+        echo '<div class="vandel-booking-form">';
+        echo '<h2>' . __('Book a Service', 'vandel-booking') . '</h2>';
+        echo '<p>' . __('Please fill out the form below to book a service.', 'vandel-booking') . '</p>';
+        
+        // Form content will go here
+        echo '<p>' . __('Form content coming soon.', 'vandel-booking') . '</p>';
+        
+        echo '</div>';
         
         return ob_get_clean();
     }
-    
+
     /**
      * Render sub-services
      * 

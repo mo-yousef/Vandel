@@ -2,44 +2,31 @@
 namespace VandelBooking\Admin;
 
 /**
- * Dashboard
+ * Dashboard Class
  */
 class Dashboard {
     /**
      * Constructor
      */
     public function __construct() {
-        add_action('wp_ajax_get_month_bookings', [$this, 'getMonthBookings']);
+        // Initialize dashboard
     }
     
     /**
      * Render dashboard
      */
     public function render() {
-        $active_tab = isset($_GET['tab']) ? sanitize_key($_GET['tab']) : 'dashboard';
+        $active_tab = isset($_GET['tab']) ? sanitize_key($_GET['tab']) : 'overview';
         
-        if ($active_tab === 'booking-details') {
-            $details_page = new BookingDetails();
-            $details_page->render();
-            return;
-        }
+        echo '<div class="wrap vandel-dashboard-container">';
         
-        if ($active_tab === 'client-details') {
-            $details_page = new ClientDetails();
-            $details_page->render();
-            return;
-        }
+        echo '<div class="vandel-dashboard-header">';
+        echo '<h1 class="vandel-dashboard-title">' . __('Vandel Booking Dashboard', 'vandel-booking') . '</h1>';
+        echo '</div>';
         
-        $this->renderNavigation($active_tab);
-        
-        echo '<div class="vandel-plugin-container">';
-        echo '<div class="vandel-inner-container">';
+        $this->renderTabs($active_tab);
         
         switch ($active_tab) {
-            case 'dashboard':
-                $this->renderDashboardTab();
-                break;
-                
             case 'bookings':
                 $this->renderBookingsTab();
                 break;
@@ -48,128 +35,141 @@ class Dashboard {
                 $this->renderClientsTab();
                 break;
                 
-            case 'services':
-                $this->renderServicesTab();
-                break;
-                
-            case 'sub_services':
-                $this->renderSubServicesTab();
-                break;
-                
             case 'settings':
-                $settings_page = new SettingsPage();
-                $settings_page->render();
+                $this->renderSettingsTab();
                 break;
                 
             default:
-                echo '<p>' . __('Tab not found. Please select a valid option.', 'vandel-booking') . '</p>';
+                $this->renderOverviewTab();
                 break;
         }
         
-        echo '</div>';
+        echo '</div>'; // .vandel-dashboard-container
+    }
+    
+    /**
+     * Render tabs navigation
+     *
+     * @param string $active_tab Current active tab
+     */
+    private function renderTabs($active_tab) {
+        $tabs = [
+            'overview' => __('Overview', 'vandel-booking'),
+            'bookings' => __('Bookings', 'vandel-booking'),
+            'clients' => __('Clients', 'vandel-booking'),
+            'settings' => __('Settings', 'vandel-booking'),
+        ];
+        
+        echo '<div class="vandel-tabs-navigation">';
+        echo '<ul>';
+        
+        foreach ($tabs as $tab_id => $tab_label) {
+            $active_class = ($active_tab === $tab_id) ? 'active' : '';
+            $tab_url = admin_url('admin.php?page=vandel-dashboard&tab=' . $tab_id);
+            
+            echo '<li>';
+            echo '<a href="' . esc_url($tab_url) . '" class="' . esc_attr($active_class) . '" data-tab="' . esc_attr($tab_id) . '">';
+            echo esc_html($tab_label);
+            echo '</a>';
+            echo '</li>';
+        }
+        
+        echo '</ul>';
         echo '</div>';
     }
     
     /**
-     * Render navigation
-     * 
-     * @param string $active_tab Active tab
+     * Render overview tab
      */
-    private function renderNavigation($active_tab) {
-        include VANDEL_PLUGIN_DIR . 'includes/admin/views/navigation.php';
-    }
-    
-    /**
-     * Render dashboard tab
-     */
-    private function renderDashboardTab() {
-        $booking_model = new \VandelBooking\Booking\BookingModel();
-        $client_model = new \VandelBooking\Client\ClientModel();
+    private function renderOverviewTab() {
+        echo '<div id="overview" class="vandel-tab-content">';
         
-        // Get booking statistics
-        $booking_stats = $booking_model->getStatusCounts();
+        echo '<div class="vandel-stats-grid">';
         
-        // Get total revenue
-        global $wpdb;
-        $total_revenue = $wpdb->get_var("SELECT SUM(total_price) FROM {$wpdb->prefix}vandel_bookings");
+        // Pending Bookings
+        echo '<div class="vandel-stat-card">';
+        echo '<div class="vandel-stat-value">0</div>';
+        echo '<div class="vandel-stat-label">' . __('Pending Bookings', 'vandel-booking') . '</div>';
+        echo '</div>';
         
-        // Get recent clients
-        $recent_clients = $client_model->getAll([
-            'orderby' => 'id',
-            'order' => 'DESC',
-            'limit' => 3
-        ]);
+        // Total Bookings
+        echo '<div class="vandel-stat-card">';
+        echo '<div class="vandel-stat-value">0</div>';
+        echo '<div class="vandel-stat-label">' . __('Total Bookings', 'vandel-booking') . '</div>';
+        echo '</div>';
         
-        // Include dashboard template
-        include VANDEL_PLUGIN_DIR . 'includes/admin/views/dashboard.php';
+        // Total Clients
+        echo '<div class="vandel-stat-card">';
+        echo '<div class="vandel-stat-value">0</div>';
+        echo '<div class="vandel-stat-label">' . __('Total Clients', 'vandel-booking') . '</div>';
+        echo '</div>';
+        
+        // Total Revenue
+        echo '<div class="vandel-stat-card">';
+        echo '<div class="vandel-stat-value">$0</div>';
+        echo '<div class="vandel-stat-label">' . __('Total Revenue', 'vandel-booking') . '</div>';
+        echo '</div>';
+        
+        echo '</div>'; // .vandel-stats-grid
+        
+        // Recent Bookings
+        echo '<div class="vandel-card">';
+        echo '<div class="vandel-card-header">';
+        echo '<h2 class="vandel-card-title">' . __('Recent Bookings', 'vandel-booking') . '</h2>';
+        echo '</div>';
+        echo '<div class="vandel-card-body">';
+        echo '<p>' . __('No bookings found.', 'vandel-booking') . '</p>';
+        echo '</div>';
+        echo '</div>';
+        
+        echo '</div>'; // #overview
     }
     
     /**
      * Render bookings tab
      */
     private function renderBookingsTab() {
-        $booking_model = new \VandelBooking\Booking\BookingModel();
-        
-        // Get bookings
-        $bookings = $booking_model->getAll([
-            'limit' => 10
-        ]);
-        
-        // Include bookings template
-        include VANDEL_PLUGIN_DIR . 'includes/admin/views/bookings.php';
+        echo '<div id="bookings" class="vandel-tab-content">';
+        echo '<div class="vandel-card">';
+        echo '<div class="vandel-card-header">';
+        echo '<h2 class="vandel-card-title">' . __('All Bookings', 'vandel-booking') . '</h2>';
+        echo '</div>';
+        echo '<div class="vandel-card-body">';
+        echo '<p>' . __('No bookings found.', 'vandel-booking') . '</p>';
+        echo '</div>';
+        echo '</div>';
+        echo '</div>'; // #bookings
     }
     
     /**
      * Render clients tab
      */
     private function renderClientsTab() {
-        $client_model = new \VandelBooking\Client\ClientModel();
-        
-        // Get clients
-        $clients = $client_model->getAll();
-        
-        // Include clients template
-        include VANDEL_PLUGIN_DIR . 'includes/admin/views/clients.php';
+        echo '<div id="clients" class="vandel-tab-content">';
+        echo '<div class="vandel-card">';
+        echo '<div class="vandel-card-header">';
+        echo '<h2 class="vandel-card-title">' . __('All Clients', 'vandel-booking') . '</h2>';
+        echo '</div>';
+        echo '<div class="vandel-card-body">';
+        echo '<p>' . __('No clients found.', 'vandel-booking') . '</p>';
+        echo '</div>';
+        echo '</div>';
+        echo '</div>'; // #clients
     }
     
     /**
-     * Render services tab
+     * Render settings tab
      */
-    private function renderServicesTab() {
-        $services = get_posts([
-            'post_type' => 'vandel_service',
-            'numberposts' => -1
-        ]);
-        
-        // Include services template
-        include VANDEL_PLUGIN_DIR . 'includes/admin/views/services.php';
-    }
-    
-    /**
-     * Render sub-services tab
-     */
-    private function renderSubServicesTab() {
-        $sub_services = get_posts([
-            'post_type' => 'vandel_sub_service',
-            'numberposts' => -1
-        ]);
-        
-        // Include sub-services template
-        include VANDEL_PLUGIN_DIR . 'includes/admin/views/sub-services.php';
-    }
-    
-    /**
-     * Get month bookings AJAX handler
-     */
-    public function getMonthBookings() {
-        check_ajax_referer('booking_calendar_nonce', 'nonce');
-        
-        $year = intval($_POST['year']);
-        $month = intval($_POST['month']);
-        
-        $booking_model = new \VandelBooking\Booking\BookingModel();
-        $bookings = $booking_model->getCalendarBookings($year, $month);
-        
-        wp_send_json_success($bookings);
+    private function renderSettingsTab() {
+        echo '<div id="settings" class="vandel-tab-content">';
+        echo '<div class="vandel-card">';
+        echo '<div class="vandel-card-header">';
+        echo '<h2 class="vandel-card-title">' . __('Settings', 'vandel-booking') . '</h2>';
+        echo '</div>';
+        echo '<div class="vandel-card-body">';
+        echo '<p>' . __('Settings will be available soon.', 'vandel-booking') . '</p>';
+        echo '</div>';
+        echo '</div>';
+        echo '</div>'; // #settings
     }
 }
