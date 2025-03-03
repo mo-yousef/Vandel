@@ -103,6 +103,9 @@ class Plugin {
         new PostTypes\ServicePostType();
         new PostTypes\SubServicePostType();
         
+        // Register post types
+        new PostTypes\Registry();
+
         // Initialize assets
         new Assets();
         
