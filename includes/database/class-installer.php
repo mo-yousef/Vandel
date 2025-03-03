@@ -30,7 +30,11 @@ class Installer {
         
         // Create notes table
         $this->createNotesTable($charset_collate);
+        
+        // Create ZIP codes table
+        $this->createZipCodesTable($charset_collate);
     }
+
     
     /**
      * Create clients table
@@ -107,6 +111,35 @@ class Installer {
             FOREIGN KEY (booking_id) 
                 REFERENCES {$bookings_table}(id)
                 ON DELETE CASCADE
+        ) $charset_collate;";
+        
+        dbDelta($sql);
+    }
+
+    /**
+     * Create ZIP codes table
+     * 
+     * @param string $charset_collate Database charset
+     */
+    private function createZipCodesTable($charset_collate) {
+        global $wpdb;
+        $table_name = $wpdb->prefix . 'vandel_zip_codes';
+        
+        $sql = "CREATE TABLE $table_name (
+            id MEDIUMINT(9) NOT NULL AUTO_INCREMENT,
+            zip_code VARCHAR(20) NOT NULL UNIQUE,
+            city VARCHAR(100) NOT NULL,
+            state VARCHAR(100) NULL,
+            country VARCHAR(100) NOT NULL,
+            price_adjustment DECIMAL(10, 2) DEFAULT 0,
+            service_fee DECIMAL(10, 2) DEFAULT 0,
+            is_serviceable ENUM('yes', 'no') DEFAULT 'yes',
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (id),
+            INDEX (zip_code),
+            INDEX (city),
+            INDEX (state),
+            INDEX (country)
         ) $charset_collate;";
         
         dbDelta($sql);

@@ -78,80 +78,95 @@ class Assets {
      * @param string $hook Current admin page
      */
     public function enqueueAdminAssets($hook) {
-        // Dashboard page
-        if ($hook === 'toplevel_page_vandel-dashboard' || strpos($hook, 'page_vandel-dashboard') !== false) {
-            wp_enqueue_style(
-                'vandel-admin',
-                VANDEL_PLUGIN_URL . 'assets/css/admin-style.css',
-                [],
-                VANDEL_VERSION
-            );
+            // Dashboard page
+            if ($hook === 'toplevel_page_vandel-dashboard' || strpos($hook, 'page_vandel-dashboard') !== false) {
+                // Admin Styles
+                wp_enqueue_style(
+                    'vandel-admin-style',
+                    VANDEL_PLUGIN_URL . 'assets/css/admin-style.css',
+                    [],
+                    VANDEL_VERSION
+                );
+                
+                // Settings-specific styles
+                wp_enqueue_style(
+                    'vandel-settings-style',
+                    VANDEL_PLUGIN_URL . 'assets/css/admin-settings.css',
+                    [],
+                    VANDEL_VERSION
+                );
+                
+                // Chart.js for potential dashboard charts
+                wp_enqueue_script(
+                    'chart-js',
+                    'https://cdn.jsdelivr.net/npm/chart.js',
+                    [],
+                    null,
+                    true
+                );
+                
+                // Admin scripts
+                wp_enqueue_script(
+                    'vandel-admin-script',
+                    VANDEL_PLUGIN_URL . 'assets/js/admin-script.js',
+                    ['jquery'],
+                    VANDEL_VERSION,
+                    true
+                );
+                
+                // Settings-specific scripts
+                wp_enqueue_script(
+                    'vandel-settings-script',
+                    VANDEL_PLUGIN_URL . 'assets/js/admin/settings.js',
+                    ['jquery'],
+                    VANDEL_VERSION,
+                    true
+                );
+                
+                // Localize script for admin functionality
+                wp_localize_script('vandel-admin-script', 'vandelAdmin', [
+                    'ajaxUrl' => admin_url('admin-ajax.php'),
+                    'nonce' => wp_create_nonce('vandel_admin_nonce'),
+                    'messages' => [
+                        'saving' => __('Saving...', 'vandel-booking'),
+                        'saved' => __('Saved!', 'vandel-booking'),
+                        'error' => __('Error occurred', 'vandel-booking'),
+                        'deleteConfirm' => __('Are you sure you want to delete this item?', 'vandel-booking')
+                    ]
+                ]);
+                
+                // Only on settings page
+                if (isset($_GET['tab']) && $_GET['tab'] === 'settings') {
+                    wp_enqueue_style('wp-color-picker');
+                    wp_enqueue_script('wp-color-picker');
+                    wp_enqueue_media();
+                }
+            }
             
-            wp_enqueue_script(
-                'chart-js',
-                'https://cdn.jsdelivr.net/npm/chart.js',
-                [],
-                null,
-                true
-            );
-            
-            wp_enqueue_script(
-                'vandel-admin',
-                VANDEL_PLUGIN_URL . 'assets/js/admin-script.js',
-                ['jquery', 'chart-js'],
-                VANDEL_VERSION,
-                true
-            );
-            
-            // Only on settings page
-            if (isset($_GET['tab']) && $_GET['tab'] === 'settings') {
-                wp_enqueue_style('wp-color-picker');
-                wp_enqueue_script('wp-color-picker');
-                wp_enqueue_media();
+            // Custom post types
+            global $post_type;
+            if (in_array($post_type, ['vandel_service', 'vandel_sub_service'])) {
+                wp_enqueue_style(
+                    'vandel-cpt',
+                    VANDEL_PLUGIN_URL . 'assets/css/cpt-custom.css',
+                    [],
+                    VANDEL_VERSION
+                );
+                
+                wp_enqueue_script(
+                    'vandel-cpt',
+                    VANDEL_PLUGIN_URL . 'assets/js/cpt-custom.js',
+                    ['jquery', 'jquery-ui-sortable'],
+                    VANDEL_VERSION,
+                    true
+                );
             }
         }
-        
-        // Custom post types
-        global $post_type;
-        if (in_array($post_type, ['vandel_service', 'vandel_sub_service'])) {
-            wp_enqueue_style(
-                'vandel-cpt',
-                VANDEL_PLUGIN_URL . 'assets/css/cpt-style.css',
-                [],
-                VANDEL_VERSION
-            );
-            
-            wp_enqueue_script(
-                'vandel-cpt',
-                VANDEL_PLUGIN_URL . 'assets/js/cpt-custom.js',
-                ['jquery', 'jquery-ui-sortable'],
-                VANDEL_VERSION,
-                true
-            );
-            
-            // Localize script for CPT
-            wp_localize_script('vandel-cpt', 'vandelAdmin', [
-                'ajaxUrl' => admin_url('admin-ajax.php'),
-                'nonce' => wp_create_nonce('vandel_admin_nonce'),
-                'isNew' => isset($_GET['post']) ? false : true,
-                'postType' => $post_type,
-                'messages' => [
-                    'saving' => __('Saving...', 'vandel-booking'),
-                    'saved' => __('Saved!', 'vandel-booking'),
-                    'updating' => __('Updating...', 'vandel-booking'),
-                    'updated' => __('Updated!', 'vandel-booking'),
-                    'error' => __('Error occurred', 'vandel-booking'),
-                    'deleteConfirm' => __('Are you sure you want to delete this item?', 'vandel-booking')
-                ]
-            ]);
+        /**
+         * Inject custom styles
+         */
+        public function injectCustomStyles() {
+            $primary_color = get_option('vandel_primary_color', '#286cd6');
+            echo "<style>:root { --primary: {$primary_color} !important; --vandel-primary-color: {$primary_color} !important; }</style>";
         }
     }
-    
-    /**
-     * Inject custom styles
-     */
-    public function injectCustomStyles() {
-        $primary_color = get_option('vandel_primary_color', '#286cd6');
-        echo "<style>:root { --primary: {$primary_color} !important; --vandel-primary-color: {$primary_color} !important; }</style>";
-    }
-}

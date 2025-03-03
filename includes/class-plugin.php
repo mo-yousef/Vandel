@@ -75,59 +75,75 @@ class Plugin {
      * Load plugin components
      */
     public function loadComponents() {
-    if (is_admin()) {
-        // Try direct include for AdminLoader
-        $admin_loader_file = VANDEL_PLUGIN_DIR . 'includes/admin/class-admin-loader.php';
-        if (file_exists($admin_loader_file)) {
-            require_once $admin_loader_file;
-            
-            // Check if class exists after manual include
-            if (class_exists('\\VandelBooking\\Admin\\AdminLoader')) {
-                new \VandelBooking\Admin\AdminLoader();
-                error_log('VandelBooking: AdminLoader loaded successfully');
+        if (is_admin()) {
+            // Try direct include for AdminLoader
+            $admin_loader_file = VANDEL_PLUGIN_DIR . 'includes/admin/class-admin-loader.php';
+            if (file_exists($admin_loader_file)) {
+                require_once $admin_loader_file;
+                
+                // Check if class exists after manual include
+                if (class_exists('\\VandelBooking\\Admin\\AdminLoader')) {
+                    new \VandelBooking\Admin\AdminLoader();
+                    error_log('VandelBooking: AdminLoader loaded successfully');
+                } else {
+                    error_log('VandelBooking: AdminLoader class not found after manual include');
+                }
             } else {
-                error_log('VandelBooking: AdminLoader class not found after manual include');
+                error_log('VandelBooking: AdminLoader file not found at: ' . $admin_loader_file);
             }
-        } else {
-            error_log('VandelBooking: AdminLoader file not found at: ' . $admin_loader_file);
         }
-    }
     
-    // Register post types
-    $post_types_dir = VANDEL_PLUGIN_DIR . 'includes/post-types/';
-    
-    // Load ServicePostType
-    $service_post_type_file = $post_types_dir . 'class-service-post-type.php';
-    if (file_exists($service_post_type_file)) {
-        require_once $service_post_type_file;
-        if (class_exists('\\VandelBooking\\PostTypes\\ServicePostType')) {
-            new \VandelBooking\PostTypes\ServicePostType();
-            error_log('VandelBooking: ServicePostType loaded successfully');
-        } else {
-            error_log('VandelBooking: ServicePostType class not found after manual include');
+        // Register post types
+        $post_types_dir = VANDEL_PLUGIN_DIR . 'includes/post-types/';
+        
+        // Load ServicePostType
+        $service_post_type_file = $post_types_dir . 'class-service-post-type.php';
+        if (file_exists($service_post_type_file)) {
+            require_once $service_post_type_file;
+            if (class_exists('\\VandelBooking\\PostTypes\\ServicePostType')) {
+                new \VandelBooking\PostTypes\ServicePostType();
+                error_log('VandelBooking: ServicePostType loaded successfully');
+            } else {
+                error_log('VandelBooking: ServicePostType class not found after manual include');
+            }
         }
-    }
-    
-    // Load SubServicePostType
-    $sub_service_post_type_file = $post_types_dir . 'class-sub-service-post-type.php';
-    if (file_exists($sub_service_post_type_file)) {
-        require_once $sub_service_post_type_file;
-        if (class_exists('\\VandelBooking\\PostTypes\\SubServicePostType')) {
-            new \VandelBooking\PostTypes\SubServicePostType();
-            error_log('VandelBooking: SubServicePostType loaded successfully');
+        
+        // Load SubServicePostType
+        $sub_service_post_type_file = $post_types_dir . 'class-sub-service-post-type.php';
+        if (file_exists($sub_service_post_type_file)) {
+            require_once $sub_service_post_type_file;
+            if (class_exists('\\VandelBooking\\PostTypes\\SubServicePostType')) {
+                new \VandelBooking\PostTypes\SubServicePostType();
+                error_log('VandelBooking: SubServicePostType loaded successfully');
+            }
         }
-    }
-    
-    // Initialize frontend if class exists
-    if (class_exists('\\VandelBooking\\Frontend\\FrontendLoader')) {
-        new \VandelBooking\Frontend\FrontendLoader();
-    }
-    
-    // Initialize REST API if class exists
-    if (class_exists('\\VandelBooking\\API\\APILoader')) {
-        new \VandelBooking\API\APILoader();
-    }
-    
+        
+        // Initialize frontend if class exists
+        if (class_exists('\\VandelBooking\\Frontend\\FrontendLoader')) {
+            new \VandelBooking\Frontend\FrontendLoader();
+        }
+        
+        // Initialize REST API if class exists
+        if (class_exists('\\VandelBooking\\API\\APILoader')) {
+            new \VandelBooking\API\APILoader();
+        }
+
+        // Load ZIP Code components
+        if (class_exists('\\VandelBooking\\Location\\ZipCodeModel')) {
+            // Initialize ZIP Code model
+            new \VandelBooking\Location\ZipCodeModel();
+        }
+        
+        // Register ZIP Code API
+        if (class_exists('\\VandelBooking\\API\\ZipCodeAPI')) {
+            new \VandelBooking\API\ZipCodeAPI();
+        }
+
+        // Initialize ZIP Code AJAX handler
+        if (is_admin() && class_exists('\\VandelBooking\\Admin\\ZipCodeAjaxHandler')) {
+            new \VandelBooking\Admin\ZipCodeAjaxHandler();
+        }
+
 
         // Initialize other components as needed, with class_exists checks
 
