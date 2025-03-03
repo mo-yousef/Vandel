@@ -644,4 +644,225 @@ class SubServicePostType {
         </div>
         <?php
     }
+
+
+    /**
+     * Render details meta box
+     * 
+     * @param \WP_Post $post Current post object
+     */
+    public function renderDetailsMetaBox($post) {
+        wp_nonce_field('vandel_sub_service_details', 'vandel_sub_service_details_nonce');
+        
+        $subtitle = get_post_meta($post->ID, '_vandel_sub_service_subtitle', true);
+        $description = get_post_meta($post->ID, '_vandel_sub_service_description', true);
+        $price = get_post_meta($post->ID, '_vandel_sub_service_price', true);
+        $input_type = get_post_meta($post->ID, '_vandel_sub_service_type', true) ?: 'text';
+        $placeholder = get_post_meta($post->ID, '_vandel_sub_service_placeholder', true);
+        $required = get_post_meta($post->ID, '_vandel_sub_service_required', true) === 'yes';
+        $active = get_post_meta($post->ID, '_vandel_sub_service_active', true) !== 'no';
+        
+        // Get currency symbol
+        $currency_symbol = \VandelBooking\Helpers::getCurrencySymbol();
+        
+        // Input types
+        $input_types = [
+            'text' => __('Text Input', 'vandel-booking'),
+            'textarea' => __('Text Area', 'vandel-booking'),
+            'number' => __('Number', 'vandel-booking'),
+            'dropdown' => __('Dropdown', 'vandel-booking'),
+            'checkbox' => __('Checkboxes', 'vandel-booking'),
+            'radio' => __('Radio Buttons', 'vandel-booking'),
+        ];
+        ?>
+        <div class="vandel-metabox">
+            <div class="vandel-field">
+                <label for="vandel_sub_service_subtitle"><?php _e('Subtitle', 'vandel-booking'); ?></label>
+                <input type="text" id="vandel_sub_service_subtitle" name="vandel_sub_service_subtitle" 
+                    value="<?php echo esc_attr($subtitle); ?>" class="widefat" 
+                    placeholder="<?php _e('e.g., Additional cleaning details', 'vandel-booking'); ?>">
+                <p class="description"><?php _e('A brief description that appears below the sub-service title', 'vandel-booking'); ?></p>
+            </div>
+            
+            <div class="vandel-field">
+                <label for="vandel_sub_service_description"><?php _e('Description', 'vandel-booking'); ?></label>
+                <textarea id="vandel_sub_service_description" name="vandel_sub_service_description" 
+                    rows="4" class="widefat" 
+                    placeholder="<?php _e('Enter detailed description of the sub-service', 'vandel-booking'); ?>"><?php echo esc_textarea($description); ?></textarea>
+                <p class="description"><?php _e('Detailed explanation of the sub-service', 'vandel-booking'); ?></p>
+            </div>
+            
+            <div class="vandel-row">
+                <div class="vandel-col">
+                    <div class="vandel-field">
+                        <label for="vandel_sub_service_price"><?php _e('Price', 'vandel-booking'); ?></label>
+                        <div class="vandel-input-group">
+                            <span class="vandel-input-prefix"><?php echo esc_html($currency_symbol); ?></span>
+                            <input type="number" id="vandel_sub_service_price" name="vandel_sub_service_price" 
+                                value="<?php echo esc_attr($price); ?>" step="0.01" min="0" 
+                                placeholder="0.00" class="widefat">
+                        </div>
+                        <p class="description"><?php _e('Additional cost for this sub-service', 'vandel-booking'); ?></p>
+                    </div>
+                </div>
+                
+                <div class="vandel-col">
+                    <div class="vandel-field">
+                        <label for="vandel_sub_service_type"><?php _e('Input Type', 'vandel-booking'); ?></label>
+                        <select id="vandel_sub_service_type" name="vandel_sub_service_type" class="widefat">
+                            <?php foreach ($input_types as $type => $label): ?>
+                                <option value="<?php echo esc_attr($type); ?>" <?php selected($input_type, $type); ?>>
+                                    <?php echo esc_html($label); ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                        <p class="description"><?php _e('Type of input field for this sub-service', 'vandel-booking'); ?></p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="vandel-field">
+                <label for="vandel_sub_service_placeholder"><?php _e('Placeholder', 'vandel-booking'); ?></label>
+                <input type="text" id="vandel_sub_service_placeholder" name="vandel_sub_service_placeholder" 
+                    value="<?php echo esc_attr($placeholder); ?>" class="widefat" 
+                    placeholder="<?php _e('Enter placeholder text', 'vandel-booking'); ?>">
+                <p class="description"><?php _e('Placeholder text for the input field', 'vandel-booking'); ?></p>
+            </div>
+            
+            <div class="vandel-toggle-controls">
+                <div class="vandel-toggle-field">
+                    <label class="vandel-toggle">
+                        <input type="checkbox" name="vandel_sub_service_required" value="yes" <?php checked($required); ?>>
+                        <span class="vandel-toggle-slider"></span>
+                    </label>
+                    <span class="vandel-toggle-label"><?php _e('Required Field', 'vandel-booking'); ?></span>
+                </div>
+                
+                <div class="vandel-toggle-field">
+                    <label class="vandel-toggle">
+                        <input type="checkbox" name="vandel_sub_service_active" value="yes" <?php checked($active); ?>>
+                        <span class="vandel-toggle-slider"></span>
+                    </label>
+                    <span class="vandel-toggle-label"><?php _e('Sub-Service Active', 'vandel-booking'); ?></span>
+                </div>
+            </div>
+        </div>
+        <?php
+    }
+
+
+    /**
+     * Render configuration meta box
+     * 
+     * @param \WP_Post $post Current post object
+     */
+    public function renderConfigurationMetaBox($post) {
+        $input_type = get_post_meta($post->ID, '_vandel_sub_service_type', true) ?: 'text';
+        $min_value = get_post_meta($post->ID, '_vandel_sub_service_min', true);
+        $max_value = get_post_meta($post->ID, '_vandel_sub_service_max', true);
+        $default_value = get_post_meta($post->ID, '_vandel_sub_service_default', true);
+        
+        // Input types that support configuration
+        $configurable_types = ['number', 'text', 'textarea'];
+        ?>
+        <div class="vandel-metabox">
+            <div class="vandel-input-types-grid">
+                <?php 
+                $input_types = [
+                    'text' => [
+                        'icon' => 'dashicons-editor-textcolor',
+                        'name' => __('Text Input', 'vandel-booking'),
+                        'description' => __('Single-line text input', 'vandel-booking')
+                    ],
+                    'textarea' => [
+                        'icon' => 'dashicons-editor-paragraph',
+                        'name' => __('Text Area', 'vandel-booking'),
+                        'description' => __('Multi-line text input', 'vandel-booking')
+                    ],
+                    'number' => [
+                        'icon' => 'dashicons-calculator',
+                        'name' => __('Number', 'vandel-booking'),
+                        'description' => __('Numeric input with optional range', 'vandel-booking')
+                    ],
+                    'dropdown' => [
+                        'icon' => 'dashicons-menu-alt',
+                        'name' => __('Dropdown', 'vandel-booking'),
+                        'description' => __('Select from predefined options', 'vandel-booking')
+                    ],
+                    'checkbox' => [
+                        'icon' => 'dashicons-yes-alt',
+                        'name' => __('Checkboxes', 'vandel-booking'),
+                        'description' => __('Multiple selection', 'vandel-booking')
+                    ],
+                    'radio' => [
+                        'icon' => 'dashicons-marker',
+                        'name' => __('Radio Buttons', 'vandel-booking'),
+                        'description' => __('Single selection', 'vandel-booking')
+                    ]
+                ];
+                
+                foreach ($input_types as $type => $type_data):
+                ?>
+                    <div class="vandel-input-type-card <?php echo $input_type === $type ? 'selected' : ''; ?>">
+                        <label class="vandel-input-type-label">
+                            <input type="radio" 
+                                name="vandel_sub_service_type" 
+                                value="<?php echo esc_attr($type); ?>" 
+                                class="vandel-input-type-radio"
+                                <?php checked($input_type, $type); ?>>
+                            <span class="dashicons <?php echo esc_attr($type_data['icon']); ?>"></span>
+                            <span class="vandel-input-type-name"><?php echo esc_html($type_data['name']); ?></span>
+                            <span class="vandel-input-type-desc"><?php echo esc_html($type_data['description']); ?></span>
+                        </label>
+                    </div>
+                <?php endforeach; ?>
+            </div>
+            
+            <!-- Number Configuration Section -->
+            <div id="vandel-number-config" class="vandel-input-config-section" 
+                style="display: <?php echo $input_type === 'number' ? 'block' : 'none'; ?>;">
+                <h4><?php _e('Number Input Configuration', 'vandel-booking'); ?></h4>
+                
+                <div class="vandel-row">
+                    <div class="vandel-col">
+                        <div class="vandel-field">
+                            <label for="vandel_sub_service_min"><?php _e('Minimum Value', 'vandel-booking'); ?></label>
+                            <input type="number" 
+                                id="vandel_sub_service_min" 
+                                name="vandel_sub_service_min" 
+                                value="<?php echo esc_attr($min_value); ?>" 
+                                class="widefat" 
+                                placeholder="<?php _e('Optional minimum value', 'vandel-booking'); ?>">
+                            <p class="description"><?php _e('Minimum allowed value', 'vandel-booking'); ?></p>
+                        </div>
+                    </div>
+                    
+                    <div class="vandel-col">
+                        <div class="vandel-field">
+                            <label for="vandel_sub_service_max"><?php _e('Maximum Value', 'vandel-booking'); ?></label>
+                            <input type="number" 
+                                id="vandel_sub_service_max" 
+                                name="vandel_sub_service_max" 
+                                value="<?php echo esc_attr($max_value); ?>" 
+                                class="widefat" 
+                                placeholder="<?php _e('Optional maximum value', 'vandel-booking'); ?>">
+                            <p class="description"><?php _e('Maximum allowed value', 'vandel-booking'); ?></p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="vandel-field">
+                    <label for="vandel_sub_service_default"><?php _e('Default Value', 'vandel-booking'); ?></label>
+                    <input type="number" 
+                        id="vandel_sub_service_default" 
+                        name="vandel_sub_service_default" 
+                        value="<?php echo esc_attr($default_value); ?>" 
+                        class="widefat" 
+                        placeholder="<?php _e('Optional default value', 'vandel-booking'); ?>">
+                    <p class="description"><?php _e('Default value for the number input', 'vandel-booking'); ?></p>
+                </div>
+            </div>
+        </div>
+        <?php
+    }
 }

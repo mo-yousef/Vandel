@@ -1,0 +1,72 @@
+/**
+ * Custom Post Type Admin Styles
+ */
+
+/* Sortable Placeholder */
+.vandel-sortable-placeholder {
+    background-color: #f0f6fc;
+    border: 2px dashed #2271b1;
+    height: 50px;
+    margin-bottom: 10px;
+    border-radius: 4px;
+}
+
+/* Sort Handle */
+.vandel-sort-handle {
+    cursor: move;
+    padding: 5px;
+    background-color: #f0f0f1;
+    border-right: 1px solid #dcdcde;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.vandel-sort-handle .dashicons {
+    color: #646970;
+}
+
+/* Quick Save Button */
+.vandel-quick-save {
+    margin-left: 10px;
+    position: relative;
+}
+
+.vandel-quick-save:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+}
+
+/* Notification Styles */
+.vandel-notification {
+    padding: 10px;
+    margin-bottom: 15px;
+    border-radius: 4px;
+}
+
+.vandel-notification-success {
+    background-color: #e7f4e4;
+    border-left: 4px solid #46b450;
+    color: #1a7f32;
+}
+
+.vandel-notification-error {
+    background-color: #f9e4e4;
+    border-left: 4px solid #d63638;
+    color: #b32d2d;
+}
+
+/* Post Type List View Enhancements */
+.vandel-list-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+/* Responsive Adjustments */
+@media screen and (max-width: 782px) {
+    .vandel-list-actions {
+        flex-direction: column;
+        align-items: stretch;
+    }
+}
