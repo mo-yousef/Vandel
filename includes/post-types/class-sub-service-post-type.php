@@ -98,78 +98,6 @@ class SubServicePostType {
     }
     
     /**
-     * Render details meta box
-     * 
-     * @param \WP_Post $post Current post object
-     */
-    public function renderDetailsMetaBox($post) {
-        wp_nonce_field('vandel_sub_service_details', 'vandel_sub_service_details_nonce');
-        
-        $price = get_post_meta($post->ID, '_vandel_sub_service_price', true);
-        $subtitle = get_post_meta($post->ID, '_vandel_sub_service_subtitle', true);
-        $description = get_post_meta($post->ID, '_vandel_sub_service_description', true);
-        $is_required = get_post_meta($post->ID, '_vandel_sub_service_required', true) === 'yes';
-        $active = get_post_meta($post->ID, '_vandel_sub_service_active', true) !== 'no'; // Default to active
-        
-        // Get currency symbol
-        $currency_symbol = \VandelBooking\Helpers::getCurrencySymbol();
-        ?>
-        <div class="vandel-metabox">
-            <div class="vandel-field">
-                <label for="vandel_sub_service_subtitle"><?php _e('Subtitle', 'vandel-booking'); ?></label>
-                <input type="text" id="vandel_sub_service_subtitle" name="vandel_sub_service_subtitle" 
-                    value="<?php echo esc_attr($subtitle); ?>" class="widefat" 
-                    placeholder="<?php _e('e.g., "Choose the number of bedrooms"', 'vandel-booking'); ?>">
-                <p class="description"><?php _e('A brief description that appears below the sub-service title', 'vandel-booking'); ?></p>
-            </div>
-            
-            <div class="vandel-field">
-                <label for="vandel_sub_service_description"><?php _e('Description', 'vandel-booking'); ?></label>
-                <textarea id="vandel_sub_service_description" name="vandel_sub_service_description" 
-                    rows="3" class="widefat" 
-                    placeholder="<?php _e('Enter detailed description', 'vandel-booking'); ?>"><?php echo esc_textarea($description); ?></textarea>
-                <p class="description"><?php _e('Additional information to help customers understand this option', 'vandel-booking'); ?></p>
-            </div>
-            
-            <div class="vandel-row">
-                <div class="vandel-col">
-                    <div class="vandel-field">
-                        <label for="vandel_sub_service_price"><?php _e('Base Price', 'vandel-booking'); ?></label>
-                        <div class="vandel-input-group">
-                            <span class="vandel-input-prefix"><?php echo esc_html($currency_symbol); ?></span>
-                            <input type="number" id="vandel_sub_service_price" name="vandel_sub_service_price" 
-                                value="<?php echo esc_attr($price); ?>" step="0.01" min="0" 
-                                placeholder="0.00" class="widefat">
-                        </div>
-                        <p class="description"><?php _e('Starting price for this option (can be overridden by specific option values)', 'vandel-booking'); ?></p>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="vandel-toggle-controls">
-                <div class="vandel-toggle-field">
-                    <label class="vandel-toggle">
-                        <input type="checkbox" name="vandel_sub_service_required" value="yes" <?php checked($is_required); ?>>
-                        <span class="vandel-toggle-slider"></span>
-                    </label>
-                    <span class="vandel-toggle-label"><?php _e('Required Field', 'vandel-booking'); ?></span>
-                    <p class="description"><?php _e('If enabled, customers must fill out this field to complete their booking', 'vandel-booking'); ?></p>
-                </div>
-                
-                <div class="vandel-toggle-field">
-                    <label class="vandel-toggle">
-                        <input type="checkbox" name="vandel_sub_service_active" value="yes" <?php checked($active); ?>>
-                        <span class="vandel-toggle-slider"></span>
-                    </label>
-                    <span class="vandel-toggle-label"><?php _e('Active', 'vandel-booking'); ?></span>
-                    <p class="description"><?php _e('If disabled, this option will not appear on the booking form', 'vandel-booking'); ?></p>
-                </div>
-            </div>
-        </div>
-        <?php
-    }
-    
-    /**
      * Save meta data
      * 
      * @param int $post_id Post ID
@@ -419,8 +347,9 @@ class SubServicePostType {
         
         return $translation;
     }
-}
-    
+
+    // You're missing the other methods from the previous implementation. Do you want me to include the remaining methods?
+
     /**
      * Render options meta box
      * 
@@ -617,6 +546,8 @@ class SubServicePostType {
      * 
      * @param \WP_Post $post Current post object
      */
+    public function renderPreviewMetaBox($post) {
+
         $input_type = get_post_meta($post->ID, '_vandel_sub_service_type', true) ?: 'text';
         $placeholder = get_post_meta($post->ID, '_vandel_sub_service_placeholder', true);
         $options = json_decode(get_post_meta($post->ID, '_vandel_sub_service_options', true), true) ?: [];
@@ -713,4 +644,4 @@ class SubServicePostType {
         </div>
         <?php
     }
-    ?>
+}
