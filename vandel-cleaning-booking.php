@@ -2,7 +2,7 @@
 /*
 Plugin Name: Vandel Cleaning Booking
 Description: A robust cleaning booking plugin with multi-step form and unified admin dashboard.
-Version: 1.0.1
+Version: 1.0.2
 Author: Mohammad Yousif
 Text Domain: vandel-booking
 Domain Path: /languages
