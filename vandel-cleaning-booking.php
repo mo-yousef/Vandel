@@ -30,6 +30,17 @@ if (!defined('VANDEL_PLUGIN_BASENAME')) {
 // Include autoloader
 require_once VANDEL_PLUGIN_DIR . 'includes/autoload.php';
 
+
+// Register booking form shortcode
+require_once VANDEL_PLUGIN_DIR . 'includes/frontend/class-booking-form.php';
+require_once VANDEL_PLUGIN_DIR . 'includes/class-booking-shortcode-register.php';
+
+// Initialize the shortcode
+function vandel_register_booking_shortcode() {
+    new VandelBooking\BookingShortcodeRegister();
+}
+add_action('init', 'vandel_register_booking_shortcode');
+
 // Initialize the plugin
 function vandel_booking_init() {
     return \VandelBooking\Plugin::getInstance();

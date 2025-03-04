@@ -59,13 +59,13 @@ class Assets {
                 true
             );
             
-            wp_enqueue_script(
-                'vandel-frontend',
-                VANDEL_PLUGIN_URL . 'assets/js/booking-form.js',
-                ['jquery', 'flatpickr'],
-                VANDEL_VERSION,
-                true
-            );
+            // wp_enqueue_script(
+            //     'vandel-frontend',
+            //     VANDEL_PLUGIN_URL . 'assets/js/booking-form.js',
+            //     ['jquery', 'flatpickr'],
+            //     VANDEL_VERSION,
+            //     true
+            // );
             
             // Localize script
             wp_localize_script('vandel-frontend', 'vandelAjax', [

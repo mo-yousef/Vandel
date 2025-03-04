@@ -27,9 +27,19 @@ function vandel_booking_autoloader($class_name) {
     // Create full path
     $file_path = VANDEL_PLUGIN_DIR . 'includes' . DIRECTORY_SEPARATOR . $directory . $file_name;
     
+    // For debugging - log the file path
+    if (defined('WP_DEBUG') && WP_DEBUG) {
+        error_log("Attempting to load: " . $file_path);
+    }
+    
     // Load file if it exists
     if (file_exists($file_path)) {
         require_once $file_path;
+    } else {
+        // Log missing file for debugging
+        if (defined('WP_DEBUG') && WP_DEBUG) {
+            error_log("Missing file: " . $file_path . " for class: " . $class_name);
+        }
     }
 }
 
