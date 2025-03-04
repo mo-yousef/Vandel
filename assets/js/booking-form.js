@@ -254,12 +254,26 @@
       $.ajax({
         url: vandelBooking.ajaxurl,
         type: "POST",
+        dataType: "json",
         data: {
           action: "vandel_get_service_details",
           nonce: vandelBooking.nonce,
           service_id: serviceId,
         },
+        beforeSend: function (xhr) {
+          // Add X-Requested-With header
+          xhr.setRequestHeader("X-Requested-With", "XMLHttpRequest");
+
+          console.log("AJAX Request Details:", {
+            url: vandelBooking.ajaxurl,
+            action: "vandel_get_service_details",
+            nonce: vandelBooking.nonce,
+            serviceId: serviceId,
+          });
+        },
         success: function (response) {
+          console.log("AJAX Success Response:", response);
+
           if (response.success) {
             // Store service data
             formData.service_data = response.data;
@@ -281,18 +295,41 @@
             // Enable next button
             $serviceNextButton.prop("disabled", false);
           } else {
+            // Handle unsuccessful response
             $optionsContentContainer.html(
               '<div class="vandel-error">' +
-                (response.data.message || vandelBooking.strings.errorOccurred) +
+                (response.data?.message ||
+                  vandelBooking.strings.errorOccurred) +
                 "</div>"
             );
             $serviceNextButton.prop("disabled", true);
           }
         },
-        error: function () {
+        error: function (xhr, status, errorThrown) {
+          console.error("AJAX Error Details:", {
+            status: status,
+            errorThrown: errorThrown,
+            responseText: xhr.responseText,
+            readyState: xhr.readyState,
+            responseJSON: xhr.responseJSON,
+            allResponseHeaders: xhr.getAllResponseHeaders(),
+          });
+
+          // More detailed error parsing
+          let errorMessage = vandelBooking.strings.errorOccurred;
+          try {
+            const response = xhr.responseJSON || JSON.parse(xhr.responseText);
+            errorMessage = response.data?.message || errorMessage;
+          } catch (e) {
+            console.error("Error parsing response:", e);
+          }
+
           $optionsContentContainer.html(
             '<div class="vandel-error">' +
-              vandelBooking.strings.errorOccurred +
+              errorMessage +
+              " (Error Code: " +
+              status +
+              ")" +
               "</div>"
           );
           $serviceNextButton.prop("disabled", true);
@@ -300,7 +337,6 @@
       });
     });
   }
-
   /**
    * Initialize options event handlers
    */

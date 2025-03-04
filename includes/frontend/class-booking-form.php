@@ -522,61 +522,135 @@ class BookingForm {
     /**
      * AJAX handler to get service details
      */
-    public function ajaxGetServiceDetails() {
-        check_ajax_referer('vandel_booking_nonce', 'nonce');
+/**
+ * AJAX handler to get service details
+ */
+public function ajaxGetServiceDetails() {
+    // Enable detailed error logging
+    error_reporting(E_ALL);
+    ini_set('display_errors', 1);
+
+    // Comprehensive logging
+    error_log('Service Details AJAX Request:');
+    error_log('Request Method: ' . $_SERVER['REQUEST_METHOD']);
+    error_log('Is AJAX Request: ' . (defined('DOING_AJAX') && DOING_AJAX ? 'Yes' : 'No'));
+    error_log('X-Requested-With Header: ' . ($_SERVER['HTTP_X_REQUESTED_WITH'] ?? 'Not Set'));
+
+    // Log all incoming data
+    error_log('POST Data: ' . print_r($_POST, true));
+    error_log('Server Data: ' . print_r($_SERVER, true));
+
+    // Validate request type
+    if (!defined('DOING_AJAX') || !DOING_AJAX) {
+        error_log('Not a valid AJAX request');
+        status_header(403);
+        wp_send_json_error([
+            'message' => __('Invalid request', 'vandel-booking')
+        ]);
+        exit;
+    }
+
+    // Verify nonce with detailed error handling
+    if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'vandel_booking_nonce')) {
+        error_log('Nonce Verification Failed');
+        error_log('Received Nonce: ' . sanitize_text_field($_POST['nonce'] ?? 'NO NONCE'));
         
-        $service_id = intval($_POST['service_id']);
-        
-        if (empty($service_id)) {
-            wp_send_json_error(['message' => __('Invalid service ID', 'vandel-booking')]);
-            return;
+        status_header(403);
+        wp_send_json_error([
+            'message' => __('Security verification failed', 'vandel-booking'),
+            'debug_info' => [
+                'nonce_received' => sanitize_text_field($_POST['nonce'] ?? 'NO NONCE'),
+                'is_user_logged_in' => is_user_logged_in(),
+                'current_user_id' => get_current_user_id()
+            ]
+        ]);
+        exit;
+    }
+
+    // Validate service ID
+    $service_id = isset($_POST['service_id']) ? intval($_POST['service_id']) : 0;
+    
+    error_log('Processed Service ID: ' . $service_id);
+
+    if (empty($service_id)) {
+        error_log('Invalid service ID');
+        status_header(400);
+        wp_send_json_error([
+            'message' => __('Invalid service ID', 'vandel-booking')
+        ]);
+        exit;
+    }
+
+    // Get service details
+    $service = get_post($service_id);
+    if (!$service || $service->post_type !== 'vandel_service') {
+        error_log('Service not found: ' . $service_id);
+        status_header(404);
+        wp_send_json_error([
+            'message' => __('Service not found', 'vandel-booking')
+        ]);
+        exit;
+    }
+
+    // Check if service is active
+    $is_active = get_post_meta($service_id, '_vandel_service_active', true) !== 'no';
+    if (!$is_active) {
+        error_log('Inactive service: ' . $service_id);
+        status_header(403);
+        wp_send_json_error([
+            'message' => __('This service is currently unavailable', 'vandel-booking')
+        ]);
+        exit;
+    }
+
+    // Get service options (sub-services)
+    $assigned_sub_services = get_post_meta($service_id, '_vandel_assigned_sub_services', true) ?: [];
+    $options = [];
+    
+    foreach ($assigned_sub_services as $sub_service_id) {
+        $sub_service = get_post($sub_service_id);
+        if (!$sub_service || $sub_service->post_type !== 'vandel_sub_service') {
+            continue;
         }
         
-        // Get service details
-        $service = get_post($service_id);
-        if (!$service || $service->post_type !== 'vandel_service') {
-            wp_send_json_error(['message' => __('Service not found', 'vandel-booking')]);
-            return;
+        // Check if sub-service is active
+        $is_sub_service_active = get_post_meta($sub_service_id, '_vandel_sub_service_active', true) !== 'no';
+        if (!$is_sub_service_active) {
+            continue;
         }
         
-        // Get service options (sub-services)
-        $assigned_sub_services = get_post_meta($service_id, '_vandel_assigned_sub_services', true) ?: [];
-        $options = [];
-        
-        foreach ($assigned_sub_services as $sub_service_id) {
-            $sub_service = get_post($sub_service_id);
-            if (!$sub_service || $sub_service->post_type !== 'vandel_sub_service') {
-                continue;
-            }
-            
-            $sub_service_data = [
-                'id' => $sub_service_id,
-                'title' => $sub_service->post_title,
-                'subtitle' => get_post_meta($sub_service_id, '_vandel_sub_service_subtitle', true),
-                'description' => get_post_meta($sub_service_id, '_vandel_sub_service_description', true),
-                'price' => floatval(get_post_meta($sub_service_id, '_vandel_sub_service_price', true)),
-                'type' => get_post_meta($sub_service_id, '_vandel_sub_service_type', true) ?: 'checkbox',
-                'required' => get_post_meta($sub_service_id, '_vandel_sub_service_required', true) === 'yes',
-                'options' => json_decode(get_post_meta($sub_service_id, '_vandel_sub_service_options', true), true) ?: []
-            ];
-            
-            $options[] = $sub_service_data;
-        }
-        
-        $service_data = [
-            'id' => $service_id,
-            'title' => $service->post_title,
-            'subtitle' => get_post_meta($service_id, '_vandel_service_subtitle', true),
-            'description' => get_post_meta($service_id, '_vandel_service_description', true),
-            'price' => floatval(get_post_meta($service_id, '_vandel_service_base_price', true)),
-            'duration' => get_post_meta($service_id, '_vandel_service_duration', true),
-            'options' => $options,
-            'optionsHtml' => $this->renderOptionsHtml($options)
+        $sub_service_data = [
+            'id' => $sub_service_id,
+            'title' => $sub_service->post_title,
+            'subtitle' => get_post_meta($sub_service_id, '_vandel_sub_service_subtitle', true),
+            'description' => get_post_meta($sub_service_id, '_vandel_sub_service_description', true),
+            'price' => floatval(get_post_meta($sub_service_id, '_vandel_sub_service_price', true)),
+            'type' => get_post_meta($sub_service_id, '_vandel_sub_service_type', true) ?: 'checkbox',
+            'required' => get_post_meta($sub_service_id, '_vandel_sub_service_required', true) === 'yes',
+            'options' => json_decode(get_post_meta($sub_service_id, '_vandel_sub_service_options', true), true) ?: []
         ];
         
-        wp_send_json_success($service_data);
+        $options[] = $sub_service_data;
     }
-    
+
+    // Prepare service data
+    $service_data = [
+        'id' => $service_id,
+        'title' => $service->post_title,
+        'subtitle' => get_post_meta($service_id, '_vandel_service_subtitle', true),
+        'description' => get_post_meta($service_id, '_vandel_service_description', true),
+        'price' => floatval(get_post_meta($service_id, '_vandel_service_base_price', true)),
+        'duration' => get_post_meta($service_id, '_vandel_service_duration', true),
+        'is_popular' => get_post_meta($service_id, '_vandel_service_is_popular', true) === 'yes',
+        'options' => $options,
+        'optionsHtml' => $this->renderOptionsHtml($options)
+    ];
+
+    // Log successful response
+    error_log('Service Details Retrieved Successfully: ' . $service_id);
+
+    wp_send_json_success($service_data);
+}
     /**
      * AJAX handler to submit booking
      */
