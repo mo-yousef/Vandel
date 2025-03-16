@@ -35,6 +35,21 @@ require_once VANDEL_PLUGIN_DIR . 'includes/autoload.php';
 require_once VANDEL_PLUGIN_DIR . 'includes/frontend/class-booking-form.php';
 require_once VANDEL_PLUGIN_DIR . 'includes/class-booking-shortcode-register.php';
 
+
+// Initialize AJAX Handler
+function vandel_init_ajax_handler() {
+    // First make sure the class file exists
+    $ajax_handler_file = VANDEL_PLUGIN_DIR . 'includes/ajax/class-ajax-handler.php';
+    if (file_exists($ajax_handler_file)) {
+        require_once $ajax_handler_file;
+        // Check if the class exists before instantiating
+        if (class_exists('VandelBooking\\Ajax\\AjaxHandler')) {
+            new VandelBooking\Ajax\AjaxHandler();
+        }
+    }
+}
+add_action('init', 'vandel_init_ajax_handler');
+
 // Initialize the shortcode
 function vandel_register_booking_shortcode() {
     new VandelBooking\BookingShortcodeRegister();

@@ -519,69 +519,22 @@ class BookingForm {
         }
     }
     
-    /**
-     * AJAX handler to get service details
-     */
-
-   /**
-     * AJAX handler to get service details
-     */
-    public function ajaxGetServiceDetails() {
-        // Enable error logging
-        error_log('==== SERVICE DETAILS AJAX REQUEST START ====');
-        error_log('Request Method: ' . $_SERVER['REQUEST_METHOD']);
-        error_log('POST data: ' . print_r($_POST, true));
-        
-        // Check for AJAX request
-        if (!wp_doing_ajax()) {
-            error_log('Not an AJAX request');
-            wp_send_json_error(['message' => 'Invalid request method']);
-            exit;
-        }
-        
-        // Verify nonce with better error handling
-        if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'vandel_booking_nonce')) {
-            error_log('Nonce verification failed. Received: ' . (isset($_POST['nonce']) ? $_POST['nonce'] : 'NO NONCE'));
-            wp_send_json_error(['message' => 'Security verification failed']);
-            exit;
-        }
-        
-        // Get and validate service ID
-        $service_id = isset($_POST['service_id']) ? intval($_POST['service_id']) : 0;
-        error_log('Service ID: ' . $service_id);
-        
-        if (empty($service_id)) {
-            error_log('Invalid Service ID');
-            wp_send_json_error(['message' => 'Invalid service ID']);
-            exit;
-        }
-        
-        // Check if service exists and is valid
-        $service = get_post($service_id);
-        if (!$service || $service->post_type !== 'vandel_service') {
-            error_log('Service not found: ' . $service_id);
-            wp_send_json_error(['message' => 'Service not found']);
-            exit;
-        }
-        
-        // For simplicity during debugging, return a basic response
-        $service_data = [
-            'id' => $service_id,
-            'title' => $service->post_title,
-            'subtitle' => get_post_meta($service_id, '_vandel_service_subtitle', true),
-            'description' => get_post_meta($service_id, '_vandel_service_description', true),
-            'price' => floatval(get_post_meta($service_id, '_vandel_service_base_price', true)),
-            'duration' => get_post_meta($service_id, '_vandel_service_duration', true),
-            'is_popular' => get_post_meta($service_id, '_vandel_service_is_popular', true) === 'yes',
-            'options' => [],
-            'optionsHtml' => '<div class="vandel-test-option">Test Option Content</div>' // Simple test HTML
-        ];
-        
-        error_log('Sending success response: ' . print_r($service_data, true));
-        error_log('==== SERVICE DETAILS AJAX REQUEST END ====');
-        
-        wp_send_json_success($service_data);
+/**
+ * AJAX handler to get service details
+ */
+public function ajaxGetServiceDetails() {
+    // Remove all the current content of this method and replace with:
+    
+    // This method is no longer needed as we've moved AJAX handling to the AjaxHandler class
+    // We keep this method for backward compatibility but just pass on to the new handler
+    if (class_exists('VandelBooking\\Ajax\\AjaxHandler')) {
+        $ajax_handler = new \VandelBooking\Ajax\AjaxHandler();
+        $ajax_handler->getServiceDetails();
+    } else {
+        wp_send_json_error(['message' => 'Service details handler not available']);
     }
+}
+
 
 // Helper function to render sub-services
 public function renderSubServices($sub_services) {

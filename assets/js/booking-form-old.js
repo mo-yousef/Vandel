@@ -5,6 +5,8 @@
 (function ($) {
   "use strict";
 
+  console.log("FORM FRONTEND JS");
+
   // Initialize when document is ready
   $(document).ready(function () {
     initBookingForm();
@@ -34,7 +36,7 @@
     initFormNavigation($form, formData);
 
     // Initialize ZIP code validation
-    if (typeof vandelBooking !== "undefined" && vandelBooking.zipCodeEnabled) {
+    if (vandelBooking.zipCodeEnabled) {
       initZipCodeValidation($form, formData);
     }
 
@@ -224,10 +226,8 @@
       '.vandel-booking-step[data-step="service"] .vandel-btn-next'
     );
 
-    // Disable next button initially if no service is pre-selected
-    if (!$("#vandel-selected-service").val()) {
-      $serviceNextButton.prop("disabled", true);
-    }
+    // Disable next button initially
+    $serviceNextButton.prop("disabled", true);
 
     // Service card selection
     $serviceCards.on("click", function () {
@@ -250,17 +250,30 @@
       );
       $optionsContainer.slideDown();
 
-      // Get service details via AJAX
+      console.log("Making AJAX request with:", {
+        url: vandelBooking.ajaxurl,
+        action: "vandel_get_service_details",
+        nonce: vandelBooking.nonce,
+        service_id: serviceId,
+      });
+
+      // Get service details via AJAX with improved error handling
       $.ajax({
         url: vandelBooking.ajaxurl,
         type: "POST",
+        dataType: "json",
         data: {
           action: "vandel_get_service_details",
           nonce: vandelBooking.nonce,
           service_id: serviceId,
         },
+        beforeSend: function (xhr) {
+          xhr.setRequestHeader("X-Requested-With", "XMLHttpRequest");
+        },
         success: function (response) {
-          if (response.success) {
+          console.log("AJAX Response:", response);
+
+          if (response && response.success) {
             // Store service data
             formData.service_data = response.data;
             formData.total_price = response.data.price;
@@ -278,9 +291,9 @@
             $serviceNextButton.prop("disabled", false);
           } else {
             const errorMsg =
-              response.data && response.data.message
+              response && response.data && response.data.message
                 ? response.data.message
-                : "An error occurred. Please try again.";
+                : vandelBooking.strings.errorOccurred;
 
             $optionsContentContainer.html(
               '<div class="vandel-error">' + errorMsg + "</div>"
@@ -289,16 +302,66 @@
           }
         },
         error: function (xhr, status, error) {
-          console.error("AJAX Error:", status, error);
+          // Detailed error logging
+          console.error("AJAX Error:", {
+            status: status,
+            error: error,
+            xhr: xhr,
+            responseText: xhr.responseText,
+            readyState: xhr.readyState,
+          });
+
+          let errorMessage = vandelBooking.strings.errorOccurred;
+
+          // Try to parse error response
+          try {
+            if (
+              xhr.responseJSON &&
+              xhr.responseJSON.data &&
+              xhr.responseJSON.data.message
+            ) {
+              errorMessage = xhr.responseJSON.data.message;
+            } else if (xhr.responseText) {
+              // Try to parse response text as JSON
+              const jsonResponse = JSON.parse(xhr.responseText);
+              if (
+                jsonResponse &&
+                jsonResponse.data &&
+                jsonResponse.data.message
+              ) {
+                errorMessage = jsonResponse.data.message;
+              }
+            }
+          } catch (e) {
+            console.error("Error parsing response:", e);
+          }
+
           $optionsContentContainer.html(
-            '<div class="vandel-error">An error occurred. Please try again.</div>'
+            '<div class="vandel-error">' +
+              errorMessage +
+              " (Status: " +
+              status +
+              ", Error: " +
+              error +
+              ")</div>"
           );
           $serviceNextButton.prop("disabled", true);
+
+          // Add special handling for "0" response which often indicates PHP error
+          if (xhr.responseText === "0" || xhr.responseText === "") {
+            console.error(
+              'Received empty or "0" response which may indicate a PHP error'
+            );
+            $optionsContentContainer.append(
+              '<div class="vandel-notice">' +
+                "Server returned an empty response. This may indicate a PHP error or plugin conflict." +
+                "</div>"
+            );
+          }
         },
       });
     });
   }
-
   /**
    * Initialize options event handlers
    */
