@@ -41,22 +41,13 @@ if (!file_exists(VANDEL_PLUGIN_DIR . 'includes/client')) {
 }
 
 // Include client model - this is essential
-// Check if client model exists and copy it if needed
-if (!file_exists(VANDEL_PLUGIN_DIR . 'includes/client/class-client-model.php')) {
-    // Create directory if it doesn't exist
-    if (!file_exists(VANDEL_PLUGIN_DIR . 'includes/client')) {
-        wp_mkdir_p(VANDEL_PLUGIN_DIR . 'includes/client');
-    }
-    
-    // Copy from booking directory if it exists there
-    if (file_exists(VANDEL_PLUGIN_DIR . 'includes/booking/class-booking-client-model.php')) {
-        $content = file_get_contents(VANDEL_PLUGIN_DIR . 'includes/booking/class-booking-client-model.php');
-        // Update namespace
-        $content = str_replace('namespace VandelBooking\\Booking;', 'namespace VandelBooking\\Client;', $content);
-        // Update class name
-        $content = str_replace('class BookingClientModel', 'class ClientModel', $content);
-        file_put_contents(VANDEL_PLUGIN_DIR . 'includes/client/class-client-model.php', $content);
-    }
+if (file_exists(VANDEL_PLUGIN_DIR . 'includes/client/class-client-model.php')) {
+    require_once VANDEL_PLUGIN_DIR . 'includes/client/class-client-model.php';
+} else if (file_exists(VANDEL_PLUGIN_DIR . 'includes/booking/class-booking-client-model.php')) {
+    // If it's in the wrong location, copy it to the right place
+    $client_model_content = file_get_contents(VANDEL_PLUGIN_DIR . 'includes/booking/class-booking-client-model.php');
+    file_put_contents(VANDEL_PLUGIN_DIR . 'includes/client/class-client-model.php', $client_model_content);
+    require_once VANDEL_PLUGIN_DIR . 'includes/client/class-client-model.php';
 }
 
 if (file_exists(VANDEL_PLUGIN_DIR . 'includes/class-helpers.php')) {
@@ -80,10 +71,6 @@ function vandel_init_ajax_handler() {
     }
 }
 add_action('init', 'vandel_init_ajax_handler');
-
-
-
-
 
 // Initialize the shortcode
 function vandel_register_booking_shortcode() {
@@ -119,28 +106,6 @@ register_activation_hook(__FILE__, 'vandel_create_directories');
 
 // Run directory creation on plugin load to ensure all directories exist
 vandel_create_directories();
-
-
-
-
-// In vandel-cleaning-booking.php, update the activation hook
-function vandel_activate_plugin() {
-    // Create directories
-    vandel_create_directories();
-    
-    // Initialize installer
-    if (class_exists('\\VandelBooking\\Database\\Installer')) {
-        $installer = new \VandelBooking\Database\Installer();
-        $installer->install();
-    }
-}
-register_activation_hook(__FILE__, 'vandel_activate_plugin');
-
-
-
-
-
-
 
 // Add a debugging function to check class loading
 function vandel_debug_check_classes() {
