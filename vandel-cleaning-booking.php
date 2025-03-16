@@ -112,3 +112,87 @@ function vandel_debug_check_classes() {
 
 // Add the debug output to the admin footer
 add_action('admin_footer', 'vandel_debug_check_classes');
+
+
+
+
+
+/**
+ * Debug AJAX functionality
+ */
+function vandel_debug_ajax() {
+    // Create a debug log file
+    $log_file = WP_CONTENT_DIR . '/vandel-debug.log';
+    
+    // Log all AJAX requests
+    add_action('wp_ajax_nopriv_vandel_get_service_details', 'vandel_log_ajax_request', 1);
+    add_action('wp_ajax_vandel_get_service_details', 'vandel_log_ajax_request', 1);
+    
+    // This will run before your actual AJAX handler
+    function vandel_log_ajax_request() {
+        $log_file = WP_CONTENT_DIR . '/vandel-debug.log';
+        
+        // Log request data
+        $log_data = [
+            'time' => current_time('mysql'),
+            'action' => $_POST['action'] ?? 'not_set',
+            'nonce' => isset($_POST['nonce']) ? 'present' : 'missing',
+            'service_id' => $_POST['service_id'] ?? 'not_set',
+            'user_logged_in' => is_user_logged_in() ? 'yes' : 'no',
+            'request_method' => $_SERVER['REQUEST_METHOD'],
+            'post_data' => $_POST,
+            'get_data' => $_GET
+        ];
+        
+        // Write to log file
+        file_put_contents(
+            $log_file, 
+            date('Y-m-d H:i:s') . " - AJAX Debug: " . print_r($log_data, true) . "\n", 
+            FILE_APPEND
+        );
+    }
+}
+
+// Initialize debug
+vandel_debug_ajax();
+
+
+/**
+ * Log AJAX requests for debugging
+ */
+function vandel_debug_ajax_requests() {
+    // Only enable when WP_DEBUG is on
+    if (!defined('WP_DEBUG') || !WP_DEBUG) {
+        return;
+    }
+    
+    // Create log file in uploads directory
+    $upload_dir = wp_upload_dir();
+    $log_file = $upload_dir['basedir'] . '/vandel-ajax-debug.log';
+    
+    // Log AJAX requests
+    add_action('wp_ajax_nopriv_vandel_get_service_details', 'vandel_log_ajax_request', 1);
+    add_action('wp_ajax_vandel_get_service_details', 'vandel_log_ajax_request', 1);
+    
+    // Log function
+    function vandel_log_ajax_request() {
+        $upload_dir = wp_upload_dir();
+        $log_file = $upload_dir['basedir'] . '/vandel-ajax-debug.log';
+        
+        // Prepare log data
+        $log_data = [
+            'time' => date('Y-m-d H:i:s'),
+            'action' => isset($_REQUEST['action']) ? $_REQUEST['action'] : 'unknown',
+            'nonce' => isset($_REQUEST['nonce']) ? 'present' : 'missing',
+            'POST' => $_POST,
+            'REQUEST_METHOD' => $_SERVER['REQUEST_METHOD'],
+            'HTTP_X_REQUESTED_WITH' => isset($_SERVER['HTTP_X_REQUESTED_WITH']) ? $_SERVER['HTTP_X_REQUESTED_WITH'] : 'not set'
+        ];
+        
+        // Write to log file
+        file_put_contents($log_file, print_r($log_data, true) . "\n\n", FILE_APPEND);
+    }
+}
+
+// Initialize AJAX debugging
+vandel_debug_ajax_requests();
