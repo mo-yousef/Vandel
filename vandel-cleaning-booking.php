@@ -30,11 +30,20 @@ if (!defined('VANDEL_PLUGIN_BASENAME')) {
 // Include autoloader
 require_once VANDEL_PLUGIN_DIR . 'includes/autoload.php';
 
+// Manually include critical model classes to ensure they're loaded
+if (file_exists(VANDEL_PLUGIN_DIR . 'includes/booking/class-booking-model.php')) {
+    require_once VANDEL_PLUGIN_DIR . 'includes/booking/class-booking-model.php';
+}
+if (file_exists(VANDEL_PLUGIN_DIR . 'includes/client/class-client-model.php')) {
+    require_once VANDEL_PLUGIN_DIR . 'includes/client/class-client-model.php';
+}
+if (file_exists(VANDEL_PLUGIN_DIR . 'includes/class-helpers.php')) {
+    require_once VANDEL_PLUGIN_DIR . 'includes/class-helpers.php';
+}
 
 // Register booking form shortcode
 require_once VANDEL_PLUGIN_DIR . 'includes/frontend/class-booking-form.php';
 require_once VANDEL_PLUGIN_DIR . 'includes/class-booking-shortcode-register.php';
-
 
 // Initialize AJAX Handler
 function vandel_init_ajax_handler() {
@@ -64,12 +73,29 @@ function vandel_booking_init() {
 // Start the plugin
 $GLOBALS['vandel_booking'] = vandel_booking_init();
 
-
 // Check if WordPress is loaded
 if (!function_exists('add_action')) {
     echo 'WordPress not loaded correctly';
     exit;
 }
+
+/**
+ * Create required directories
+ */
+function vandel_create_directories() {
+    $directories = [
+        VANDEL_PLUGIN_DIR . 'includes/client',
+        VANDEL_PLUGIN_DIR . 'includes/ajax',
+        VANDEL_PLUGIN_DIR . 'includes/booking',
+    ];
+    
+    foreach ($directories as $dir) {
+        if (!file_exists($dir)) {
+            wp_mkdir_p($dir);
+        }
+    }
+}
+register_activation_hook(__FILE__, 'vandel_create_directories');
 
 // Add a debugging function to check class loading
 function vandel_debug_check_classes() {
@@ -77,6 +103,13 @@ function vandel_debug_check_classes() {
         'VandelBooking\\Plugin' => VANDEL_PLUGIN_DIR . 'includes/class-plugin.php',
         'VandelBooking\\Admin\\AdminLoader' => VANDEL_PLUGIN_DIR . 'includes/admin/class-admin-loader.php',
         'VandelBooking\\Admin\\Dashboard' => VANDEL_PLUGIN_DIR . 'includes/admin/class-dashboard.php',
+        'VandelBooking\\Booking\\BookingModel' => VANDEL_PLUGIN_DIR . 'includes/booking/class-booking-model.php',
+        'VandelBooking\\Client\\ClientModel' => VANDEL_PLUGIN_DIR . 'includes/client/class-client-model.php',
+
+
+        'VandelBooking\\Booking\\BookingModel' => VANDEL_PLUGIN_DIR . 'includes/booking/class-booking-model.php',
+        'VandelBooking\\Client\\ClientModel' => VANDEL_PLUGIN_DIR . 'includes/client/class-client-model.php',
+
     ];
     
     echo '<div style="background:#f8f9fa; border:1px solid #ddd; padding:10px; margin:20px; font-family:monospace;margin-left: 200px;">';
@@ -128,10 +161,6 @@ function vandel_debug_check_classes() {
 // Add the debug output to the admin footer
 add_action('admin_footer', 'vandel_debug_check_classes');
 
-
-
-
-
 /**
  * Debug AJAX functionality
  */
@@ -170,7 +199,6 @@ function vandel_debug_ajax() {
 
 // Initialize debug
 vandel_debug_ajax();
-
 
 /**
  * Log AJAX requests for debugging
