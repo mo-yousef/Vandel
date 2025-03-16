@@ -27,7 +27,7 @@ function vandel_booking_autoloader($class_name) {
     // Create full path
     $file_path = VANDEL_PLUGIN_DIR . 'includes' . DIRECTORY_SEPARATOR . $directory . $file_name;
     
-    // For debugging - log the file path
+    // For debugging - log the file path being attempted
     if (defined('WP_DEBUG') && WP_DEBUG) {
         error_log("Attempting to load: " . $file_path);
     }
@@ -36,6 +36,20 @@ function vandel_booking_autoloader($class_name) {
     if (file_exists($file_path)) {
         require_once $file_path;
     } else {
+        // Check for alternative file paths
+        $alternative_paths = [
+            // Try to find client model in booking directory (old location)
+            'client\\clientmodel' => 'booking' . DIRECTORY_SEPARATOR . 'class-booking-client-model.php',
+        ];
+        
+        $lower_class = strtolower(str_replace('\\', '', $class_name));
+        if (isset($alternative_paths[$lower_class])) {
+            $alt_path = VANDEL_PLUGIN_DIR . 'includes' . DIRECTORY_SEPARATOR . $alternative_paths[$lower_class];
+            if (file_exists($alt_path)) {
+                require_once $alt_path;
+            }
+        }
+        
         // Log missing file for debugging
         if (defined('WP_DEBUG') && WP_DEBUG) {
             error_log("Missing file: " . $file_path . " for class: " . $class_name);

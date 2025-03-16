@@ -34,9 +34,22 @@ require_once VANDEL_PLUGIN_DIR . 'includes/autoload.php';
 if (file_exists(VANDEL_PLUGIN_DIR . 'includes/booking/class-booking-model.php')) {
     require_once VANDEL_PLUGIN_DIR . 'includes/booking/class-booking-model.php';
 }
+
+// Make sure the client directory exists
+if (!file_exists(VANDEL_PLUGIN_DIR . 'includes/client')) {
+    wp_mkdir_p(VANDEL_PLUGIN_DIR . 'includes/client');
+}
+
+// Include client model - this is essential
 if (file_exists(VANDEL_PLUGIN_DIR . 'includes/client/class-client-model.php')) {
     require_once VANDEL_PLUGIN_DIR . 'includes/client/class-client-model.php';
+} else if (file_exists(VANDEL_PLUGIN_DIR . 'includes/booking/class-booking-client-model.php')) {
+    // If it's in the wrong location, copy it to the right place
+    $client_model_content = file_get_contents(VANDEL_PLUGIN_DIR . 'includes/booking/class-booking-client-model.php');
+    file_put_contents(VANDEL_PLUGIN_DIR . 'includes/client/class-client-model.php', $client_model_content);
+    require_once VANDEL_PLUGIN_DIR . 'includes/client/class-client-model.php';
 }
+
 if (file_exists(VANDEL_PLUGIN_DIR . 'includes/class-helpers.php')) {
     require_once VANDEL_PLUGIN_DIR . 'includes/class-helpers.php';
 }
@@ -73,12 +86,6 @@ function vandel_booking_init() {
 // Start the plugin
 $GLOBALS['vandel_booking'] = vandel_booking_init();
 
-// Check if WordPress is loaded
-if (!function_exists('add_action')) {
-    echo 'WordPress not loaded correctly';
-    exit;
-}
-
 /**
  * Create required directories
  */
@@ -96,6 +103,9 @@ function vandel_create_directories() {
     }
 }
 register_activation_hook(__FILE__, 'vandel_create_directories');
+
+// Run directory creation on plugin load to ensure all directories exist
+vandel_create_directories();
 
 // Add a debugging function to check class loading
 function vandel_debug_check_classes() {

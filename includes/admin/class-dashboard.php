@@ -1140,7 +1140,27 @@ private function renderOverviewTab() {
      * Helper method to get a client object for display
      */
     private function getBookingClientDetails($client_id) {
-        $client_model = new \VandelBooking\Client\ClientModel();
-        return $client_model->get($client_id);
+        if (!class_exists('\\VandelBooking\\Client\\ClientModel')) {
+            // Try to include it directly
+            $file_path = VANDEL_PLUGIN_DIR . 'includes/client/class-client-model.php';
+            if (file_exists($file_path)) {
+                require_once $file_path;
+            } else {
+                // Check alternative location
+                $alt_path = VANDEL_PLUGIN_DIR . 'includes/booking/class-booking-client-model.php';
+                if (file_exists($alt_path)) {
+                    require_once $alt_path;
+                }
+            }
+        }
+        
+        if (class_exists('\\VandelBooking\\Client\\ClientModel')) {
+            $client_model = new \VandelBooking\Client\ClientModel();
+            return $client_model->get($client_id);
+        }
+        
+        // Return empty object if class isn't available
+        return (object) ['name' => 'Unknown', 'email' => '', 'phone' => ''];
     }
+
 }
