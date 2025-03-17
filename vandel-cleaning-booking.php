@@ -249,3 +249,55 @@ function vandel_debug_ajax_requests() {
 
 // Initialize AJAX debugging
 vandel_debug_ajax_requests();
+
+
+
+
+/**
+ * Add diagnostic tool to dashboard
+ */
+function vandel_add_diagnostic_tool() {
+    if (isset($_GET['page']) && $_GET['page'] === 'vandel-dashboard' && isset($_GET['tab']) 
+        && $_GET['tab'] === 'settings' && isset($_GET['run_diagnostic'])) {
+        
+        // Include the diagnostic tool file
+        $diagnostic_file = VANDEL_PLUGIN_DIR . 'includes/vandel-diagnostic-tool.php';
+        
+        if (file_exists($diagnostic_file)) {
+            require_once $diagnostic_file;
+            $diagnostic = new VandelDiagnosticTool();
+            $diagnostic->run();
+            exit;
+        }
+    }
+}
+add_action('admin_init', 'vandel_add_diagnostic_tool');
+
+/**
+ * Add diagnostic link to settings page
+ */
+function vandel_add_diagnostic_link($content) {
+    if (isset($_GET['page']) && $_GET['page'] === 'vandel-dashboard' && isset($_GET['tab']) && $_GET['tab'] === 'settings') {
+        echo '<div style="margin-top: 20px; padding: 10px; background-color: #f8f9fa; border: 1px solid #ddd;">';
+        echo '<h3>Database Diagnostics</h3>';
+        echo '<p>If you\'re having trouble with bookings not showing up, run the diagnostic tool to check your database setup.</p>';
+        echo '<a href="' . admin_url('admin.php?page=vandel-dashboard&tab=settings&run_diagnostic=1') . '" class="button button-primary">Run Diagnostic Tool</a>';
+        echo '</div>';
+    }
+    
+    return $content;
+}
+add_action('admin_notices', 'vandel_add_diagnostic_link');
+
+/**
+ * Force table creation on plugin activation
+ */
+function vandel_force_table_creation() {
+    // Include the installer class
+    if (file_exists(VANDEL_PLUGIN_DIR . 'includes/database/class-installer.php')) {
+        require_once VANDEL_PLUGIN_DIR . 'includes/database/class-installer.php';
+        $installer = new VandelBooking\Database\Installer();
+        $installer->install();
+    }
+}
+register_activation_hook(__FILE__, 'vandel_force_table_creation');

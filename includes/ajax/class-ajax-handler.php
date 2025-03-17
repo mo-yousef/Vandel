@@ -288,15 +288,16 @@ class AjaxHandler {
             // Prepare booking data
             $booking_data = [
                 'service' => $service_id,
-                'name' => $data['name'],
-                'email' => $data['email'],
+                'customer_name' => $data['name'],
+                'customer_email' => $data['email'],
                 'phone' => $data['phone'],
-                'date' => $booking_date,
-                'options' => $selected_options,
-                'total' => $total_price,
-                'comments' => isset($_POST['comments']) ? sanitize_textarea_field($_POST['comments']) : '',
-                'access_info' => isset($zip_code_data['zip_code']) ? sanitize_text_field($zip_code_data['zip_code']) : '',
-                'access_type' => 'zip_code'
+                'booking_date' => $booking_date,
+                'sub_services' => !empty($selected_options) ? json_encode($selected_options) : null,
+                'total_price' => $total_price,
+                'access_info' => isset($zip_code_data['zip_code']) ? $zip_code_data['zip_code'] : '',
+                'status' => 'pending',
+                'created_at' => current_time('mysql'),
+                'comments' => isset($_POST['comments']) ? sanitize_textarea_field($_POST['comments']) : ''
             ];
             
             // Create booking
