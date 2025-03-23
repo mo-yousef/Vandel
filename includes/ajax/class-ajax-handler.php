@@ -1,9 +1,8 @@
 <?php
 namespace VandelBooking\Ajax;
-error_log('Starting booking submission process');
 
 /**
- * AJAX Handler for booking-related requests
+ * AJAX Handler for booking-related requests with detailed error reporting
  */
 class AjaxHandler {
     /**
@@ -26,7 +25,10 @@ class AjaxHandler {
      */
     public function getServiceDetails() {
         // Verify nonce
-        check_ajax_referer('vandel_booking_nonce', 'nonce');
+        if (!check_ajax_referer('vandel_booking_nonce', 'nonce', false)) {
+            wp_send_json_error(['message' => __('Security verification failed', 'vandel-booking')]);
+            return;
+        }
         
         // Get and sanitize service ID
         $service_id = isset($_POST['service_id']) ? intval($_POST['service_id']) : 0;
@@ -184,7 +186,10 @@ class AjaxHandler {
      * Validate ZIP code
      */
     public function validateZipCode() {
-        check_ajax_referer('vandel_booking_nonce', 'nonce');
+        if (!check_ajax_referer('vandel_booking_nonce', 'nonce', false)) {
+            wp_send_json_error(['message' => __('Security verification failed', 'vandel-booking')]);
+            return;
+        }
         
         $zip_code = sanitize_text_field($_POST['zip_code']);
         
@@ -232,33 +237,72 @@ class AjaxHandler {
     }
     
     /**
-     * Submit booking
+     * Submit booking with enhanced error reporting
      */
     public function submitBooking() {
-        check_ajax_referer('vandel_booking_nonce', 'nonce');
+        global $wpdb;
+        $error_details = [];
+        
+        // Verify nonce - but continue for debugging
+        $nonce_valid = check_ajax_referer('vandel_booking_nonce', 'nonce', false);
+        if (!$nonce_valid) {
+            $error_details[] = "Nonce verification failed. Received: " . (isset($_POST['nonce']) ? $_POST['nonce'] : 'not set');
+        }
         
         try {
+            // Debug: Log entire submission
+            error_log('Booking submission data: ' . print_r($_POST, true));
+            
             // Validate form data
             $required_fields = ['service_id', 'name', 'email', 'phone', 'date', 'time', 'terms'];
+            $missing_fields = [];
             
-            $data = [];
             foreach ($required_fields as $field) {
                 if (empty($_POST[$field])) {
-                    throw new \Exception(sprintf(__('Missing required field: %s', 'vandel-booking'), $field));
+                    $missing_fields[] = $field;
                 }
+            }
+            
+            if (!empty($missing_fields)) {
+                $error_details[] = 'Missing required fields: ' . implode(', ', $missing_fields);
+                throw new \Exception('Missing required fields: ' . implode(', ', $missing_fields));
+            }
+            
+            // Continue with basic field validation
+            $data = [];
+            foreach ($required_fields as $field) {
                 $data[$field] = sanitize_text_field($_POST[$field]);
             }
             
             // Validate email
             if (!is_email($data['email'])) {
-                throw new \Exception(__('Invalid email address', 'vandel-booking'));
+                $error_details[] = 'Invalid email address: ' . $data['email'];
+                throw new \Exception('Invalid email address');
             }
             
             // Validate service
             $service_id = intval($data['service_id']);
             $service = get_post($service_id);
             if (!$service || $service->post_type !== 'vandel_service') {
-                throw new \Exception(__('Invalid service selection', 'vandel-booking'));
+                $error_details[] = 'Invalid service ID: ' . $service_id . '. Post exists: ' . ($service ? 'Yes' : 'No');
+                if ($service) {
+                    $error_details[] = 'Post type: ' . $service->post_type;
+                }
+                throw new \Exception('Invalid service selection');
+            }
+            
+            // Debug: Verify database tables exist
+            $tables_to_check = [
+                $wpdb->prefix . 'vandel_clients',
+                $wpdb->prefix . 'vandel_bookings',
+                $wpdb->prefix . 'vandel_booking_notes'
+            ];
+            
+            foreach ($tables_to_check as $table) {
+                $table_exists = $wpdb->get_var("SHOW TABLES LIKE '$table'");
+                if (!$table_exists) {
+                    $error_details[] = "Database table missing: $table";
+                }
             }
             
             // Combine date and time
@@ -286,6 +330,9 @@ class AjaxHandler {
             
             $total_price = $base_price + $options_price + $price_adjustment + $service_fee;
             
+            // Debug: Log calculated price
+            error_log("Price calculation: Base price = $base_price, Options price = $options_price, Total = $total_price");
+            
             // Prepare booking data
             $booking_data = [
                 'service' => $service_id,
@@ -296,37 +343,143 @@ class AjaxHandler {
                 'sub_services' => !empty($selected_options) ? json_encode($selected_options) : null,
                 'total_price' => $total_price,
                 'access_info' => isset($zip_code_data['zip_code']) ? $zip_code_data['zip_code'] : '',
-                'status' => 'pending',
-                'created_at' => current_time('mysql'),
-                'comments' => isset($_POST['comments']) ? sanitize_textarea_field($_POST['comments']) : ''
+                'status' => get_option('vandel_default_booking_status', 'pending'),
+                'created_at' => current_time('mysql')
             ];
             
-            // Create booking
+            // Add comments if provided
+            if (isset($_POST['comments'])) {
+                $booking_data['comments'] = sanitize_textarea_field($_POST['comments']);
+            }
+            
+            // Create booking - First try using BookingManager
+            $booking_id = null;
+            $manager_error = null;
+            
             if (class_exists('\\VandelBooking\\Booking\\BookingManager')) {
-                $booking_manager = new \VandelBooking\Booking\BookingManager();
-                $booking_id = $booking_manager->createBooking($booking_data);
+                try {
+                    $booking_manager = new \VandelBooking\Booking\BookingManager();
+                    $booking_result = $booking_manager->createBooking($booking_data);
+                    
+                    if (is_wp_error($booking_result)) {
+                        $manager_error = $booking_result->get_error_message();
+                        $error_details[] = "BookingManager error: " . $manager_error;
+                    } else {
+                        $booking_id = $booking_result;
+                    }
+                } catch (\Exception $e) {
+                    $manager_error = $e->getMessage();
+                    $error_details[] = "BookingManager exception: " . $manager_error;
+                }
+            } else {
+                $error_details[] = "BookingManager class not found";
+            }
+            
+            // If BookingManager failed, try direct database insertion
+            if (!$booking_id) {
+                $error_details[] = "Attempting direct database insertion";
                 
-                if (is_wp_error($booking_id)) {
-                    throw new \Exception($booking_id->get_error_message());
+                // Try to create client
+                try {
+                    // Check if client exists
+                    $client_table = $wpdb->prefix . 'vandel_clients';
+                    $client = $wpdb->get_row($wpdb->prepare(
+                        "SELECT * FROM {$client_table} WHERE email = %s",
+                        $data['email']
+                    ));
+                    
+                    if ($client) {
+                        $client_id = $client->id;
+                        $error_details[] = "Found existing client #$client_id";
+                    } else {
+                        // Create new client
+                        $client_insert = $wpdb->insert(
+                            $client_table,
+                            [
+                                'email' => $data['email'],
+                                'name' => $data['name'],
+                                'phone' => $data['phone'],
+                                'created_at' => current_time('mysql')
+                            ],
+                            ['%s', '%s', '%s', '%s']
+                        );
+                        
+                        if ($client_insert === false) {
+                            $error_details[] = "Client creation failed: " . $wpdb->last_error;
+                            throw new \Exception('Failed to create client: ' . $wpdb->last_error);
+                        }
+                        
+                        $client_id = $wpdb->insert_id;
+                        $error_details[] = "Created new client #$client_id";
+                    }
+                    
+                    // Create booking
+                    $booking_table = $wpdb->prefix . 'vandel_bookings';
+                    $booking_data['client_id'] = $client_id;
+                    
+                    $booking_insert = $wpdb->insert(
+                        $booking_table,
+                        [
+                            'client_id' => $client_id,
+                            'service' => $booking_data['service'],
+                            'sub_services' => $booking_data['sub_services'],
+                            'booking_date' => $booking_data['booking_date'],
+                            'customer_name' => $booking_data['customer_name'],
+                            'customer_email' => $booking_data['customer_email'],
+                            'access_info' => $booking_data['access_info'],
+                            'total_price' => $booking_data['total_price'],
+                            'status' => $booking_data['status'],
+                            'created_at' => $booking_data['created_at']
+                        ],
+                        ['%d', '%s', '%s', '%s', '%s', '%s', '%s', '%f', '%s', '%s']
+                    );
+                    
+                    if ($booking_insert === false) {
+                        $error_details[] = "Booking creation failed: " . $wpdb->last_error;
+                        throw new \Exception('Failed to create booking: Database error - ' . $wpdb->last_error);
+                    }
+                    
+                    $booking_id = $wpdb->insert_id;
+                    $error_details[] = "Created booking #$booking_id via direct DB insertion";
+                    
+                } catch (\Exception $e) {
+                    $error_details[] = "Direct DB insertion exception: " . $e->getMessage();
+                    throw $e; // Re-throw to handle at outer level
+                }
+            }
+            
+            // If we have a booking ID, return success
+            if ($booking_id) {
+                // Attempt to send notification if available
+                if (class_exists('\\VandelBooking\\Booking\\BookingNotification')) {
+                    try {
+                        $notification = new \VandelBooking\Booking\BookingNotification();
+                        $notification->sendClientConfirmation($booking_id);
+                        $notification->sendAdminNotification($booking_id);
+                        $error_details[] = "Notifications sent successfully";
+                    } catch (\Exception $e) {
+                        // Log notification error but don't stop booking process
+                        $error_details[] = "Notification error: " . $e->getMessage();
+                        error_log('Notification error: ' . $e->getMessage());
+                    }
                 }
                 
                 wp_send_json_success([
-
                     'booking_id' => $booking_id,
-                    'message' => __('Booking created successfully', 'vandel-booking')
+                    'message' => __('Booking created successfully', 'vandel-booking'),
+                    'debug_info' => $error_details
                 ]);
+                return;
             } else {
-                // For demo purposes when BookingManager doesn't exist
-error_log('Booking created successfully with ID: ' . $booking_id);
-                wp_send_json_success([
-                    'booking_id' => rand(1000, 9999),
-                    'message' => __('Booking created successfully (demo mode)', 'vandel-booking'),
-                    'debug_data' => $booking_data
-                ]);
+                throw new \Exception('Failed to create booking: No booking ID returned' . 
+                    ($manager_error ? ' - ' . $manager_error : ''));
             }
+            
         } catch (\Exception $e) {
+            error_log('Booking error: ' . $e->getMessage() . "\nDebug info: " . print_r($error_details, true));
             wp_send_json_error([
-                'message' => $e->getMessage()
+                'message' => $e->getMessage(),
+                'debug_info' => $error_details
             ]);
         }
     }

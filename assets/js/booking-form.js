@@ -486,17 +486,18 @@
         time: $("#vandel-time").val(),
         comments: $("#vandel-comments").val(),
         terms: $("#vandel-terms").is(":checked") ? "yes" : "",
-        zip_code_data: JSON.stringify(formData.zip_code_data),
+        zip_code_data: JSON.stringify(formData.zip_code_data || {}),
         total_price: formData.total_price,
       };
 
-      // Add options if any
+      // Add options if any - FIXED VERSION
       if (Object.keys(formData.selected_options).length > 0) {
-        submissionData.options = {};
         Object.entries(formData.selected_options).forEach(([id, option]) => {
-          submissionData.options[id] = option.value;
+          submissionData[`options[${id}]`] = option.value;
         });
       }
+
+      console.log("Submitting booking with data:", submissionData);
 
       // Show loading state
       $submitButton
@@ -512,6 +513,8 @@
         type: "POST",
         data: submissionData,
         success: function (response) {
+          console.log("Booking submission response:", response);
+
           if (response.success) {
             // Show success message
             $form.find(".vandel-booking-step").removeClass("active");
@@ -524,15 +527,30 @@
             scrollToForm();
           } else {
             // Show error and re-enable submit button
-            alert(response.data.message || vandelBooking.strings.errorOccurred);
+            let errorMessage =
+              response.data.message || vandelBooking.strings.errorOccurred;
+
+            // If debug info is available, show it in console
+            if (response.data.debug_info) {
+              console.error("Booking error details:", response.data.debug_info);
+            }
+
+            alert(errorMessage);
             $submitButton
               .prop("disabled", false)
               .html(vandelBooking.strings.submit);
           }
         },
-        error: function () {
+        error: function (xhr, status, error) {
+          // Show detailed error information
+          console.error("AJAX Error:", {
+            status: status,
+            error: error,
+            response: xhr.responseText,
+          });
+
           // Show error and re-enable submit button
-          alert(vandelBooking.strings.errorOccurred);
+          alert(vandelBooking.strings.errorOccurred + ": " + status);
           $submitButton
             .prop("disabled", false)
             .html(vandelBooking.strings.submit);
