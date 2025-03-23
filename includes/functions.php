@@ -191,3 +191,6 @@ function vandel_check_clients_table() {
 
 // Check clients table on init
 add_action('init', 'vandel_check_clients_table');
+
+
+

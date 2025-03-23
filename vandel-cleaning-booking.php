@@ -13,9 +13,9 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-// Define plugin constants only if not already defined
+// Define plugin constants
 if (!defined('VANDEL_VERSION')) {
-    define('VANDEL_VERSION', '1.0.0');
+    define('VANDEL_VERSION', '1.0.2');
 }
 if (!defined('VANDEL_PLUGIN_DIR')) {
     define('VANDEL_PLUGIN_DIR', plugin_dir_path(__FILE__));
@@ -27,44 +27,68 @@ if (!defined('VANDEL_PLUGIN_BASENAME')) {
     define('VANDEL_PLUGIN_BASENAME', plugin_basename(__FILE__));
 }
 
+// Create required directories
+function vandel_create_directories() {
+    $directories = [
+        VANDEL_PLUGIN_DIR . 'includes/client',
+        VANDEL_PLUGIN_DIR . 'includes/ajax',
+        VANDEL_PLUGIN_DIR . 'includes/booking',
+        VANDEL_PLUGIN_DIR . 'includes/post-types',
+    ];
+    
+    foreach ($directories as $dir) {
+        if (!file_exists($dir)) {
+            wp_mkdir_p($dir);
+        }
+    }
+}
+register_activation_hook(__FILE__, 'vandel_create_directories');
+vandel_create_directories();
+
 // Include autoloader
 require_once VANDEL_PLUGIN_DIR . 'includes/autoload.php';
 
-// Manually include critical model classes to ensure they're loaded
-if (file_exists(VANDEL_PLUGIN_DIR . 'includes/booking/class-booking-model.php')) {
-    require_once VANDEL_PLUGIN_DIR . 'includes/booking/class-booking-model.php';
-}
-
-// Make sure the client directory exists
-if (!file_exists(VANDEL_PLUGIN_DIR . 'includes/client')) {
-    wp_mkdir_p(VANDEL_PLUGIN_DIR . 'includes/client');
-}
-
-// Include client model - this is essential
-if (file_exists(VANDEL_PLUGIN_DIR . 'includes/client/class-client-model.php')) {
-    require_once VANDEL_PLUGIN_DIR . 'includes/client/class-client-model.php';
-} else if (file_exists(VANDEL_PLUGIN_DIR . 'includes/booking/class-booking-client-model.php')) {
-    // If it's in the wrong location, copy it to the right place
-    $client_model_content = file_get_contents(VANDEL_PLUGIN_DIR . 'includes/booking/class-booking-client-model.php');
-    file_put_contents(VANDEL_PLUGIN_DIR . 'includes/client/class-client-model.php', $client_model_content);
-    require_once VANDEL_PLUGIN_DIR . 'includes/client/class-client-model.php';
-}
-
-if (file_exists(VANDEL_PLUGIN_DIR . 'includes/class-helpers.php')) {
-    require_once VANDEL_PLUGIN_DIR . 'includes/class-helpers.php';
-}
-
-// Register booking form shortcode
+// Load essential files
+require_once VANDEL_PLUGIN_DIR . 'includes/class-helpers.php';
+require_once VANDEL_PLUGIN_DIR . 'includes/booking/class-booking-model.php';
+require_once VANDEL_PLUGIN_DIR . 'includes/client/class-client-model.php';
 require_once VANDEL_PLUGIN_DIR . 'includes/frontend/class-booking-form.php';
 require_once VANDEL_PLUGIN_DIR . 'includes/class-booking-shortcode-register.php';
 
+// Force-load post type classes - This is the key fix for your services issue
+if (file_exists(VANDEL_PLUGIN_DIR . 'includes/post-types/class-service-post-type.php')) {
+    require_once VANDEL_PLUGIN_DIR . 'includes/post-types/class-service-post-type.php';
+    add_action('init', function() {
+        if (class_exists('\\VandelBooking\\PostTypes\\ServicePostType')) {
+            new \VandelBooking\PostTypes\ServicePostType();
+        }
+    });
+}
+
+if (file_exists(VANDEL_PLUGIN_DIR . 'includes/post-types/class-sub-service-post-type.php')) {
+    require_once VANDEL_PLUGIN_DIR . 'includes/post-types/class-sub-service-post-type.php';
+    add_action('init', function() {
+        if (class_exists('\\VandelBooking\\PostTypes\\SubServicePostType')) {
+            new \VandelBooking\PostTypes\SubServicePostType();
+        }
+    });
+}
+
+// Check for post type registry class and use it if available
+if (file_exists(VANDEL_PLUGIN_DIR . 'includes/post-types/class-post-types-registry.php')) {
+    require_once VANDEL_PLUGIN_DIR . 'includes/post-types/class-post-types-registry.php';
+    add_action('init', function() {
+        if (class_exists('\\VandelBooking\\PostTypes\\Registry')) {
+            new \VandelBooking\PostTypes\Registry();
+        }
+    });
+}
+
 // Initialize AJAX Handler
 function vandel_init_ajax_handler() {
-    // First make sure the class file exists
     $ajax_handler_file = VANDEL_PLUGIN_DIR . 'includes/ajax/class-ajax-handler.php';
     if (file_exists($ajax_handler_file)) {
         require_once $ajax_handler_file;
-        // Check if the class exists before instantiating
         if (class_exists('VandelBooking\\Ajax\\AjaxHandler')) {
             new VandelBooking\Ajax\AjaxHandler();
         }
@@ -86,40 +110,28 @@ function vandel_booking_init() {
 // Start the plugin
 $GLOBALS['vandel_booking'] = vandel_booking_init();
 
-/**
- * Create required directories
- */
-function vandel_create_directories() {
-    $directories = [
-        VANDEL_PLUGIN_DIR . 'includes/client',
-        VANDEL_PLUGIN_DIR . 'includes/ajax',
-        VANDEL_PLUGIN_DIR . 'includes/booking',
-    ];
-    
-    foreach ($directories as $dir) {
-        if (!file_exists($dir)) {
-            wp_mkdir_p($dir);
-        }
+// Force database tables creation
+function vandel_force_create_database_tables() {
+    if (class_exists('\\VandelBooking\\Database\\Installer')) {
+        $installer = new \VandelBooking\Database\Installer();
+        $installer->install();
     }
 }
-register_activation_hook(__FILE__, 'vandel_create_directories');
+add_action('plugins_loaded', 'vandel_force_create_database_tables', 20);
 
-// Run directory creation on plugin load to ensure all directories exist
-vandel_create_directories();
-
-// Add a debugging function to check class loading
+// Debugging functions - Keep these for troubleshooting
 function vandel_debug_check_classes() {
+    if (!current_user_can('manage_options')) return;
+    
     $classes_to_check = [
         'VandelBooking\\Plugin' => VANDEL_PLUGIN_DIR . 'includes/class-plugin.php',
         'VandelBooking\\Admin\\AdminLoader' => VANDEL_PLUGIN_DIR . 'includes/admin/class-admin-loader.php',
         'VandelBooking\\Admin\\Dashboard' => VANDEL_PLUGIN_DIR . 'includes/admin/class-dashboard.php',
         'VandelBooking\\Booking\\BookingModel' => VANDEL_PLUGIN_DIR . 'includes/booking/class-booking-model.php',
         'VandelBooking\\Client\\ClientModel' => VANDEL_PLUGIN_DIR . 'includes/client/class-client-model.php',
-
-
-        'VandelBooking\\Booking\\BookingModel' => VANDEL_PLUGIN_DIR . 'includes/booking/class-booking-model.php',
-        'VandelBooking\\Client\\ClientModel' => VANDEL_PLUGIN_DIR . 'includes/client/class-client-model.php',
-
+        'VandelBooking\\PostTypes\\ServicePostType' => VANDEL_PLUGIN_DIR . 'includes/post-types/class-service-post-type.php',
+        'VandelBooking\\PostTypes\\SubServicePostType' => VANDEL_PLUGIN_DIR . 'includes/post-types/class-sub-service-post-type.php',
+        'VandelBooking\\PostTypes\\Registry' => VANDEL_PLUGIN_DIR . 'includes/post-types/class-post-types-registry.php',
     ];
     
     echo '<div style="background:#f8f9fa; border:1px solid #ddd; padding:10px; margin:20px; font-family:monospace;margin-left: 200px;">';
@@ -134,145 +146,33 @@ function vandel_debug_check_classes() {
         echo '</p>';
     }
     
-    // Check for active hooks
-    echo '<h4>Admin Menu Hooks</h4>';
-    global $wp_filter;
-    
-    if (isset($wp_filter['admin_menu'])) {
-        echo '<p>Admin menu hooks registered: Yes</p>';
-        echo '<ul>';
-        
-        foreach ($wp_filter['admin_menu']->callbacks as $priority => $callbacks) {
-            foreach ($callbacks as $id => $callback) {
-                $callback_name = '';
-                
-                if (is_string($callback['function'])) {
-                    $callback_name = $callback['function'];
-                } elseif (is_array($callback['function'])) {
-                    if (is_object($callback['function'][0])) {
-                        $callback_name = get_class($callback['function'][0]) . '->' . $callback['function'][1];
-                    } else {
-                        $callback_name = $callback['function'][0] . '::' . $callback['function'][1];
-                    }
-                }
-                
-                echo "<li>Priority $priority: $callback_name</li>";
-            }
+    // Post type checking
+    echo '<h3>Post Type Check</h3>';
+    $post_types = get_post_types([], 'objects');
+    $vandel_post_types = [];
+    foreach ($post_types as $type) {
+        if (strpos($type->name, 'vandel_') === 0) {
+            $vandel_post_types[] = $type->name;
         }
-        
-        echo '</ul>';
-    } else {
-        echo '<p>Admin menu hooks registered: No</p>';
     }
+    
+    echo '<p>Vandel Post Types Found: ' . (empty($vandel_post_types) ? 'None' : implode(', ', $vandel_post_types)) . '</p>';
+    
+    // Check for service posts
+    $services = new WP_Query([
+        'post_type' => 'vandel_service',
+        'posts_per_page' => -1
+    ]);
+    
+    echo '<p>Services Count: ' . $services->found_posts . '</p>';
     
     echo '</div>';
 }
-
-// Add the debug output to the admin footer
 add_action('admin_footer', 'vandel_debug_check_classes');
 
-/**
- * Debug AJAX functionality
- */
-function vandel_debug_ajax() {
-    // Create a debug log file
-    $log_file = WP_CONTENT_DIR . '/vandel-debug.log';
-    
-    // Log all AJAX requests
-    add_action('wp_ajax_nopriv_vandel_get_service_details', 'vandel_log_ajax_request', 1);
-    add_action('wp_ajax_vandel_get_service_details', 'vandel_log_ajax_request', 1);
-    
-    // This will run before your actual AJAX handler
-    function vandel_log_ajax_request() {
-        $log_file = WP_CONTENT_DIR . '/vandel-debug.log';
-        
-        // Log request data
-        $log_data = [
-            'time' => current_time('mysql'),
-            'action' => $_POST['action'] ?? 'not_set',
-            'nonce' => isset($_POST['nonce']) ? 'present' : 'missing',
-            'service_id' => $_POST['service_id'] ?? 'not_set',
-            'user_logged_in' => is_user_logged_in() ? 'yes' : 'no',
-            'request_method' => $_SERVER['REQUEST_METHOD'],
-            'post_data' => $_POST,
-            'get_data' => $_GET
-        ];
-        
-        // Write to log file
-        file_put_contents(
-            $log_file, 
-            date('Y-m-d H:i:s') . " - AJAX Debug: " . print_r($log_data, true) . "\n", 
-            FILE_APPEND
-        );
-    }
-}
-
-// Initialize debug
-vandel_debug_ajax();
-
-/**
- * Log AJAX requests for debugging
- */
-function vandel_debug_ajax_requests() {
-    // Only enable when WP_DEBUG is on
-    if (!defined('WP_DEBUG') || !WP_DEBUG) {
-        return;
-    }
-    
-    // Create log file in uploads directory
-    $upload_dir = wp_upload_dir();
-    $log_file = $upload_dir['basedir'] . '/vandel-ajax-debug.log';
-    
-    // Log AJAX requests
-    add_action('wp_ajax_nopriv_vandel_get_service_details', 'vandel_log_ajax_request', 1);
-    add_action('wp_ajax_vandel_get_service_details', 'vandel_log_ajax_request', 1);
-    
-    // Log function
-    function vandel_log_ajax_request() {
-        $upload_dir = wp_upload_dir();
-        $log_file = $upload_dir['basedir'] . '/vandel-ajax-debug.log';
-        
-        // Prepare log data
-        $log_data = [
-            'time' => date('Y-m-d H:i:s'),
-            'action' => isset($_REQUEST['action']) ? $_REQUEST['action'] : 'unknown',
-            'nonce' => isset($_REQUEST['nonce']) ? 'present' : 'missing',
-            'POST' => $_POST,
-            'REQUEST_METHOD' => $_SERVER['REQUEST_METHOD'],
-            'HTTP_X_REQUESTED_WITH' => isset($_SERVER['HTTP_X_REQUESTED_WITH']) ? $_SERVER['HTTP_X_REQUESTED_WITH'] : 'not set'
-        ];
-        
-        // Write to log file
-        file_put_contents($log_file, print_r($log_data, true) . "\n\n", FILE_APPEND);
-    }
-}
-
-// Initialize AJAX debugging
-vandel_debug_ajax_requests();
-
-
-
-
-
-
-
-
-
-
-
-/**
- * Force database tables creation
- */
-function vandel_force_create_database_tables() {
-    if (class_exists('\\VandelBooking\\Database\\Installer')) {
-        $installer = new \VandelBooking\Database\Installer();
-        $installer->install();
-    }
-}
-// Run this once to ensure tables are created
-add_action('plugins_loaded', 'vandel_force_create_database_tables', 20);
-
 function vandel_check_database_tables() {
+    if (!current_user_can('manage_options')) return;
+    
     global $wpdb;
     $tables = array(
         $wpdb->prefix . 'vandel_bookings',
@@ -288,6 +188,14 @@ function vandel_check_database_tables() {
         echo "<p>Table {$table}: " . ($exists ? '<span style="color:green">EXISTS</span>' : '<span style="color:red">MISSING</span>') . "</p>";
     }
     
+    $exists = false;
+    foreach ($tables as $table) {
+        if ($wpdb->get_var("SHOW TABLES LIKE '$table'") === $table) {
+            $exists = true;
+            break;
+        }
+    }
+    
     if ($exists) {
         // Show some sample data from the bookings table
         $bookings = $wpdb->get_results("SELECT * FROM {$wpdb->prefix}vandel_bookings LIMIT 5");
@@ -301,6 +209,4 @@ function vandel_check_database_tables() {
     
     echo '</div>';
 }
-
-// Add this to the admin_footer hook to see the output
 add_action('admin_footer', 'vandel_check_database_tables');
