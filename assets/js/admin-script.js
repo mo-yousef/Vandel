@@ -1,5 +1,5 @@
 /**
- * Admin Scripts for Vandel Booking Plugin
+ * Enhanced Admin Scripts for Vandel Booking Plugin
  */
 (function ($) {
   "use strict";
@@ -44,9 +44,27 @@
     var activeTab = urlParams.get("tab");
 
     if (activeTab) {
-      $('.vandel-tabs-navigation a[data-tab="' + activeTab + '"]').trigger(
-        "click"
+      // Find the tab link with the matching data-tab attribute
+      var $tabToActivate = $(
+        '.vandel-tabs-navigation a[data-tab="' + activeTab + '"]'
       );
+
+      // If we found a matching tab, trigger its click
+      if ($tabToActivate.length) {
+        $tabToActivate.trigger("click");
+      } else {
+        // If the active tab is a special tab like booking-details
+        if (activeTab === "booking-details" || activeTab === "client-details") {
+          // Activate the parent tab (bookings or clients)
+          var parentTab = activeTab.split("-")[0] + "s"; // booking-details -> bookings
+          $('.vandel-tabs-navigation a[data-tab="' + parentTab + '"]').trigger(
+            "click"
+          );
+        } else {
+          // Fallback to first tab if no match
+          $tabLinks.first().trigger("click");
+        }
+      }
     } else {
       // Activate first tab by default
       $tabLinks.first().trigger("click");
