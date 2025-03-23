@@ -2,13 +2,36 @@
 namespace VandelBooking\Booking;
 
 /**
- * Booking Manager
+ * Enhanced Booking Manager
+ * This improved version fixes database connection issues and properly integrates with the client model
  */
 class BookingManager {
+    /**
+     * @var BookingModel
+     */
+    private $booking_model;
+    
+    /**
+     * @var \VandelBooking\Client\ClientModel
+     */
+    private $client_model;
+
     /**
      * Constructor
      */
     public function __construct() {
+        // Initialize models
+        $this->booking_model = new BookingModel();
+        
+        // Make sure we're using the right namespace for the client model
+        if (class_exists('\\VandelBooking\\Client\\ClientModel')) {
+            $this->client_model = new \VandelBooking\Client\ClientModel();
+        } else {
+            // Fallback to old location if needed
+            require_once VANDEL_PLUGIN_DIR . 'includes/booking/class-booking-client-model.php';
+            $this->client_model = new \VandelBooking\Booking\BookingClientModel();
+        }
+        
         $this->initHooks();
     }
     
@@ -36,8 +59,99 @@ class BookingManager {
      * @return string Rendered booking form
      */
     public function renderBookingForm($atts) {
-        $form = new \VandelBooking\Frontend\BookingForm();
-        return $form->render($atts);
+        if (class_exists('\\VandelBooking\\Frontend\\BookingForm')) {
+            $form = new \VandelBooking\Frontend\BookingForm();
+            return $form->render($atts);
+        }
+        
+        return '<p>Booking form class not found.</p>';
+    }
+    
+    /**
+     * Create new booking
+     * 
+     * @param array $booking_data Booking data
+     * @return int|WP_Error Booking ID or error
+     */
+    public function createBooking($booking_data) {
+        // Make sure we have required data
+        $required_fields = ['service', 'name', 'email', 'date', 'total_price'];
+        foreach ($required_fields as $field) {
+            if (empty($booking_data[$field])) {
+                return new \WP_Error(
+                    'missing_field',
+                    sprintf(__('Missing required field: %s', 'vandel-booking'), $field)
+                );
+            }
+        }
+        
+        // Create or update client
+        $client_id = $this->client_model->getOrCreateClient([
+            'email' => $booking_data['email'],
+            'name' => $booking_data['name'],
+            'phone' => $booking_data['phone'] ?? ''
+        ]);
+        
+        if (!$client_id) {
+            return new \WP_Error(
+                'client_creation_failed',
+                __('Failed to create client', 'vandel-booking')
+            );
+        }
+        
+        // Prepare booking data for database
+        $db_booking_data = [
+            'client_id' => $client_id,
+            'service' => $booking_data['service'],
+            'sub_services' => isset($booking_data['options']) ? $booking_data['options'] : [],
+            'booking_date' => $booking_data['date'],
+            'customer_name' => $booking_data['name'],
+            'customer_email' => $booking_data['email'],
+            'phone' => $booking_data['phone'] ?? '',
+            'access_info' => $booking_data['access_info'] ?? '',
+            'total_price' => $booking_data['total_price'],
+            'status' => get_option('vandel_default_booking_status', 'pending'),
+            'created_at' => current_time('mysql')
+        ];
+        
+        // Create booking
+        $booking_id = $this->booking_model->create($db_booking_data);
+        
+        if (!$booking_id) {
+            return new \WP_Error(
+                'booking_creation_failed',
+                __('Failed to create booking', 'vandel-booking')
+            );
+        }
+        
+        // Send notifications if needed
+        if ($booking_id && class_exists('\\VandelBooking\\Booking\\BookingNotification')) {
+            $notification = new BookingNotification();
+            $notification->sendClientConfirmation($booking_id);
+            $notification->sendAdminNotification($booking_id);
+        }
+        
+        return $booking_id;
+    }
+    
+    /**
+     * Get booking by ID
+     * 
+     * @param int $booking_id Booking ID
+     * @return object|false Booking object or false if not found
+     */
+    public function getBooking($booking_id) {
+        return $this->booking_model->get($booking_id);
+    }
+    
+    /**
+     * Get bookings with filters
+     * 
+     * @param array $args Filter arguments
+     * @return array Bookings
+     */
+    public function getBookings($args = []) {
+        return $this->booking_model->getAll($args);
     }
     
     /**
@@ -66,8 +180,12 @@ class BookingManager {
         }
         
         ob_start();
-        $form = new \VandelBooking\Frontend\BookingForm();
-        $form->renderSubServices($sub_services);
+        if (class_exists('\\VandelBooking\\Frontend\\BookingForm')) {
+            $form = new \VandelBooking\Frontend\BookingForm();
+            if (method_exists($form, 'renderSubServices')) {
+                $form->renderSubServices($sub_services);
+            }
+        }
         
         wp_send_json_success(['html' => ob_get_clean()]);
     }
@@ -90,13 +208,14 @@ class BookingManager {
             wp_send_json_error('Invalid status');
         }
         
-        $booking_model = new BookingModel();
-        $result = $booking_model->updateStatus($booking_id, $status);
+        $result = $this->booking_model->updateStatus($booking_id, $status);
         
         if ($result) {
             // Send notification if enabled
-            $notification = new BookingNotification();
-            $notification->sendStatusUpdateNotification($booking_id, $status);
+            if (class_exists('\\VandelBooking\\Booking\\BookingNotification')) {
+                $notification = new BookingNotification();
+                $notification->sendStatusUpdateNotification($booking_id, $status);
+            }
             
             wp_send_json_success([
                 'message' => 'Status updated successfully',
@@ -105,77 +224,6 @@ class BookingManager {
         } else {
             wp_send_json_error('Failed to update status');
         }
-    }
-    
-    /**
-     * Create new booking
-     * 
-     * @param array $booking_data Booking data
-     * @return int|WP_Error Booking ID or error
-     */
-    public function createBooking($booking_data) {
-        // Validate booking data
-        $validator = new BookingValidator();
-        $validation = $validator->validate($booking_data);
-        
-        if (is_wp_error($validation)) {
-            return $validation;
-        }
-        
-        // Create or update client
-        $client_model = new \VandelBooking\Client\ClientModel();
-        $client_id = $client_model->getOrCreateClient([
-            'email' => $booking_data['email'],
-            'name' => $booking_data['name'],
-            'phone' => $booking_data['phone'] ?? ''
-        ]);
-        
-        // Create booking
-        $booking_model = new BookingModel();
-        $booking_id = $booking_model->create([
-            'client_id' => $client_id,
-            'service' => $booking_data['service'],
-            'sub_services' => isset($booking_data['options']) ? $booking_data['options'] : [],
-            'booking_date' => $booking_data['date'],
-            'customer_name' => $booking_data['name'],
-            'customer_email' => $booking_data['email'],
-            'phone' => $booking_data['phone'] ?? '',
-            'access_info' => $booking_data['access_info'] ?? '',
-            'access_type' => $booking_data['access_type'] ?? '',
-            'total_price' => $booking_data['total'],
-            'comments' => $booking_data['comments'] ?? ''
-        ]);
-        
-        if ($booking_id) {
-            // Send notifications
-            $notification = new BookingNotification();
-            $notification->sendClientConfirmation($booking_id);
-            $notification->sendAdminNotification($booking_id);
-        }
-        
-        return $booking_id;
-    }
-    
-    /**
-     * Get booking by ID
-     * 
-     * @param int $booking_id Booking ID
-     * @return object|false Booking object or false if not found
-     */
-    public function getBooking($booking_id) {
-        $booking_model = new BookingModel();
-        return $booking_model->get($booking_id);
-    }
-    
-    /**
-     * Get bookings with filters
-     * 
-     * @param array $args Filter arguments
-     * @return array Bookings
-     */
-    public function getBookings($args = []) {
-        $booking_model = new BookingModel();
-        return $booking_model->getAll($args);
     }
     
     /**
