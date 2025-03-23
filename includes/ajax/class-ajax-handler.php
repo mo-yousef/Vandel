@@ -1,5 +1,6 @@
 <?php
 namespace VandelBooking\Ajax;
+error_log('Starting booking submission process');
 
 /**
  * AJAX Handler for booking-related requests
@@ -310,11 +311,13 @@ class AjaxHandler {
                 }
                 
                 wp_send_json_success([
+
                     'booking_id' => $booking_id,
                     'message' => __('Booking created successfully', 'vandel-booking')
                 ]);
             } else {
                 // For demo purposes when BookingManager doesn't exist
+error_log('Booking created successfully with ID: ' . $booking_id);
                 wp_send_json_success([
                     'booking_id' => rand(1000, 9999),
                     'message' => __('Booking created successfully (demo mode)', 'vandel-booking'),

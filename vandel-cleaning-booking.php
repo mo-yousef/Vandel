@@ -250,3 +250,57 @@ function vandel_debug_ajax_requests() {
 // Initialize AJAX debugging
 vandel_debug_ajax_requests();
 
+
+
+
+
+
+
+
+
+
+
+/**
+ * Force database tables creation
+ */
+function vandel_force_create_database_tables() {
+    if (class_exists('\\VandelBooking\\Database\\Installer')) {
+        $installer = new \VandelBooking\Database\Installer();
+        $installer->install();
+    }
+}
+// Run this once to ensure tables are created
+add_action('plugins_loaded', 'vandel_force_create_database_tables', 20);
+
+function vandel_check_database_tables() {
+    global $wpdb;
+    $tables = array(
+        $wpdb->prefix . 'vandel_bookings',
+        $wpdb->prefix . 'vandel_clients',
+        $wpdb->prefix . 'vandel_booking_notes'
+    );
+    
+    echo '<div style="background:#fff; padding:20px; margin-top:20px; border:1px solid #ccc;margin-left: 200px;">';
+    echo '<h2>Vandel Database Tables Check</h2>';
+    
+    foreach ($tables as $table) {
+        $exists = $wpdb->get_var("SHOW TABLES LIKE '$table'") === $table;
+        echo "<p>Table {$table}: " . ($exists ? '<span style="color:green">EXISTS</span>' : '<span style="color:red">MISSING</span>') . "</p>";
+    }
+    
+    if ($exists) {
+        // Show some sample data from the bookings table
+        $bookings = $wpdb->get_results("SELECT * FROM {$wpdb->prefix}vandel_bookings LIMIT 5");
+        if ($bookings) {
+            echo '<h3>Sample Booking Data:</h3>';
+            echo '<pre>' . print_r($bookings, true) . '</pre>';
+        } else {
+            echo '<p>No booking data found in the database.</p>';
+        }
+    }
+    
+    echo '</div>';
+}
+
+// Add this to the admin_footer hook to see the output
+add_action('admin_footer', 'vandel_check_database_tables');

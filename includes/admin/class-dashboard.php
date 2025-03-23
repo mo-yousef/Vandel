@@ -723,24 +723,251 @@ class Dashboard {
 /**
  * Render overview tab content
  */
+
+
+/**
+ * Render bookings tab content
+ */
+private function renderBookingsTab() {
+    global $wpdb;
+    ?>
+    <div id="bookings" class="vandel-tab-content">
+        <h2><?php _e('Bookings', 'vandel-booking'); ?></h2>
+        
+        <!-- Booking Filters -->
+        <div class="vandel-card">
+            <div class="vandel-card-header">
+                <h3 class="vandel-card-title"><?php _e('Filter Bookings', 'vandel-booking'); ?></h3>
+            </div>
+            <div class="vandel-card-body">
+                <form method="get" action="">
+                    <input type="hidden" name="page" value="vandel-dashboard">
+                    <input type="hidden" name="tab" value="bookings">
+                    
+                    <div class="vandel-row">
+                        <div class="vandel-col">
+                            <label for="booking_status"><?php _e('Status', 'vandel-booking'); ?></label>
+                            <select name="status" id="booking_status">
+                                <option value=""><?php _e('All Statuses', 'vandel-booking'); ?></option>
+                                <option value="pending" <?php selected(isset($_GET['status']) ? $_GET['status'] : '', 'pending'); ?>><?php _e('Pending', 'vandel-booking'); ?></option>
+                                <option value="confirmed" <?php selected(isset($_GET['status']) ? $_GET['status'] : '', 'confirmed'); ?>><?php _e('Confirmed', 'vandel-booking'); ?></option>
+                                <option value="completed" <?php selected(isset($_GET['status']) ? $_GET['status'] : '', 'completed'); ?>><?php _e('Completed', 'vandel-booking'); ?></option>
+                                <option value="canceled" <?php selected(isset($_GET['status']) ? $_GET['status'] : '', 'canceled'); ?>><?php _e('Canceled', 'vandel-booking'); ?></option>
+                            </select>
+                        </div>
+                        
+                        <div class="vandel-col">
+                            <label for="booking_service"><?php _e('Service', 'vandel-booking'); ?></label>
+                            <select name="service" id="booking_service">
+                                <option value=""><?php _e('All Services', 'vandel-booking'); ?></option>
+                                <?php
+                                $services = get_posts([
+                                    'post_type' => 'vandel_service',
+                                    'numberposts' => -1,
+                                    'orderby' => 'title',
+                                    'order' => 'ASC'
+                                ]);
+                                
+                                foreach ($services as $service) {
+                                    echo '<option value="' . esc_attr($service->ID) . '" ' 
+                                         . selected(isset($_GET['service']) ? $_GET['service'] : '', $service->ID, false) . '>' 
+                                         . esc_html($service->post_title) 
+                                         . '</option>';
+                                }
+                                ?>
+                            </select>
+                        </div>
+                        
+                        <div class="vandel-col">
+                            <label for="booking_date_from">
+                                <?php _e('Date From', 'vandel-booking'); ?>
+                            </label>
+                            <input type="date" name="date_from" id="booking_date_from" value="<?php echo isset($_GET['date_from']) ? esc_attr($_GET['date_from']) : ''; ?>">
+                        </div>
+                        
+                        <div class="vandel-col">
+                            <label for="booking_date_to">
+                                <?php _e('Date To', 'vandel-booking'); ?>
+                            </label>
+                            <input type="date" name="date_to" id="booking_date_to" value="<?php echo isset($_GET['date_to']) ? esc_attr($_GET['date_to']) : ''; ?>">
+                        </div>
+                    </div>
+                    
+                    <div class="vandel-actions">
+                        <button type="submit" class="button button-primary">
+                            <?php _e('Filter', 'vandel-booking'); ?>
+                        </button>
+                        <a href="<?php echo esc_url(admin_url('admin.php?page=vandel-dashboard&tab=bookings')); ?>" 
+                           class="button">
+                            <?php _e('Reset', 'vandel-booking'); ?>
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+        
+        <!-- Bookings List -->
+        <div class="vandel-card">
+            <div class="vandel-card-header">
+                <h3 class="vandel-card-title"><?php _e('All Bookings', 'vandel-booking'); ?></h3>
+            </div>
+            <div class="vandel-card-body">
+                <?php
+                // Direct query to get bookings
+                $table_name = $wpdb->prefix . 'vandel_bookings';
+                
+                // Build WHERE clause
+                $where = [];
+                $values = [];
+                
+                if (!empty($_GET['status'])) {
+                    $where[] = 'status = %s';
+                    $values[] = sanitize_text_field($_GET['status']);
+                }
+                
+                if (!empty($_GET['service'])) {
+                    $where[] = 'service = %d';
+                    $values[] = intval($_GET['service']);
+                }
+                
+                if (!empty($_GET['date_from'])) {
+                    $where[] = 'booking_date >= %s';
+                    $values[] = sanitize_text_field($_GET['date_from']) . ' 00:00:00';
+                }
+                
+                if (!empty($_GET['date_to'])) {
+                    $where[] = 'booking_date <= %s';
+                    $values[] = sanitize_text_field($_GET['date_to']) . ' 23:59:59';
+                }
+                
+                // Build query
+                $query = "SELECT * FROM {$table_name}";
+                
+                if (!empty($where)) {
+                    $query .= ' WHERE ' . implode(' AND ', $where);
+                }
+                
+                $query .= ' ORDER BY booking_date DESC';
+                
+                // Prepare and execute query
+                if (!empty($values)) {
+                    $query = $wpdb->prepare($query, $values);
+                }
+                
+                $bookings = $wpdb->get_results($query);
+                
+                if (!empty($bookings)):
+                ?>
+                    <table class="wp-list-table widefat fixed striped">
+                        <thead>
+                            <tr>
+                                <th><?php _e('ID', 'vandel-booking'); ?></th>
+                                <th><?php _e('Service', 'vandel-booking'); ?></th>
+                                <th><?php _e('Client', 'vandel-booking'); ?></th>
+                                <th><?php _e('Email', 'vandel-booking'); ?></th>
+                                <th><?php _e('Date', 'vandel-booking'); ?></th>
+                                <th><?php _e('Status', 'vandel-booking'); ?></th>
+                                <th><?php _e('Total', 'vandel-booking'); ?></th>
+                                <th><?php _e('Actions', 'vandel-booking'); ?></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($bookings as $booking):
+                                $service_post = get_post($booking->service);
+                            ?>
+                                <tr>
+                                    <td><?php echo esc_html($booking->id); ?></td>
+                                    <td><?php echo esc_html($service_post ? $service_post->post_title : 'N/A'); ?></td>
+                                    <td><?php echo esc_html($booking->customer_name); ?></td>
+                                    <td><?php echo esc_html($booking->customer_email); ?></td>
+                                    <td><?php echo esc_html(date_i18n(get_option('date_format') . ' ' . get_option('time_format'), strtotime($booking->booking_date))); ?></td>
+                                    <td>
+                                        <span class="vandel-status 
+                                            <?php 
+                                            switch ($booking->status) {
+                                                case 'pending':
+                                                    echo 'vandel-status-inactive';
+                                                    break;
+                                                case 'confirmed':
+                                                    echo 'vandel-status-active';
+                                                    break;
+                                                case 'completed':
+                                                    echo 'vandel-status-featured';
+                                                    break;
+                                                case 'canceled':
+                                                    echo 'vandel-status-danger';
+                                                    break;
+                                                default:
+                                                    echo '';
+                                            }
+                                            ?>
+                                        ">
+                                            <?php echo esc_html(ucfirst($booking->status)); ?>
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <?php 
+                                        if (function_exists('VandelBooking\\Helpers::formatPrice')) {
+                                            echo \VandelBooking\Helpers::formatPrice($booking->total_price);
+                                        } else {
+                                            echo '$' . number_format((float)$booking->total_price, 2);
+                                        }
+                                        ?>
+                                    </td>
+                                    <td>
+                                        <a href="<?php 
+                                            echo esc_url(
+                                                admin_url(
+                                                    'admin.php?page=vandel-dashboard&tab=booking-details&booking_id=' . $booking->id
+                                                )
+                                            ); 
+                                        ?>" class="button button-small">
+                                            <?php _e('View', 'vandel-booking'); ?>
+                                        </a>
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                <?php else: ?>
+                    <p><?php _e('No bookings found.', 'vandel-booking'); ?></p>
+                <?php endif; ?>
+            </div>
+        </div>
+    </div>
+    <?php
+}
+
+/**
+ * Render overview tab content
+ */
 private function renderOverviewTab() {
+    global $wpdb;
     ?>
     <div id="overview" class="vandel-tab-content">
         <div class="vandel-stats-grid">
             <?php
-            // Check if BookingModel exists before trying to use it
-            if (class_exists('\\VandelBooking\\Booking\\BookingModel')) {
-                // Get booking statistics
-                $booking_model = new \VandelBooking\Booking\BookingModel();
-                $booking_stats = $booking_model->getStatusCounts();
-            } else {
-                // Create placeholder stats if the class doesn't exist
-                $booking_stats = [
-                    'total' => 0,
-                    'pending' => 0,
-                    'confirmed' => 0,
-                    'completed' => 0
-                ];
+            // Direct query to get booking statistics
+            $table_name = $wpdb->prefix . 'vandel_bookings';
+            
+            // Get counts for each status
+            $status_counts = $wpdb->get_results(
+                "SELECT status, COUNT(*) as count FROM {$table_name} GROUP BY status"
+            );
+            
+            // Initialize counts array
+            $booking_stats = [
+                'total' => 0,
+                'pending' => 0,
+                'confirmed' => 0,
+                'completed' => 0,
+                'canceled' => 0
+            ];
+            
+            // Fill counts from database results
+            foreach ($status_counts as $status) {
+                $booking_stats[$status->status] = (int)$status->count;
+                $booking_stats['total'] += (int)$status->count;
             }
             
             // Render cards for different booking statistics
@@ -779,261 +1006,67 @@ private function renderOverviewTab() {
             </div>
             <div class="vandel-card-body">
                 <?php
-                if (class_exists('\\VandelBooking\\Booking\\BookingModel')) {
-                    // Get booking model
-                    $booking_model = new \VandelBooking\Booking\BookingModel();
-                    
-                    // Fetch recent bookings
-                    $recent_bookings = $booking_model->getAll([
-                        'limit' => 5,
-                        'orderby' => 'booking_date',
-                        'order' => 'DESC'
-                    ]);
-                    
-                    if (!empty($recent_bookings)):
-                    ?>
-                        <table class="wp-list-table widefat fixed">
-                            <thead>
-                                <tr>
-                                    <th><?php _e('Booking ID', 'vandel-booking'); ?></th>
-                                    <th><?php _e('Service', 'vandel-booking'); ?></th>
-                                    <th><?php _e('Client', 'vandel-booking'); ?></th>
-                                    <th><?php _e('Date', 'vandel-booking'); ?></th>
-                                    <th><?php _e('Status', 'vandel-booking'); ?></th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <?php foreach ($recent_bookings as $booking): 
-                                    $service = get_post($booking->service);
-                                    $client = $this->getBookingClientDetails($booking->client_id);
-                                ?>
-                                    <tr>
-                                        <td><?php echo esc_html($booking->id); ?></td>
-                                        <td><?php echo esc_html($service ? $service->post_title : 'N/A'); ?></td>
-                                        <td><?php echo esc_html($client ? $client->name : 'N/A'); ?></td>
-                                        <td><?php echo \VandelBooking\Helpers::formatDate($booking->booking_date); ?></td>
-                                        <td>
-                                            <span class="vandel-status 
-                                                <?php 
-                                                switch ($booking->status) {
-                                                    case 'pending':
-                                                        echo 'vandel-status-inactive';
-                                                        break;
-                                                    case 'confirmed':
-                                                        echo 'vandel-status-active';
-                                                        break;
-                                                    case 'completed':
-                                                        echo 'vandel-status-featured';
-                                                        break;
-                                                    default:
-                                                        echo '';
-                                                }
-                                                ?>
-                                            ">
-                                                <?php echo esc_html(ucfirst($booking->status)); ?>
-                                            </span>
-                                        </td>
-                                    </tr>
-                                <?php endforeach; ?>
-                            </tbody>
-                        </table>
-                    <?php else: ?>
-                        <p><?php _e('No recent bookings found.', 'vandel-booking'); ?></p>
-                    <?php endif;
-                } else {
-                    // Show a placeholder message if BookingModel doesn't exist
-                    ?>
-                    <p><?php _e('Booking functionality is not fully configured. Please set up the booking system first.', 'vandel-booking'); ?></p>
-                    <?php
-                }
+                // Direct query to get recent bookings
+                $recent_bookings = $wpdb->get_results(
+                    "SELECT * FROM {$table_name} ORDER BY booking_date DESC LIMIT 5"
+                );
+                
+                if (!empty($recent_bookings)):
                 ?>
+                    <table class="wp-list-table widefat fixed">
+                        <thead>
+                            <tr>
+                                <th><?php _e('Booking ID', 'vandel-booking'); ?></th>
+                                <th><?php _e('Service', 'vandel-booking'); ?></th>
+                                <th><?php _e('Client', 'vandel-booking'); ?></th>
+                                <th><?php _e('Date', 'vandel-booking'); ?></th>
+                                <th><?php _e('Status', 'vandel-booking'); ?></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($recent_bookings as $booking): 
+                                $service = get_post($booking->service);
+                            ?>
+                                <tr>
+                                    <td><?php echo esc_html($booking->id); ?></td>
+                                    <td><?php echo esc_html($service ? $service->post_title : 'N/A'); ?></td>
+                                    <td><?php echo esc_html($booking->customer_name); ?></td>
+                                    <td><?php 
+                                        echo esc_html(date_i18n(get_option('date_format') . ' ' . get_option('time_format'), strtotime($booking->booking_date))); 
+                                    ?></td>
+                                    <td>
+                                        <span class="vandel-status 
+                                            <?php 
+                                            switch ($booking->status) {
+                                                case 'pending':
+                                                    echo 'vandel-status-inactive';
+                                                    break;
+                                                case 'confirmed':
+                                                    echo 'vandel-status-active';
+                                                    break;
+                                                case 'completed':
+                                                    echo 'vandel-status-featured';
+                                                    break;
+                                                default:
+                                                    echo '';
+                                            }
+                                            ?>
+                                        ">
+                                            <?php echo esc_html(ucfirst($booking->status)); ?>
+                                        </span>
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                <?php else: ?>
+                    <p><?php _e('No recent bookings found.', 'vandel-booking'); ?></p>
+                <?php endif; ?>
             </div>
         </div>
     </div>
     <?php
 }
-
-    /**
-     * Render bookings tab content
-     */
-    private function renderBookingsTab() {
-        ?>
-        <div id="bookings" class="vandel-tab-content">
-            <h2><?php _e('Bookings', 'vandel-booking'); ?></h2>
-            
-            <!-- Booking Filters -->
-            <div class="vandel-card">
-                <div class="vandel-card-header">
-                    <h3 class="vandel-card-title"><?php _e('Filter Bookings', 'vandel-booking'); ?></h3>
-                </div>
-                <div class="vandel-card-body">
-                    <form method="get" action="">
-                        <input type="hidden" name="page" value="vandel-dashboard">
-                        <input type="hidden" name="tab" value="bookings">
-                        
-                        <div class="vandel-row">
-                            <div class="vandel-col">
-                                <label for="booking_status"><?php _e('Status', 'vandel-booking'); ?></label>
-                                <select name="status" id="booking_status">
-                                    <option value=""><?php _e('All Statuses', 'vandel-booking'); ?></option>
-                                    <option value="pending"><?php _e('Pending', 'vandel-booking'); ?></option>
-                                    <option value="confirmed"><?php _e('Confirmed', 'vandel-booking'); ?></option>
-                                    <option value="completed"><?php _e('Completed', 'vandel-booking'); ?></option>
-                                    <option value="canceled"><?php _e('Canceled', 'vandel-booking'); ?></option>
-                                </select>
-                            </div>
-                            
-                            <div class="vandel-col">
-                                <label for="booking_service"><?php _e('Service', 'vandel-booking'); ?></label>
-                                <select name="service" id="booking_service">
-                                    <option value=""><?php _e('All Services', 'vandel-booking'); ?></option>
-                                    <?php
-                                    $services = get_posts([
-                                        'post_type' => 'vandel_service',
-                                        'numberposts' => -1,
-                                        'orderby' => 'title',
-                                        'order' => 'ASC'
-                                    ]);
-                                    
-                                    foreach ($services as $service) {
-                                        echo '<option value="' . esc_attr($service->ID) . '">' 
-                                             . esc_html($service->post_title) 
-                                             . '</option>';
-                                    }
-                                    ?>
-                                </select>
-                            </div>
-                            
-                            <div class="vandel-col">
-                                <label for="booking_date_from">
-                                    <?php _e('Date From', 'vandel-booking'); ?>
-                                </label>
-                                <input type="date" name="date_from" id="booking_date_from">
-                            </div>
-                            
-                            <div class="vandel-col">
-                                <label for="booking_date_to">
-                                    <?php _e('Date To', 'vandel-booking'); ?>
-                                </label>
-                                <input type="date" name="date_to" id="booking_date_to">
-                            </div>
-                        </div>
-                        
-                        <div class="vandel-actions">
-                            <button type="submit" class="button button-primary">
-                                <?php _e('Filter', 'vandel-booking'); ?>
-                            </button>
-                            <a href="<?php echo esc_url(admin_url('admin.php?page=vandel-dashboard&tab=bookings')); ?>" 
-                               class="button">
-                                <?php _e('Reset', 'vandel-booking'); ?>
-                            </a>
-                        </div>
-                    </form>
-                </div>
-            </div>
-            
-            <!-- Bookings List -->
-            <div class="vandel-card">
-                <div class="vandel-card-header">
-                    <h3 class="vandel-card-title"><?php _e('All Bookings', 'vandel-booking'); ?></h3>
-                </div>
-                <div class="vandel-card-body">
-                    <?php
-                    // Use your BookingModel to get all bookings
-                    $booking_model = new \VandelBooking\Booking\BookingModel();
-                    
-                    $status     = isset($_GET['status']) ? sanitize_text_field($_GET['status']) : '';
-                    $service    = isset($_GET['service']) ? intval($_GET['service']) : '';
-                    $date_from  = isset($_GET['date_from']) ? sanitize_text_field($_GET['date_from']) : '';
-                    $date_to    = isset($_GET['date_to']) ? sanitize_text_field($_GET['date_to']) : '';
-                    
-                    $args = [
-                        'status'    => $status,
-                        'service'   => $service,
-                        'date_from' => $date_from,
-                        'date_to'   => $date_to,
-                        'orderby'   => 'booking_date',
-                        'order'     => 'DESC'
-                    ];
-                    
-                    $bookings = $booking_model->getAll($args);
-                    
-                    if (!empty($bookings)):
-                    ?>
-                        <table class="wp-list-table widefat fixed striped">
-                            <thead>
-                                <tr>
-                                    <th><?php _e('ID', 'vandel-booking'); ?></th>
-                                    <th><?php _e('Service', 'vandel-booking'); ?></th>
-                                    <th><?php _e('Client', 'vandel-booking'); ?></th>
-                                    <th><?php _e('Email', 'vandel-booking'); ?></th>
-                                    <th><?php _e('Date', 'vandel-booking'); ?></th>
-                                    <th><?php _e('Status', 'vandel-booking'); ?></th>
-                                    <th><?php _e('Total', 'vandel-booking'); ?></th>
-                                    <th><?php _e('Actions', 'vandel-booking'); ?></th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <?php foreach ($bookings as $booking):
-                                    $service_post = get_post($booking->service);
-                                ?>
-                                    <tr>
-                                        <td><?php echo esc_html($booking->id); ?></td>
-                                        <td><?php echo esc_html($service_post ? $service_post->post_title : 'N/A'); ?></td>
-                                        <td><?php echo esc_html($booking->customer_name); ?></td>
-                                        <td><?php echo esc_html($booking->customer_email); ?></td>
-                                        <td><?php echo \VandelBooking\Helpers::formatDate($booking->booking_date); ?></td>
-                                        <td>
-                                            <span class="vandel-status 
-                                                <?php 
-                                                switch ($booking->status) {
-                                                    case 'pending':
-                                                        echo 'vandel-status-inactive';
-                                                        break;
-                                                    case 'confirmed':
-                                                        echo 'vandel-status-active';
-                                                        break;
-                                                    case 'completed':
-                                                        echo 'vandel-status-featured';
-                                                        break;
-                                                    case 'canceled':
-                                                        echo 'vandel-status-danger';
-                                                        break;
-                                                    default:
-                                                        echo '';
-                                                }
-                                                ?>
-                                            ">
-                                                <?php echo esc_html(ucfirst($booking->status)); ?>
-                                            </span>
-                                        </td>
-                                        <td>
-                                            <?php echo \VandelBooking\Helpers::formatPrice($booking->total_price); ?>
-                                        </td>
-                                        <td>
-                                            <a href="<?php 
-                                                echo esc_url(
-                                                    admin_url(
-                                                        'admin.php?page=vandel-dashboard&tab=booking-details&booking_id=' . $booking->id
-                                                    )
-                                                ); 
-                                            ?>" class="button button-small">
-                                                <?php _e('View', 'vandel-booking'); ?>
-                                            </a>
-                                        </td>
-                                    </tr>
-                                <?php endforeach; ?>
-                            </tbody>
-                        </table>
-                    <?php else: ?>
-                        <p><?php _e('No bookings found.', 'vandel-booking'); ?></p>
-                    <?php endif; ?>
-                </div>
-            </div>
-        </div>
-        <?php
-    }
-
     /**
      * Render clients tab content
      */
