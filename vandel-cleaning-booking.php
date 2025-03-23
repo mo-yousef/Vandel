@@ -201,7 +201,7 @@ function vandel_check_database_tables() {
         $bookings = $wpdb->get_results("SELECT * FROM {$wpdb->prefix}vandel_bookings LIMIT 5");
         if ($bookings) {
             echo '<h3>Sample Booking Data:</h3>';
-            echo '<pre>' . print_r($bookings, true) . '</pre>';
+            // echo '<pre>' . print_r($bookings, true) . '</pre>';
         } else {
             echo '<p>No booking data found in the database.</p>';
         }
