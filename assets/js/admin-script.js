@@ -1,179 +1,220 @@
 /**
- * Enhanced Admin Scripts for Vandel Booking Plugin
+ * Client Management JavaScript for Vandel Booking
  */
 (function ($) {
   "use strict";
 
-  // Initialize when the DOM is ready
+  // Initialize when DOM is ready
   $(document).ready(function () {
-    console.log("Vandel Booking Admin JS loaded");
-    initTabs();
+    initClientDetails();
+    initClientList();
+    initClientForm();
   });
 
   /**
-   * Initialize tabs on admin pages
+   * Initialize client details functionality
    */
-  function initTabs() {
-    var $tabLinks = $(".vandel-tabs-navigation a");
-    var $tabContents = $(".vandel-tab-content");
+  function initClientDetails() {
+    // Handle adding notes
+    const $noteForm = $("#vandel-add-client-note-form");
+    const $noteInput = $("#client_note");
 
-    // Handle tab clicks
-    $tabLinks.on("click", function (e) {
-      e.preventDefault();
-
-      var targetTab = $(this).data("tab");
-
-      // Update active tab
-      $tabLinks.removeClass("active");
-      $(this).addClass("active");
-
-      // Show target content
-      $tabContents.hide();
-      $("#" + targetTab).show();
-
-      // Update URL without reloading
-      if (history.pushState) {
-        var url = new URL(window.location);
-        url.searchParams.set("tab", targetTab);
-        window.history.pushState({}, "", url);
-      }
-    });
-
-    // Activate tab based on URL parameter
-    var urlParams = new URLSearchParams(window.location.search);
-    var activeTab = urlParams.get("tab");
-
-    if (activeTab) {
-      // Find the tab link with the matching data-tab attribute
-      var $tabToActivate = $(
-        '.vandel-tabs-navigation a[data-tab="' + activeTab + '"]'
-      );
-
-      // If we found a matching tab, trigger its click
-      if ($tabToActivate.length) {
-        $tabToActivate.trigger("click");
-      } else {
-        // If the active tab is a special tab like booking-details
-        if (activeTab === "booking-details" || activeTab === "client-details") {
-          // Activate the parent tab (bookings or clients)
-          var parentTab = activeTab.split("-")[0] + "s"; // booking-details -> bookings
-          $('.vandel-tabs-navigation a[data-tab="' + parentTab + '"]').trigger(
-            "click"
-          );
-        } else {
-          // Fallback to first tab if no match
-          $tabLinks.first().trigger("click");
+    if ($noteForm.length) {
+      $noteForm.on("submit", function () {
+        if (!$noteInput.val().trim()) {
+          $noteInput.addClass("vandel-error");
+          return false;
         }
-      }
-    } else {
-      // Activate first tab by default
-      $tabLinks.first().trigger("click");
+
+        $noteInput.removeClass("vandel-error");
+        return true;
+      });
+
+      $noteInput.on("input", function () {
+        $(this).removeClass("vandel-error");
+      });
+    }
+
+    // Handle recalculating client statistics
+    const $recalculateBtn = $("#vandel-recalculate-stats");
+
+    if ($recalculateBtn.length) {
+      $recalculateBtn.on("click", function (e) {
+        e.preventDefault();
+
+        const clientId = $(this).data("client-id");
+        const $button = $(this);
+
+        // Disable button and show loading indicator
+        $button.prop("disabled", true).addClass("button-busy");
+        $button.html(
+          '<span class="spinner is-active"></span> ' +
+            vandelClientAdmin.strings.recalculating
+        );
+
+        // Send AJAX request
+        $.ajax({
+          url: vandelClientAdmin.ajaxUrl,
+          type: "POST",
+          data: {
+            action: "vandel_recalculate_client_stats",
+            client_id: clientId,
+            nonce: vandelClientAdmin.nonce,
+          },
+          success: function (response) {
+            if (response.success) {
+              // Refresh the page to show updated stats
+              window.location.reload();
+            } else {
+              // Show error message
+              alert(
+                response.data.message ||
+                  vandelClientAdmin.strings.recalculateError
+              );
+
+              // Reset button
+              $button.prop("disabled", false).removeClass("button-busy");
+              $button.html(vandelClientAdmin.strings.recalculate);
+            }
+          },
+          error: function () {
+            // Show error message
+            alert(vandelClientAdmin.strings.recalculateError);
+
+            // Reset button
+            $button.prop("disabled", false).removeClass("button-busy");
+            $button.html(vandelClientAdmin.strings.recalculate);
+          },
+        });
+      });
     }
   }
-})(jQuery);
 
-/**
- * Vandel Booking Settings Page Interactions
- */
-(function ($) {
-  "use strict";
+  /**
+   * Initialize client list functionality
+   */
+  function initClientList() {
+    // Handle bulk actions
+    const $bulkForm = $("#vandel-clients-form");
 
-  $(document).ready(function () {
-    // Settings Navigation
-    function initSettingsNavigation() {
-      const $navLinks = $(".vandel-settings-nav a");
-      const $sections = $(".vandel-settings-section");
+    if ($bulkForm.length) {
+      $bulkForm.on("submit", function (e) {
+        const $form = $(this);
+        const selectedAction = $("#bulk-action-selector-top").val();
+        const $selectedClients = $form.find(
+          'input[name="client_ids[]"]:checked'
+        );
 
-      $navLinks.on("click", function (e) {
-        e.preventDefault();
-        const targetSection = $(this).data("section");
-
-        // Update active navigation
-        $navLinks.parent().removeClass("active");
-        $(this).parent().addClass("active");
-
-        // Show/hide sections
-        $sections.hide();
-        $(`#${targetSection}`).show();
-
-        // Update URL without page reload
-        if (history.pushState) {
-          const url = new URL(window.location);
-          url.searchParams.set("section", targetSection);
-          window.history.pushState({}, "", url);
+        // If no action selected or no clients selected, prevent submission
+        if (selectedAction === "-1" || $selectedClients.length === 0) {
+          e.preventDefault();
+          alert(vandelClientAdmin.strings.selectClientAndAction);
+          return false;
         }
+
+        // Confirm deletion
+        if (selectedAction === "delete") {
+          if (!confirm(vandelClientAdmin.strings.confirmBulkDelete)) {
+            e.preventDefault();
+            return false;
+          }
+        }
+
+        return true;
       });
     }
 
-    // Timezone Detection
-    function detectTimezone() {
-      const $timezoneSelect = $("#vandel_default_timezone");
-
-      // Auto-detect user's timezone if not already set
-      if (!$timezoneSelect.val()) {
-        const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-        $timezoneSelect.val(userTimezone);
+    // Handle individual client deletion
+    $(".vandel-delete-client").on("click", function (e) {
+      if (!confirm(vandelClientAdmin.strings.confirmDelete)) {
+        e.preventDefault();
+        return false;
       }
-    }
 
-    // Integration Tooltips
-    function initIntegrationTooltips() {
-      $(".vandel-integration-item").each(function () {
-        const $item = $(this);
-        const $checkbox = $item.find('input[type="checkbox"]');
-        const $badge = $item.find(".vandel-badge");
+      return true;
+    });
 
-        $checkbox.on("change", function () {
-          if ($(this).prop("checked")) {
-            alert(
-              "This integration is not yet available. Stay tuned for future updates!"
-            );
-            $(this).prop("checked", false);
+    // Handle quick search
+    const $quickSearch = $("#vandel-quick-search");
+    if ($quickSearch.length) {
+      $quickSearch.on("keyup", function () {
+        const searchTerm = $(this).val().toLowerCase();
+
+        $(".vandel-client-row").each(function () {
+          const clientName = $(this)
+            .find(".vandel-client-name")
+            .text()
+            .toLowerCase();
+          const clientEmail = $(this)
+            .find(".vandel-client-email")
+            .text()
+            .toLowerCase();
+
+          if (
+            clientName.includes(searchTerm) ||
+            clientEmail.includes(searchTerm)
+          ) {
+            $(this).show();
+          } else {
+            $(this).hide();
           }
         });
-
-        $badge.tooltip({
-          title: "Coming soon! We are working on adding this integration.",
-          placement: "right",
-        });
       });
     }
+  }
 
-    // Business Hours Validation
-    function validateBusinessHours() {
-      const $startTime = $("#vandel_business_hours_start");
-      const $endTime = $("#vandel_business_hours_end");
+  /**
+   * Initialize client form functionality
+   */
+  function initClientForm() {
+    // Form validation
+    const $clientForm = $("#vandel-client-form");
 
-      $startTime.add($endTime).on("change", function () {
-        const startTime = new Date(`2000-01-01T${$startTime.val()}`);
-        const endTime = new Date(`2000-01-01T${$endTime.val()}`);
+    if ($clientForm.length) {
+      $clientForm.on("submit", function (e) {
+        const $nameField = $("#client_name");
+        const $emailField = $("#client_email");
+        let isValid = true;
 
-        if (startTime >= endTime) {
-          alert("End time must be later than start time.");
-          $endTime.val("");
+        // Validate name
+        if (!$nameField.val().trim()) {
+          $nameField.addClass("vandel-error");
+          isValid = false;
+        } else {
+          $nameField.removeClass("vandel-error");
         }
-      });
-    }
 
-    // Notification Email Validation
-    function validateNotificationEmail() {
-      const $emailInput = $("#vandel_notification_email");
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-      $emailInput.on("blur", function () {
-        const email = $(this).val().trim();
-        if (email && !emailRegex.test(email)) {
-          alert("Please enter a valid email address.");
-          $(this).focus();
+        // Validate email
+        const emailValue = $emailField.val().trim();
+        if (!emailValue || !isValidEmail(emailValue)) {
+          $emailField.addClass("vandel-error");
+          isValid = false;
+        } else {
+          $emailField.removeClass("vandel-error");
         }
+
+        if (!isValid) {
+          e.preventDefault();
+          alert(vandelClientAdmin.strings.fillRequired);
+          return false;
+        }
+
+        return true;
+      });
+
+      // Remove error class on input
+      $clientForm.find("input, textarea").on("input", function () {
+        $(this).removeClass("vandel-error");
       });
     }
+  }
 
-    // Initialize all functions
-    initSettingsNavigation();
-    detectTimezone();
-    initIntegrationTooltips();
-    validateBusinessHours();
-    validateNotificationEmail();
-  });
+  /**
+   * Validate email format
+   */
+  function isValidEmail(email) {
+    const re =
+      /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
+    return re.test(String(email).toLowerCase());
+  }
 })(jQuery);
