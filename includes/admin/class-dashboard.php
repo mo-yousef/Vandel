@@ -555,8 +555,131 @@ private function renderTabs($active_tab) {
                 
                 <div class="vandel-card">
                     <div class="vandel-card-header">
+                        <h3><?php _e('Brand Settings', 'vandel-booking'); ?></h3>
+                    </div>
+
+
+                   <div class="vandel-card-body">
+                        <div class="vandel-setting-row">
+                            <label for="vandel_business_name"><?php _e('Business Name', 'vandel-booking'); ?></label>
+                            <input 
+                                type="text" 
+                                id="vandel_business_name" 
+                                name="vandel_business_name" 
+                                value="<?php echo esc_attr(get_option('vandel_business_name', get_bloginfo('name'))); ?>" 
+                                class="regular-text"
+                            >
+                            <p class="description"><?php _e('Your business name for receipts and emails', 'vandel-booking'); ?></p>
+                        </div>
+
+                        <div class="vandel-setting-row">
+                            <label for="vandel_primary_color"><?php _e('Brand Color', 'vandel-booking'); ?></label>
+                            <input 
+                                type="color" 
+                                id="vandel_primary_color" 
+                                name="vandel_primary_color" 
+                                value="<?php echo esc_attr(get_option('vandel_primary_color', '#286cd6')); ?>"
+                            >
+                            <p class="description"><?php _e('Main color for buttons and accents on the booking form', 'vandel-booking'); ?></p>
+                        </div>
+                    </div>
+
+    </div>
+
+
+                <div class="vandel-card">
+                    <div class="vandel-card-header">
+                        <h3><?php _e('Regional Settings', 'vandel-booking'); ?></h3>
+                    </div>
+                    <div class="vandel-card-body">
+                        <div class="vandel-setting-row">
+                            <label for="vandel_currency"><?php _e('Currency', 'vandel-booking'); ?></label>
+                            <select 
+                                id="vandel_currency" 
+                                name="vandel_currency"
+                                class="regular-text"
+                            >
+                                <?php 
+                                $currencies = [
+                                    'USD' => __('US Dollar ($)', 'vandel-booking'),
+                                    'EUR' => __('Euro (€)', 'vandel-booking'),
+                                    'GBP' => __('British Pound (£)', 'vandel-booking'),
+                                    'CAD' => __('Canadian Dollar (C$)', 'vandel-booking'),
+                                    'AUD' => __('Australian Dollar (A$)', 'vandel-booking'),
+                                    'SEK' => __('Swedish Krona (kr)', 'vandel-booking')
+                                ];
+                                $current_currency = get_option('vandel_currency', 'USD');
+                                
+                                foreach ($currencies as $code => $name) {
+                                    echo '<option value="' . esc_attr($code) . '" ' . 
+                                         selected($current_currency, $code, false) . '>' . 
+                                         esc_html($name) . '</option>';
+                                }
+                                ?>
+                            </select>
+                            <p class="description"><?php _e('Currency for prices and payments', 'vandel-booking'); ?></p>
+                        </div>
+
+                        <div class="vandel-setting-row">
+                            <label for="vandel_default_timezone"><?php _e('Timezone', 'vandel-booking'); ?></label>
+                            <select 
+                                id="vandel_default_timezone" 
+                                name="vandel_default_timezone"
+                                class="regular-text"
+                            >
+                                <?php 
+                                $current_timezone = get_option('vandel_default_timezone', wp_timezone_string());
+                                $common_timezones = [
+                                    'America/New_York' => 'Eastern Time (US & Canada)',
+                                    'America/Chicago' => 'Central Time (US & Canada)',
+                                    'America/Denver' => 'Mountain Time (US & Canada)',
+                                    'America/Los_Angeles' => 'Pacific Time (US & Canada)',
+                                    'America/Anchorage' => 'Alaska',
+                                    'America/Honolulu' => 'Hawaii',
+                                    'Europe/London' => 'London',
+                                    'Europe/Paris' => 'Paris, Berlin, Rome, Madrid',
+                                    'Asia/Tokyo' => 'Tokyo',
+                                    'Australia/Sydney' => 'Sydney'
+                                ];
+                                
+                                // First show common timezones
+                                echo '<optgroup label="' . __('Common Timezones', 'vandel-booking') . '">';
+                                foreach ($common_timezones as $zone => $label) {
+                                    echo '<option value="' . esc_attr($zone) . '" ' . 
+                                         selected($current_timezone, $zone, false) . '>' . 
+                                         esc_html($label) . '</option>';
+                                }
+                                echo '</optgroup>';
+                                
+                                // Then show all timezones
+                                echo '<optgroup label="' . __('All Timezones', 'vandel-booking') . '">';
+                                $timezones = timezone_identifiers_list();
+                                foreach ($timezones as $timezone) {
+                                    if (!isset($common_timezones[$timezone])) {
+                                        echo '<option value="' . esc_attr($timezone) . '" ' . 
+                                             selected($current_timezone, $timezone, false) . '>' . 
+                                             esc_html($timezone) . '</option>';
+                                    }
+                                }
+                                echo '</optgroup>';
+                                ?>
+                            </select>
+                            <p class="description"><?php _e('Timezone for booking calculations', 'vandel-booking'); ?></p>
+                        </div>
+                    </div>
+                </div>
+
+
+
+                <div class="vandel-card">
+                    <div class="vandel-card-header">
                         <h3><?php _e('Business Hours', 'vandel-booking'); ?></h3>
                     </div>
+
+
+ 
+
+
                     <div class="vandel-card-body">
                         <div class="vandel-setting-row">
                             <label><?php _e('Operating Hours', 'vandel-booking'); ?></label>
@@ -1725,112 +1848,7 @@ private function renderTabs($active_tab) {
                                         </div>
                                     <?php endif; ?>
                     </div>
-                    <div class="vandel-card-body">
-                        <div class="vandel-setting-row">
-                            <label for="vandel_business_name"><?php _e('Business Name', 'vandel-booking'); ?></label>
-                            <input 
-                                type="text" 
-                                id="vandel_business_name" 
-                                name="vandel_business_name" 
-                                value="<?php echo esc_attr(get_option('vandel_business_name', get_bloginfo('name'))); ?>" 
-                                class="regular-text"
-                            >
-                            <p class="description"><?php _e('Your business name for receipts and emails', 'vandel-booking'); ?></p>
-                        </div>
 
-                        <div class="vandel-setting-row">
-                            <label for="vandel_primary_color"><?php _e('Brand Color', 'vandel-booking'); ?></label>
-                            <input 
-                                type="color" 
-                                id="vandel_primary_color" 
-                                name="vandel_primary_color" 
-                                value="<?php echo esc_attr(get_option('vandel_primary_color', '#286cd6')); ?>"
-                            >
-                            <p class="description"><?php _e('Main color for buttons and accents on the booking form', 'vandel-booking'); ?></p>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="vandel-card">
-                    <div class="vandel-card-header">
-                        <h3><?php _e('Regional Settings', 'vandel-booking'); ?></h3>
-                    </div>
-                    <div class="vandel-card-body">
-                        <div class="vandel-setting-row">
-                            <label for="vandel_currency"><?php _e('Currency', 'vandel-booking'); ?></label>
-                            <select 
-                                id="vandel_currency" 
-                                name="vandel_currency"
-                                class="regular-text"
-                            >
-                                <?php 
-                                $currencies = [
-                                    'USD' => __('US Dollar ($)', 'vandel-booking'),
-                                    'EUR' => __('Euro (€)', 'vandel-booking'),
-                                    'GBP' => __('British Pound (£)', 'vandel-booking'),
-                                    'CAD' => __('Canadian Dollar (C$)', 'vandel-booking'),
-                                    'AUD' => __('Australian Dollar (A$)', 'vandel-booking'),
-                                    'SEK' => __('Swedish Krona (kr)', 'vandel-booking')
-                                ];
-                                $current_currency = get_option('vandel_currency', 'USD');
-                                
-                                foreach ($currencies as $code => $name) {
-                                    echo '<option value="' . esc_attr($code) . '" ' . 
-                                         selected($current_currency, $code, false) . '>' . 
-                                         esc_html($name) . '</option>';
-                                }
-                                ?>
-                            </select>
-                            <p class="description"><?php _e('Currency for prices and payments', 'vandel-booking'); ?></p>
-                        </div>
-
-                        <div class="vandel-setting-row">
-                            <label for="vandel_default_timezone"><?php _e('Timezone', 'vandel-booking'); ?></label>
-                            <select 
-                                id="vandel_default_timezone" 
-                                name="vandel_default_timezone"
-                                class="regular-text"
-                            >
-                                <?php 
-                                $current_timezone = get_option('vandel_default_timezone', wp_timezone_string());
-                                $common_timezones = [
-                                    'America/New_York' => 'Eastern Time (US & Canada)',
-                                    'America/Chicago' => 'Central Time (US & Canada)',
-                                    'America/Denver' => 'Mountain Time (US & Canada)',
-                                    'America/Los_Angeles' => 'Pacific Time (US & Canada)',
-                                    'America/Anchorage' => 'Alaska',
-                                    'America/Honolulu' => 'Hawaii',
-                                    'Europe/London' => 'London',
-                                    'Europe/Paris' => 'Paris, Berlin, Rome, Madrid',
-                                    'Asia/Tokyo' => 'Tokyo',
-                                    'Australia/Sydney' => 'Sydney'
-                                ];
-                                
-                                // First show common timezones
-                                echo '<optgroup label="' . __('Common Timezones', 'vandel-booking') . '">';
-                                foreach ($common_timezones as $zone => $label) {
-                                    echo '<option value="' . esc_attr($zone) . '" ' . 
-                                         selected($current_timezone, $zone, false) . '>' . 
-                                         esc_html($label) . '</option>';
-                                }
-                                echo '</optgroup>';
-                                
-                                // Then show all timezones
-                                echo '<optgroup label="' . __('All Timezones', 'vandel-booking') . '">';
-                                $timezones = timezone_identifiers_list();
-                                foreach ($timezones as $timezone) {
-                                    if (!isset($common_timezones[$timezone])) {
-                                        echo '<option value="' . esc_attr($timezone) . '" ' . 
-                                             selected($current_timezone, $timezone, false) . '>' . 
-                                             esc_html($timezone) . '</option>';
-                                    }
-                                }
-                                echo '</optgroup>';
-                                ?>
-                            </select>
-                            <p class="description"><?php _e('Timezone for booking calculations', 'vandel-booking'); ?></p>
-                        </div>
-                    </div>
                 </div>
 
 
