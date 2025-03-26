@@ -16,6 +16,42 @@ class ZipCodeModel {
     public function __construct() {
         global $wpdb;
         $this->table = $wpdb->prefix . 'vandel_zip_codes';
+        
+        // Ensure the table exists
+        $this->ensureTableExists();
+    }
+    
+    /**
+     * Ensure the ZIP codes table exists
+     */
+    private function ensureTableExists() {
+        global $wpdb;
+        
+        $table_exists = $wpdb->get_var("SHOW TABLES LIKE '{$this->table}'") === $this->table;
+        
+        if (!$table_exists) {
+            error_log('VandelBooking: ZIP codes table does not exist, attempting to create it');
+            
+            require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
+            
+            $charset_collate = $wpdb->get_charset_collate();
+            
+            $sql = "CREATE TABLE $this->table (
+                id MEDIUMINT(9) NOT NULL AUTO_INCREMENT,
+                zip_code VARCHAR(20) NOT NULL,
+                city VARCHAR(100) NOT NULL,
+                state VARCHAR(100) NULL,
+                country VARCHAR(100) NOT NULL,
+                price_adjustment DECIMAL(10, 2) DEFAULT 0,
+                service_fee DECIMAL(10, 2) DEFAULT 0,
+                is_serviceable ENUM('yes', 'no') DEFAULT 'yes',
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (id),
+                UNIQUE KEY zip_code (zip_code)
+            ) $charset_collate;";
+            
+            dbDelta($sql);
+        }
     }
     
     /**
@@ -30,17 +66,18 @@ class ZipCodeModel {
         $insert_data = [
             'zip_code' => $data['zip_code'],
             'city' => $data['city'],
-            'state' => $data['state'],
+            'state' => isset($data['state']) ? $data['state'] : '',
             'country' => $data['country'],
             'price_adjustment' => isset($data['price_adjustment']) ? $data['price_adjustment'] : 0,
             'service_fee' => isset($data['service_fee']) ? $data['service_fee'] : 0,
             'is_serviceable' => isset($data['is_serviceable']) ? $data['is_serviceable'] : 'yes',
+            'created_at' => current_time('mysql')
         ];
         
         $result = $wpdb->insert(
             $this->table,
             $insert_data,
-            ['%s', '%s', '%s', '%s', '%f', '%f', '%s']
+            ['%s', '%s', '%s', '%s', '%f', '%f', '%s', '%s']
         );
         
         return $result ? $wpdb->insert_id : false;
@@ -75,7 +112,7 @@ class ZipCodeModel {
             $this->table,
             $data,
             ['zip_code' => $zip_code],
-            ['%s', '%s', '%s', '%f', '%f', '%s'],
+            ['%s', '%s', '%s', '%s', '%f', '%f', '%s'],
             ['%s']
         );
         
@@ -141,7 +178,7 @@ class ZipCodeModel {
         
         $args = wp_parse_args($args, $defaults);
         
-        $where = ['is_serviceable = "yes"'];
+        $where = ["is_serviceable = 'yes'"];
         $values = [];
         
         if (!empty($args['country'])) {
@@ -165,7 +202,14 @@ class ZipCodeModel {
             $query .= ' WHERE ' . implode(' AND ', $where);
         }
         
-        $query .= $wpdb->prepare(' ORDER BY %s %s', $args['orderby'], $args['order']);
+        // Validate orderby field against column list
+        $columns = $wpdb->get_col("SHOW COLUMNS FROM {$this->table}");
+        $args['orderby'] = in_array($args['orderby'], $columns) ? $args['orderby'] : 'zip_code';
+        
+        // Validate order direction
+        $args['order'] = strtoupper($args['order']) === 'DESC' ? 'DESC' : 'ASC';
+        
+        $query .= " ORDER BY {$args['orderby']} {$args['order']}";
         
         if (!empty($args['limit'])) {
             $query .= $wpdb->prepare(' LIMIT %d', $args['limit']);
@@ -175,6 +219,7 @@ class ZipCodeModel {
             }
         }
         
+        // Prepare final query with placeholder values
         if (!empty($values)) {
             $query = $wpdb->prepare($query, $values);
         }
