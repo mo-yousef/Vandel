@@ -187,6 +187,9 @@ function vandel_enqueue_client_management_assets($hook) {
 }
 add_action('admin_enqueue_scripts', 'vandel_enqueue_client_management_assets');
 
+
+
+
 // Register admin-post handler for client import
 function vandel_register_client_import_handler() {
     add_action('admin_post_vandel_import_clients', function() {
