@@ -110,11 +110,11 @@
   transition: 0.3s;
 }
 
-.vandel-toggle input:checked + .vandel-toggle-slider {
+.vandel-toggle input:checked+.vandel-toggle-slider {
   background-color: #2271b1;
 }
 
-.vandel-toggle input:checked + .vandel-toggle-slider:before {
+.vandel-toggle input:checked+.vandel-toggle-slider:before {
   transform: translateX(24px);
 }
 
@@ -331,12 +331,12 @@
   background-color: #fff;
 }
 
-.vandel-sub-service-checkbox input:checked + label:before {
+.vandel-sub-service-checkbox input:checked+label:before {
   background-color: #2271b1;
   border-color: #2271b1;
 }
 
-.vandel-sub-service-checkbox input:checked + label:after {
+.vandel-sub-service-checkbox input:checked+label:after {
   content: "";
   position: absolute;
   left: 6px;

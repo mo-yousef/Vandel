@@ -65,7 +65,7 @@ class Assets {
             //     ['jquery', 'flatpickr'],
             //     VANDEL_VERSION,
             //     true
-            // );
+            // ); 
             
             // Localize script
             wp_localize_script('vandel-frontend', 'vandelAjax', [

@@ -2,103 +2,173 @@
 namespace VandelBooking\Database;
 
 /**
- * Handles database installation and upgrades
+ * Database Installer
+ * Handles database table creation and updates
  */
 class Installer {
     /**
-     * Run the installer
+     * Database version
+     * Increment this when changing table structure to trigger updates
+     * @var string
      */
-    public function install() {
-        $this->createTables();
-        $this->setVersion();
-    }
+    private $db_version = '1.0.3';
     
     /**
-     * Create database tables
+     * Tables to be installed
+     * @var array
      */
-    private function createTables() {
-        global $wpdb;
-        $charset_collate = $wpdb->get_charset_collate();
-        
-        require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
-        
-        // Create clients table
-        $this->createClientsTable($charset_collate);
-        
-        // Create bookings table
-        $this->createBookingsTable($charset_collate);
-        
-        // Create notes table
-        $this->createNotesTable($charset_collate);
-        
-        // Create ZIP codes table
-        $this->createZipCodesTable($charset_collate);
+    private $tables = [
+        'bookings',
+        'clients',
+        'booking_notes',
+        'zip_codes'
+    ];
+
+    /**
+     * Constructor
+     */
+    public function __construct() {
+        // Allow hooks to modify tables if needed
+        $this->tables = apply_filters('vandel_database_tables', $this->tables);
     }
 
-    
     /**
-     * Create clients table
+     * Install database tables
      * 
-     * @param string $charset_collate Database charset
+     * @return bool Whether installation was successful
      */
-    private function createClientsTable($charset_collate) {
-        global $wpdb;
-        $table_name = $wpdb->prefix . 'vandel_clients';
+    public function install() {
+        $success = true;
         
-        $sql = "CREATE TABLE $table_name (
-            id MEDIUMINT(9) NOT NULL AUTO_INCREMENT,
-            email VARCHAR(255) NOT NULL UNIQUE,
-            name VARCHAR(255) NOT NULL,
-            phone VARCHAR(20) NULL,
-            total_spent DECIMAL(10, 2) DEFAULT 0,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            PRIMARY KEY (id),
-            INDEX (email)
-        ) $charset_collate;";
+        // Create or update tables
+        foreach ($this->tables as $table) {
+            $method = "create_{$table}_table";
+            if (method_exists($this, $method)) {
+                $result = $this->$method();
+                if (!$result) {
+                    error_log("VandelBooking: Failed to create {$table} table");
+                    $success = false;
+                }
+            }
+        }
         
-        dbDelta($sql);
+        // Update version in options
+        if ($success) {
+            update_option('vandel_db_version', $this->db_version);
+        }
+        
+        return $success;
     }
-    
+
+    /**
+     * Check if tables need to be updated
+     * 
+     * @return bool Whether tables need update
+     */
+    public function needsUpdate() {
+        $current_version = get_option('vandel_db_version', '0');
+        return version_compare($current_version, $this->db_version, '<');
+    }
+
     /**
      * Create bookings table
      * 
-     * @param string $charset_collate Database charset
+     * @return bool Whether table was created
      */
-    private function createBookingsTable($charset_collate) {
+    private function create_bookings_table() {
         global $wpdb;
         $table_name = $wpdb->prefix . 'vandel_bookings';
-        $clients_table = $wpdb->prefix . 'vandel_clients';
+        
+        // Check if table already exists
+        $table_exists = $wpdb->get_var("SHOW TABLES LIKE '$table_name'") === $table_name;
+        
+        // Get WordPress dbDelta function
+        require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
+        
+        $charset_collate = $wpdb->get_charset_collate();
         
         $sql = "CREATE TABLE $table_name (
             id MEDIUMINT(9) NOT NULL AUTO_INCREMENT,
             client_id MEDIUMINT(9) NOT NULL,
             service VARCHAR(255) NOT NULL,
             sub_services TEXT NULL,
-            access_info TEXT NULL,
             booking_date DATETIME DEFAULT '0000-00-00 00:00:00' NOT NULL,
+            customer_name VARCHAR(255) NOT NULL,
+            customer_email VARCHAR(255) NOT NULL,
+            phone VARCHAR(100) NULL,
+            access_info TEXT NULL,
             total_price DECIMAL(10, 2) NOT NULL,
             status VARCHAR(50) DEFAULT 'pending',
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME NULL,
             PRIMARY KEY (id),
-            INDEX (status),
-            INDEX (booking_date),
-            FOREIGN KEY (client_id) 
-                REFERENCES {$clients_table}(id)
-                ON DELETE CASCADE
+            KEY client_id (client_id),
+            KEY status (status),
+            KEY booking_date (booking_date)
         ) $charset_collate;";
         
         dbDelta($sql);
+        
+        // Check if table exists after creation attempt
+        return $wpdb->get_var("SHOW TABLES LIKE '$table_name'") === $table_name;
     }
-    
+
     /**
-     * Create notes table
+     * Create clients table
      * 
-     * @param string $charset_collate Database charset
+     * @return bool Whether table was created
      */
-    private function createNotesTable($charset_collate) {
+    private function create_clients_table() {
+        global $wpdb;
+        $table_name = $wpdb->prefix . 'vandel_clients';
+        
+        // Check if table already exists
+        $table_exists = $wpdb->get_var("SHOW TABLES LIKE '$table_name'") === $table_name;
+        
+        // Get WordPress dbDelta function
+        require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
+        
+        $charset_collate = $wpdb->get_charset_collate();
+        
+        $sql = "CREATE TABLE $table_name (
+            id MEDIUMINT(9) NOT NULL AUTO_INCREMENT,
+            email VARCHAR(255) NOT NULL,
+            name VARCHAR(255) NOT NULL,
+            phone VARCHAR(20) NULL,
+            address TEXT NULL,
+            notes TEXT NULL,
+            total_spent DECIMAL(10, 2) DEFAULT 0,
+            bookings_count INT DEFAULT 0,
+            last_booking DATETIME NULL,
+            custom_fields TEXT NULL, 
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME NULL,
+            PRIMARY KEY (id),
+            UNIQUE KEY email (email)
+        ) $charset_collate;";
+        
+        dbDelta($sql);
+        
+        // Check if table exists after creation attempt
+        return $wpdb->get_var("SHOW TABLES LIKE '$table_name'") === $table_name;
+    }
+
+    /**
+     * Create booking notes table
+     * 
+     * @return bool Whether table was created
+     */
+    private function create_booking_notes_table() {
         global $wpdb;
         $table_name = $wpdb->prefix . 'vandel_booking_notes';
-        $bookings_table = $wpdb->prefix . 'vandel_bookings';
+        
+        // Check if table already exists
+        $table_exists = $wpdb->get_var("SHOW TABLES LIKE '$table_name'") === $table_name;
+        
+        // Get WordPress dbDelta function
+        require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
+        
+        $charset_collate = $wpdb->get_charset_collate();
         
         $sql = "CREATE TABLE $table_name (
             id MEDIUMINT(9) NOT NULL AUTO_INCREMENT,
@@ -107,27 +177,35 @@ class Installer {
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             created_by BIGINT(20) NOT NULL,
             PRIMARY KEY (id),
-            INDEX (booking_id),
-            FOREIGN KEY (booking_id) 
-                REFERENCES {$bookings_table}(id)
-                ON DELETE CASCADE
+            KEY booking_id (booking_id)
         ) $charset_collate;";
         
         dbDelta($sql);
+        
+        // Check if table exists after creation attempt
+        return $wpdb->get_var("SHOW TABLES LIKE '$table_name'") === $table_name;
     }
 
     /**
      * Create ZIP codes table
      * 
-     * @param string $charset_collate Database charset
+     * @return bool Whether table was created
      */
-    private function createZipCodesTable($charset_collate) {
+    private function create_zip_codes_table() {
         global $wpdb;
         $table_name = $wpdb->prefix . 'vandel_zip_codes';
         
+        // Check if table already exists
+        $table_exists = $wpdb->get_var("SHOW TABLES LIKE '$table_name'") === $table_name;
+        
+        // Get WordPress dbDelta function
+        require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
+        
+        $charset_collate = $wpdb->get_charset_collate();
+        
         $sql = "CREATE TABLE $table_name (
             id MEDIUMINT(9) NOT NULL AUTO_INCREMENT,
-            zip_code VARCHAR(20) NOT NULL UNIQUE,
+            zip_code VARCHAR(20) NOT NULL,
             city VARCHAR(100) NOT NULL,
             state VARCHAR(100) NULL,
             country VARCHAR(100) NOT NULL,
@@ -136,19 +214,100 @@ class Installer {
             is_serviceable ENUM('yes', 'no') DEFAULT 'yes',
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             PRIMARY KEY (id),
-            INDEX (zip_code),
-            INDEX (city),
-            INDEX (state),
-            INDEX (country)
+            UNIQUE KEY zip_code (zip_code)
         ) $charset_collate;";
         
         dbDelta($sql);
+        
+        // Check if table exists after creation attempt
+        return $wpdb->get_var("SHOW TABLES LIKE '$table_name'") === $table_name;
     }
-    
+
     /**
-     * Set plugin version
+     * Update tables if needed
+     * This method handles database migrations when structure changes
+     * 
+     * @return bool Whether updates were successfully applied
      */
-    private function setVersion() {
-        update_option('vandel_booking_version', VANDEL_VERSION);
+    public function update() {
+        global $wpdb;
+        $current_version = get_option('vandel_db_version', '0');
+        
+        // Don't do anything if we're on the latest version
+        if (version_compare($current_version, $this->db_version, '>=')) {
+            return true;
+        }
+        
+        // Run version-specific updates
+        $versions = [
+            '1.0.1' => function() {
+                // Update to add client address and notes columns
+                global $wpdb;
+                $clients_table = $wpdb->prefix . 'vandel_clients';
+                
+                // Check if address column exists
+                $column_exists = $wpdb->get_results("SHOW COLUMNS FROM $clients_table LIKE 'address'");
+                if (empty($column_exists)) {
+                    $wpdb->query("ALTER TABLE $clients_table ADD COLUMN address TEXT NULL AFTER phone");
+                }
+                
+                // Check if notes column exists
+                $column_exists = $wpdb->get_results("SHOW COLUMNS FROM $clients_table LIKE 'notes'");
+                if (empty($column_exists)) {
+                    $wpdb->query("ALTER TABLE $clients_table ADD COLUMN notes TEXT NULL AFTER address");
+                }
+            },
+            '1.0.2' => function() {
+                // Update to add booking statistics to clients table
+                global $wpdb;
+                $clients_table = $wpdb->prefix . 'vandel_clients';
+                
+                // Check if bookings_count column exists
+                $column_exists = $wpdb->get_results("SHOW COLUMNS FROM $clients_table LIKE 'bookings_count'");
+                if (empty($column_exists)) {
+                    $wpdb->query("ALTER TABLE $clients_table ADD COLUMN bookings_count INT DEFAULT 0 AFTER total_spent");
+                }
+                
+                // Check if last_booking column exists
+                $column_exists = $wpdb->get_results("SHOW COLUMNS FROM $clients_table LIKE 'last_booking'");
+                if (empty($column_exists)) {
+                    $wpdb->query("ALTER TABLE $clients_table ADD COLUMN last_booking DATETIME NULL AFTER bookings_count");
+                }
+                
+                // Update clients with booking statistics
+                if (function_exists('vandel_update_client_statistics')) {
+                    vandel_update_client_statistics();
+                }
+            },
+            '1.0.3' => function() {
+                // Update to add phone column to bookings table
+                global $wpdb;
+                $bookings_table = $wpdb->prefix . 'vandel_bookings';
+                
+                // Check if phone column exists
+                $column_exists = $wpdb->get_results("SHOW COLUMNS FROM $bookings_table LIKE 'phone'");
+                if (empty($column_exists)) {
+                    $wpdb->query("ALTER TABLE $bookings_table ADD COLUMN phone VARCHAR(100) NULL AFTER customer_email");
+                }
+                
+                // Check if updated_at column exists
+                $column_exists = $wpdb->get_results("SHOW COLUMNS FROM $bookings_table LIKE 'updated_at'");
+                if (empty($column_exists)) {
+                    $wpdb->query("ALTER TABLE $bookings_table ADD COLUMN updated_at DATETIME NULL AFTER created_at");
+                }
+            }
+        ];
+        
+        // Loop through versions and apply updates
+        foreach ($versions as $version => $update_function) {
+            if (version_compare($current_version, $version, '<')) {
+                call_user_func($update_function);
+            }
+        }
+        
+        // Update version in options
+        update_option('vandel_db_version', $this->db_version);
+        
+        return true;
     }
 }
