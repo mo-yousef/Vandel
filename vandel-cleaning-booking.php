@@ -15,7 +15,7 @@ if (!defined('ABSPATH')) {
 
 // Define plugin constants
 if (!defined('VANDEL_VERSION')) {
-    define('VANDEL_VERSION', '1.0.3'); // Incremented version
+    define('VANDEL_VERSION', '1.0.3');
 }
 if (!defined('VANDEL_PLUGIN_DIR')) {
     define('VANDEL_PLUGIN_DIR', plugin_dir_path(__FILE__));
@@ -36,6 +36,7 @@ function vandel_create_directories() {
         VANDEL_PLUGIN_DIR . 'includes/location',
         VANDEL_PLUGIN_DIR . 'includes/post-types',
         VANDEL_PLUGIN_DIR . 'includes/database',
+        VANDEL_PLUGIN_DIR . 'includes/admin',
         VANDEL_PLUGIN_DIR . 'assets/js/admin',
     ];
     
@@ -49,10 +50,14 @@ register_activation_hook(__FILE__, 'vandel_create_directories');
 vandel_create_directories();
 
 // Include autoloader
-require_once VANDEL_PLUGIN_DIR . 'includes/autoload.php';
+if (file_exists(VANDEL_PLUGIN_DIR . 'includes/autoload.php')) {
+    require_once VANDEL_PLUGIN_DIR . 'includes/autoload.php';
+}
 
 // Load essential files
-require_once VANDEL_PLUGIN_DIR . 'includes/class-helpers.php';
+if (file_exists(VANDEL_PLUGIN_DIR . 'includes/class-helpers.php')) {
+    require_once VANDEL_PLUGIN_DIR . 'includes/class-helpers.php';
+}
 
 // Load Database Installer first to ensure tables exist
 if (file_exists(VANDEL_PLUGIN_DIR . 'includes/database/class-installer.php')) {
@@ -70,7 +75,7 @@ if (file_exists(VANDEL_PLUGIN_DIR . 'includes/database/class-installer.php')) {
     add_action('plugins_loaded', function() {
         if (class_exists('\\VandelBooking\\Database\\Installer')) {
             $installer = new \VandelBooking\Database\Installer();
-            if ($installer->needsUpdate()) {
+            if (method_exists($installer, 'needsUpdate') && $installer->needsUpdate()) {
                 $installer->update();
             }
         }
@@ -101,8 +106,13 @@ if (file_exists(VANDEL_PLUGIN_DIR . 'includes/location/class-zip-code-model.php'
 }
 
 // Load frontend components
-require_once VANDEL_PLUGIN_DIR . 'includes/frontend/class-booking-form.php';
-require_once VANDEL_PLUGIN_DIR . 'includes/class-booking-shortcode-register.php';
+if (file_exists(VANDEL_PLUGIN_DIR . 'includes/frontend/class-booking-form.php')) {
+    require_once VANDEL_PLUGIN_DIR . 'includes/frontend/class-booking-form.php';
+}
+
+if (file_exists(VANDEL_PLUGIN_DIR . 'includes/class-booking-shortcode-register.php')) {
+    require_once VANDEL_PLUGIN_DIR . 'includes/class-booking-shortcode-register.php';
+}
 
 // Force-load post type classes
 if (file_exists(VANDEL_PLUGIN_DIR . 'includes/post-types/class-service-post-type.php')) {
@@ -147,7 +157,9 @@ add_action('init', 'vandel_init_ajax_handler');
 
 // Initialize the shortcode
 function vandel_register_booking_shortcode() {
-    new VandelBooking\BookingShortcodeRegister();
+    if (class_exists('VandelBooking\\BookingShortcodeRegister')) {
+        new VandelBooking\BookingShortcodeRegister();
+    }
 }
 add_action('init', 'vandel_register_booking_shortcode');
 
@@ -162,13 +174,19 @@ function vandel_init_zip_code_ajax_handler() {
 }
 add_action('init', 'vandel_init_zip_code_ajax_handler');
 
-
 // In your main plugin file or Plugin class
 if (is_admin()) {
-    require_once VANDEL_PLUGIN_DIR . 'includes/admin/class-dashboard-controller.php';
-    add_action('plugins_loaded', function() {
-        new \VandelBooking\Admin\Dashboard_Controller();
-    });
+    // Load the dashboard class if it exists
+    // Check both possible file names - dashboard-controller and dashboard
+    if (file_exists(VANDEL_PLUGIN_DIR . 'includes/admin/dashboard/class-dashboard-controller.php')) {
+        require_once VANDEL_PLUGIN_DIR . 'includes/admin/dashboard/class-dashboard-controller.php';
+        
+        add_action('plugins_loaded', function() {
+            if (class_exists('\\VandelBooking\\Admin\\Dashboard_Controller')) {
+                new \VandelBooking\Admin\Dashboard_Controller();
+            }
+        });
+    } 
 }
 
 // Initialize CalendarView for admin
@@ -177,7 +195,9 @@ function vandel_init_calendar_view() {
         require_once VANDEL_PLUGIN_DIR . 'includes/admin/class-calendar-view.php';
         if (class_exists('VandelBooking\\Admin\\CalendarView')) {
             $calendar_view = new VandelBooking\Admin\CalendarView();
-            $calendar_view->registerAjaxHandlers();
+            if (method_exists($calendar_view, 'registerAjaxHandlers')) {
+                $calendar_view->registerAjaxHandlers();
+            }
             
             // Modify the dashboard to include calendar view
             add_filter('vandel_dashboard_tabs', function($tabs) {
@@ -187,7 +207,9 @@ function vandel_init_calendar_view() {
             
             // Render calendar view
             add_action('vandel_dashboard_tab_calendar', function() use ($calendar_view) {
-                $calendar_view->render();
+                if (method_exists($calendar_view, 'render')) {
+                    $calendar_view->render();
+                }
             });
         }
     }
@@ -198,7 +220,9 @@ add_action('plugins_loaded', 'vandel_init_calendar_view');
 function vandel_booking_init() {
     if (file_exists(VANDEL_PLUGIN_DIR . 'includes/class-plugin.php')) {
         require_once VANDEL_PLUGIN_DIR . 'includes/class-plugin.php';
-        return \VandelBooking\Plugin::getInstance();
+        if (class_exists('\\VandelBooking\\Plugin') && method_exists('\\VandelBooking\\Plugin', 'getInstance')) {
+            return \VandelBooking\Plugin::getInstance();
+        }
     }
     return null;
 }
@@ -213,11 +237,13 @@ function vandel_update_client_stats_after_booking($booking_id, $booking_data) {
     }
     
     $client_model = new \VandelBooking\Client\ClientModel();
-    $client_model->addBooking(
-        $booking_data['client_id'],
-        isset($booking_data['total_price']) ? $booking_data['total_price'] : 0,
-        isset($booking_data['booking_date']) ? $booking_data['booking_date'] : null
-    );
+    if (method_exists($client_model, 'addBooking')) {
+        $client_model->addBooking(
+            $booking_data['client_id'],
+            isset($booking_data['total_price']) ? $booking_data['total_price'] : 0,
+            isset($booking_data['booking_date']) ? $booking_data['booking_date'] : null
+        );
+    }
 }
 add_action('vandel_booking_created', 'vandel_update_client_stats_after_booking', 10, 2);
 
@@ -235,6 +261,10 @@ function vandel_update_client_stats_after_status_change($booking_id, $old_status
     
     // Get booking details
     $booking_model = new \VandelBooking\Booking\BookingModel();
+    if (!method_exists($booking_model, 'get')) {
+        return;
+    }
+    
     $booking = $booking_model->get($booking_id);
     
     if (!$booking || !isset($booking->client_id) || $booking->client_id <= 0) {
@@ -243,7 +273,9 @@ function vandel_update_client_stats_after_status_change($booking_id, $old_status
     
     // Update client statistics
     $client_model = new \VandelBooking\Client\ClientModel();
-    $client_model->recalculateStats($booking->client_id);
+    if (method_exists($client_model, 'recalculateStats')) {
+        $client_model->recalculateStats($booking->client_id);
+    }
 }
 add_action('vandel_booking_status_changed', 'vandel_update_client_stats_after_status_change', 10, 3);
 
@@ -278,10 +310,14 @@ function vandel_enqueue_client_management_assets($hook) {
     
     // Only load on client-related pages
     if ($tab === 'clients' || $tab === 'client-details') {
+        // Check if files exist before enqueueing
+        $css_file = VANDEL_PLUGIN_URL . 'assets/css/client-management.css';
+        $js_file = VANDEL_PLUGIN_URL . 'assets/js/admin/client-management.js';
+        
         // Enqueue styles
         wp_enqueue_style(
             'vandel-client-management',
-            VANDEL_PLUGIN_URL . 'assets/css/client-management.css',
+            $css_file,
             [],
             VANDEL_VERSION
         );
@@ -289,7 +325,7 @@ function vandel_enqueue_client_management_assets($hook) {
         // Enqueue scripts
         wp_enqueue_script(
             'vandel-client-management',
-            VANDEL_PLUGIN_URL . 'assets/js/admin/client-management.js',
+            $js_file,
             ['jquery'],
             VANDEL_VERSION,
             true
@@ -559,3 +595,4 @@ function vandel_suggest_extensions() {
     </div>
     <?php
 }
+add_action('admin_notices', 'vandel_suggest_extensions');
