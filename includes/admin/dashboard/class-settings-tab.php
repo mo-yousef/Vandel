@@ -164,7 +164,7 @@ class Settings_Tab implements Tab_Interface {
                         <?php _e('Service Areas', 'vandel-booking'); ?>
                     </a>
                 </li>
-            </ul>
+</ul>
         </div>
         <?php
     }
@@ -643,4 +643,440 @@ class Settings_Tab implements Tab_Interface {
                                 type="text" 
                                 id="vandel_email_subject" 
                                 name="vandel_email_subject" 
-                                value="<?
+                                value="<?php echo esc_attr(get_option('vandel_email_subject', __('Your Booking Confirmation - {booking_id}', 'vandel-booking'))); ?>" 
+                                class="regular-text"
+                            >
+                            <p class="description">
+                                <?php _e('Subject line for customer confirmation emails. You can use {booking_id} as a placeholder.', 'vandel-booking'); ?>
+                            </p>
+                        </div>
+
+                        <div class="vandel-setting-row">
+                            <label for="vandel_email_message">
+                                <?php _e('Email Message Template', 'vandel-booking'); ?>
+                            </label>
+                            <textarea 
+                                id="vandel_email_message" 
+                                name="vandel_email_message" 
+                                rows="8" 
+                                class="widefat code"
+                            ><?php echo esc_textarea(get_option('vandel_email_message', __("Dear {customer_name},\n\nThank you for your booking. Your booking details are as follows:\n\nService: {service_name}\nDate: {booking_date}\nBooking Reference: {booking_id}\n\nIf you need to make any changes to your booking, please contact us.\n\nWe look forward to serving you!\n\nRegards,\n{site_name} Team", 'vandel-booking'))); ?></textarea>
+                            <p class="description">
+                                <?php _e('Template for customer confirmation emails. You can use the following placeholders: {customer_name}, {service_name}, {booking_date}, {booking_id}, {site_name}', 'vandel-booking'); ?>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="vandel-card">
+                    <div class="vandel-card-header">
+                        <h3><?php _e('SMS Notifications', 'vandel-booking'); ?></h3>
+                    </div>
+                    <div class="vandel-card-body">
+                        <div class="vandel-setting-row">
+                            <label class="vandel-switch-label">
+                                <input 
+                                    type="checkbox" 
+                                    name="vandel_sms_notifications" 
+                                    value="yes" 
+                                    <?php checked(get_option('vandel_sms_notifications', 'no'), 'yes'); ?>
+                                    disabled
+                                    class="vandel-switch-input"
+                                >
+                                <span class="vandel-switch"></span>
+                                <?php _e('Enable SMS Notifications', 'vandel-booking'); ?>
+                            </label>
+                            <p class="description vandel-premium-feature">
+                                <?php _e('Send SMS notifications for bookings (Premium Feature)', 'vandel-booking'); ?>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <?php submit_button(__('Save Notification Settings', 'vandel-booking')); ?>
+            </form>
+        </div>
+        <?php
+    }
+
+    /**
+     * Render Integration Settings
+     */
+    private function render_integration_settings() {
+        ?>
+        <div class="vandel-settings-section">
+            <h2><?php _e('Integrations', 'vandel-booking'); ?></h2>
+            
+            <div class="vandel-settings-intro">
+                <p><?php _e('Connect your booking system with popular services and apps for payments, marketing, and calendars.', 'vandel-booking'); ?></p>
+            </div>
+            
+            <form method="post" action="options.php">
+                <?php settings_fields('vandel_integration_settings'); ?>
+                
+                <div class="vandel-card">
+                    <div class="vandel-card-header">
+                        <h3><?php _e('Location-Based Features', 'vandel-booking'); ?></h3>
+                    </div>
+                    <div class="vandel-card-body">
+                        <div class="vandel-setting-row">
+                            <label class="vandel-switch-label">
+                                <input 
+                                    type="checkbox" 
+                                    name="vandel_enable_zip_code_feature" 
+                                    value="yes" 
+                                    <?php checked(get_option('vandel_enable_zip_code_feature', 'no'), 'yes'); ?>
+                                    class="vandel-switch-input"
+                                >
+                                <span class="vandel-switch"></span>
+                                <?php _e('Enable Service Area & ZIP Code Features', 'vandel-booking'); ?>
+                            </label>
+                            <p class="description">
+                                <?php _e('Enable location-based pricing and service area restrictions', 'vandel-booking'); ?>
+                            </p>
+                        </div>
+                        
+                        <div class="vandel-feature-detail">
+                            <div class="vandel-feature-icon">
+                                <span class="dashicons dashicons-location-alt"></span>
+                            </div>
+                            <div class="vandel-feature-info">
+                                <h4><?php _e('Service Area Management', 'vandel-booking'); ?></h4>
+                                <p><?php _e('With this feature enabled, you can set up service areas by ZIP code, adjust pricing for different locations, and restrict bookings to your service area.', 'vandel-booking'); ?></p>
+                                <a href="<?php echo esc_url(admin_url('admin.php?page=vandel-dashboard&tab=settings&section=zip-codes')); ?>" class="button vandel-feature-btn">
+                                    <?php _e('Manage Service Areas', 'vandel-booking'); ?>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="vandel-card">
+                    <div class="vandel-card-header">
+                        <h3><?php _e('Payment Gateways', 'vandel-booking'); ?></h3>
+                    </div>
+                    <div class="vandel-card-body">
+                        <div class="vandel-integrations-grid">
+                            <div class="vandel-integration-item">
+                                <div class="vandel-integration-content">
+                                    <div class="vandel-integration-logo">
+                                        <img src="<?php echo VANDEL_PLUGIN_URL; ?>assets/images/paypal.svg" alt="PayPal" width="80">
+                                    </div>
+                                    <div class="vandel-integration-info">
+                                        <h4>PayPal</h4>
+                                        <p><?php _e('Accept payments via PayPal', 'vandel-booking'); ?></p>
+                                    </div>
+                                </div>
+                                <div class="vandel-integration-action">
+                                    <label class="vandel-switch-label">
+                                        <input 
+                                            type="checkbox" 
+                                            name="vandel_enable_paypal" 
+                                            value="yes" 
+                                            <?php checked(get_option('vandel_enable_paypal', 'no'), 'yes'); ?>
+                                            disabled
+                                        >
+                                        <span class="vandel-switch"></span>
+                                    </label>
+                                    <span class="vandel-badge vandel-badge-warning">
+                                        <?php _e('Coming Soon', 'vandel-booking'); ?>
+                                    </span>
+                                </div>
+                            </div>
+                            
+                            <div class="vandel-integration-item">
+                                <div class="vandel-integration-content">
+<div class="vandel-integration-logo">
+                                        <img src="<?php echo VANDEL_PLUGIN_URL; ?>assets/images/stripe.svg" alt="Stripe" width="80">
+                                    </div>
+                                    <div class="vandel-integration-info">
+                                        <h4>Stripe</h4>
+                                        <p><?php _e('Accept credit card payments', 'vandel-booking'); ?></p>
+                                    </div>
+                                </div>
+                                <div class="vandel-integration-action">
+                                    <label class="vandel-switch-label">
+                                        <input 
+                                            type="checkbox" 
+                                            name="vandel_enable_stripe" 
+                                            value="yes" 
+                                            <?php checked(get_option('vandel_enable_stripe', 'no'), 'yes'); ?>
+                                            disabled
+                                        >
+                                        <span class="vandel-switch"></span>
+                                    </label>
+                                    <span class="vandel-badge vandel-badge-warning">
+                                        <?php _e('Coming Soon', 'vandel-booking'); ?>
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="vandel-card">
+                    <div class="vandel-card-header">
+                        <h3><?php _e('Calendar Sync', 'vandel-booking'); ?></h3>
+                    </div>
+                    <div class="vandel-card-body">
+                        <div class="vandel-integrations-grid">
+                            <div class="vandel-integration-item">
+                                <div class="vandel-integration-content">
+                                    <div class="vandel-integration-logo">
+                                        <img src="<?php echo VANDEL_PLUGIN_URL; ?>assets/images/google-calendar.svg" alt="Google Calendar" width="80">
+                                    </div>
+                                    <div class="vandel-integration-info">
+                                        <h4>Google Calendar</h4>
+                                        <p><?php _e('Sync bookings with Google Calendar', 'vandel-booking'); ?></p>
+                                    </div>
+                                </div>
+                                <div class="vandel-integration-action">
+                                    <label class="vandel-switch-label">
+                                        <input 
+                                            type="checkbox" 
+                                            name="vandel_enable_gcal" 
+                                            value="yes" 
+                                            <?php checked(get_option('vandel_enable_gcal', 'no'), 'yes'); ?>
+                                            disabled
+                                        >
+                                        <span class="vandel-switch"></span>
+                                    </label>
+                                    <span class="vandel-badge vandel-badge-warning">
+                                        <?php _e('Coming Soon', 'vandel-booking'); ?>
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="vandel-card">
+                    <div class="vandel-card-header">
+                        <h3><?php _e('Marketing Integrations', 'vandel-booking'); ?></h3>
+                    </div>
+                    <div class="vandel-card-body">
+                        <div class="vandel-integrations-grid">
+                            <div class="vandel-integration-item">
+                                <div class="vandel-integration-content">
+                                    <div class="vandel-integration-logo">
+                                        <img src="<?php echo VANDEL_PLUGIN_URL; ?>assets/images/mailchimp.svg" alt="Mailchimp" width="80">
+                                    </div>
+                                    <div class="vandel-integration-info">
+                                        <h4>Mailchimp</h4>
+                                        <p><?php _e('Add clients to your email marketing lists', 'vandel-booking'); ?></p>
+                                    </div>
+                                </div>
+                                <div class="vandel-integration-action">
+                                    <label class="vandel-switch-label">
+                                        <input 
+                                            type="checkbox" 
+                                            name="vandel_enable_mailchimp" 
+                                            value="yes" 
+                                            <?php checked(get_option('vandel_enable_mailchimp', 'no'), 'yes'); ?>
+                                            disabled
+                                        >
+                                        <span class="vandel-switch"></span>
+                                    </label>
+                                    <span class="vandel-badge vandel-badge-warning">
+                                        <?php _e('Coming Soon', 'vandel-booking'); ?>
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="vandel-integration-disclaimer">
+                    <div class="vandel-disclaimer-icon">
+                        <span class="dashicons dashicons-info-outline"></span>
+                    </div>
+                    <div class="vandel-disclaimer-content">
+                        <p>
+                            <strong><?php _e('Note:', 'vandel-booking'); ?></strong> 
+                            <?php _e('Premium integrations are currently in development. Stay tuned for future updates!', 'vandel-booking'); ?>
+                        </p>
+                    </div>
+                </div>
+
+                <?php submit_button(__('Save Integration Settings', 'vandel-booking')); ?>
+            </form>
+        </div>
+        <?php
+    }
+    
+    /**
+     * Render ZIP Code settings
+     */
+    private function render_zip_code_settings() {
+        global $wpdb;
+        ?>
+        <div class="vandel-settings-section">
+            <h2><?php _e('Service Areas Management', 'vandel-booking'); ?></h2>
+            
+            <div class="vandel-settings-intro">
+                <p><?php _e('Manage the areas you service with ZIP code-based pricing. Set up service areas, adjust pricing, and manage locations.', 'vandel-booking'); ?></p>
+            </div>
+            
+            <div class="vandel-grid-row">
+                <div class="vandel-grid-col">
+                    <div class="vandel-card">
+                        <div class="vandel-card-header">
+                            <h3><?php _e('Add New Service Area', 'vandel-booking'); ?></h3>
+                        </div>
+                        <div class="vandel-card-body">
+                            <form method="post" action="">
+                                <?php wp_nonce_field('vandel_add_zip_code', 'vandel_zip_code_nonce'); ?>
+                                <div class="vandel-form-row">
+                                    <div class="vandel-col">
+                                        <label><?php _e('ZIP Code', 'vandel-booking'); ?> <span class="required">*</span></label>
+                                        <input type="text" name="zip_code" required class="widefat">
+                                    </div>
+                                    <div class="vandel-col">
+                                        <label><?php _e('City', 'vandel-booking'); ?> <span class="required">*</span></label>
+                                        <input type="text" name="city" required class="widefat">
+                                    </div>
+                                </div>
+                                <div class="vandel-form-row">
+                                    <div class="vandel-col">
+                                        <label><?php _e('State/Province', 'vandel-booking'); ?></label>
+                                        <input type="text" name="state" class="widefat">
+                                    </div>
+                                    <div class="vandel-col">
+                                        <label><?php _e('Country', 'vandel-booking'); ?> <span class="required">*</span></label>
+                                        <input type="text" name="country" required class="widefat" value="United States">
+                                    </div>
+                                </div>
+                                <div class="vandel-form-row">
+                                    <div class="vandel-col">
+                                        <label><?php _e('Price Adjustment', 'vandel-booking'); ?></label>
+                                        <div class="vandel-input-group">
+                                            <span class="vandel-input-prefix"><?php echo \VandelBooking\Helpers::getCurrencySymbol(); ?></span>
+                                            <input type="number" name="price_adjustment" step="0.01" min="-100" max="100" class="widefat" value="0">
+                                        </div>
+                                        <p class="description"><?php _e('Amount to add or subtract from base price for this area', 'vandel-booking'); ?></p>
+                                    </div>
+                                    <div class="vandel-col">
+                                        <label><?php _e('Service Fee', 'vandel-booking'); ?></label>
+                                        <div class="vandel-input-group">
+                                            <span class="vandel-input-prefix"><?php echo \VandelBooking\Helpers::getCurrencySymbol(); ?></span>
+                                            <input type="number" name="service_fee" step="0.01" min="0" class="widefat" value="0">
+                                        </div>
+                                        <p class="description"><?php _e('Additional fee for servicing this area', 'vandel-booking'); ?></p>
+                                    </div>
+                                </div>
+                                <div class="vandel-toggle-controls">
+                                    <div class="vandel-toggle-field">
+                                        <label class="vandel-toggle">
+                                            <input type="checkbox" name="is_serviceable" value="yes" checked>
+                                            <span class="vandel-toggle-slider"></span>
+                                        </label>
+                                        <span class="vandel-toggle-label"><?php _e('Serviceable Area', 'vandel-booking'); ?></span>
+                                    </div>
+                                </div>
+                                <button type="submit" name="vandel_add_zip_code" class="button button-primary">
+                                    <?php _e('Add Service Area', 'vandel-booking'); ?>
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="vandel-grid-col">
+                    <div class="vandel-card">
+                        <div class="vandel-card-header">
+                            <h3><?php _e('Import/Export', 'vandel-booking'); ?></h3>
+                        </div>
+                        <div class="vandel-card-body">
+                            <div class="vandel-import-section">
+                                <h4><?php _e('Import ZIP Codes', 'vandel-booking'); ?></h4>
+                                <p><?php _e('Upload a CSV file with ZIP code data to bulk import.', 'vandel-booking'); ?></p>
+                                <form method="post" enctype="multipart/form-data">
+                                    <div class="vandel-form-row">
+                                        <div class="vandel-col">
+                                            <input type="file" name="zip_codes_file" id="vandel-zip-codes-file" accept=".csv,.xlsx,.xls">
+                                        </div>
+                                        <div class="vandel-col">
+                                            <button type="button" id="vandel-import-zip-codes" class="button button-secondary">
+                                                <span class="dashicons dashicons-upload"></span> <?php _e('Import', 'vandel-booking'); ?>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </form>
+                                <p class="description"><?php _e('CSV format: ZIP Code, City, State, Country, Price Adjustment, Service Fee, Serviceable (yes/no)', 'vandel-booking'); ?></p>
+                            </div>
+                            <div class="vandel-export-section">
+                                <h4><?php _e('Export ZIP Codes', 'vandel-booking'); ?></h4>
+                                <p><?php _e('Download all your service areas as a CSV file.', 'vandel-booking'); ?></p>
+                                <button type="button" id="vandel-export-zip-codes" class="button button-secondary">
+                                    <span class="dashicons dashicons-download"></span> <?php _e('Export CSV', 'vandel-booking'); ?>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="vandel-card">
+                <div class="vandel-card-header vandel-flex-header">
+                    <h3><?php _e('Your Service Areas', 'vandel-booking'); ?></h3>
+                    <div class="vandel-filter-controls">
+                        <input type="text" id="vandel-zip-search" placeholder="<?php _e('Search ZIP codes...', 'vandel-booking'); ?>" class="regular-text">
+                    </div>
+                </div>
+                <div class="vandel-card-body">
+                    <table class="wp-list-table widefat fixed striped vandel-data-table">
+                        <thead>
+                            <tr>
+                                <th><?php _e('ZIP Code', 'vandel-booking'); ?></th>
+                                <th><?php _e('City', 'vandel-booking'); ?></th>
+                                <th><?php _e('State', 'vandel-booking'); ?></th>
+                                <th><?php _e('Country', 'vandel-booking'); ?></th>
+                                <th><?php _e('Price Adjustment', 'vandel-booking'); ?></th>
+                                <th><?php _e('Service Fee', 'vandel-booking'); ?></th>
+                                <th><?php _e('Status', 'vandel-booking'); ?></th>
+                                <th><?php _e('Actions', 'vandel-booking'); ?></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php
+                            $table_name = $wpdb->prefix . 'vandel_zip_codes';
+                            $table_exists = $wpdb->get_var("SHOW TABLES LIKE '$table_name'") === $table_name;
+                            
+                            if ($table_exists) {
+                                $zip_codes = $wpdb->get_results("SELECT * FROM $table_name ORDER BY zip_code ASC LIMIT 20");
+                                
+                                if (!empty($zip_codes)) {
+                                    foreach ($zip_codes as $zip) {
+                                        echo '<tr>';
+                                        echo '<td>' . esc_html($zip->zip_code) . '</td>';
+                                        echo '<td>' . esc_html($zip->city) . '</td>';
+                                        echo '<td>' . esc_html($zip->state ?: '—') . '</td>';
+                                        echo '<td>' . esc_html($zip->country) . '</td>';
+                                        echo '<td>' . ($zip->price_adjustment >= 0 ? '+' : '') . \VandelBooking\Helpers::formatPrice($zip->price_adjustment) . '</td>';
+                                        echo '<td>' . \VandelBooking\Helpers::formatPrice($zip->service_fee) . '</td>';
+                                        echo '<td>' . ($zip->is_serviceable === 'yes' ? 
+                                            '<span class="vandel-badge vandel-badge-success">' . __('Active', 'vandel-booking') . '</span>' : 
+                                            '<span class="vandel-badge vandel-badge-danger">' . __('Inactive', 'vandel-booking') . '</span>') . '</td>';
+                                        echo '<td>';
+                                        echo '<div class="vandel-row-actions">';
+                                        echo '<a href="#" class="vandel-edit-zip-code" data-zip-code="' . esc_attr($zip->zip_code) . '">' . __('Edit', 'vandel-booking') . '</a> | ';
+                                        echo '<a href="' . esc_url(wp_nonce_url(admin_url('admin.php?page=vandel-dashboard&tab=settings&section=zip-codes&action=delete_zip_code&zip_code=' . urlencode($zip->zip_code)), 'delete_zip_code_' . $zip->zip_code)) . '" class="vandel-delete-zip-code">' . __('Delete', 'vandel-booking') . '</a>';
+                                        echo '</div>';
+                                        echo '</td>';
+                                        echo '</tr>';
+                                    }
+                                } else {
+                                    echo '<tr><td colspan="8">' . __('No service areas found.', 'vandel-booking') . '</td></tr>';
+                                }
+                            } else {
+                                echo '<tr><td colspan="8">' . __('ZIP codes table not found. Please check the plugin installation.', 'vandel-booking') . '</td></tr>';
+                            }
+                            ?>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <?php
+    }
+}

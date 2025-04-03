@@ -162,6 +162,15 @@ function vandel_init_zip_code_ajax_handler() {
 }
 add_action('init', 'vandel_init_zip_code_ajax_handler');
 
+
+// In your main plugin file or Plugin class
+if (is_admin()) {
+    require_once VANDEL_PLUGIN_DIR . 'includes/admin/class-dashboard-controller.php';
+    add_action('plugins_loaded', function() {
+        new \VandelBooking\Admin\Dashboard_Controller();
+    });
+}
+
 // Initialize CalendarView for admin
 function vandel_init_calendar_view() {
     if (is_admin() && file_exists(VANDEL_PLUGIN_DIR . 'includes/admin/class-calendar-view.php')) {
