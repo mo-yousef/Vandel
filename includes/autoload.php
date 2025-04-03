@@ -76,6 +76,9 @@ function vandel_booking_autoloader($class_name) {
         // API classes
         'api\\apiloader' => 'api/class-api-loader.php',
         'api\\zipcodeapi' => 'api/class-zip-code-api.php',
+        
+        // Dashboard Controller
+        'admin\\dashboard_controller' => 'admin/dashboard/class-dashboard-controller.php',
     ];
     
     $lower_class = strtolower(str_replace('\\', '', $class_name));
@@ -92,25 +95,38 @@ function vandel_booking_autoloader($class_name) {
         }
     }
     
-    // One last attempt - check all includes directories recursively
+    // Check for dashboard tab classes
+    if (strpos($lower_class, 'admin\\dashboard\\') === 0) {
+        $tab_name = str_replace('admin\\dashboard\\', '', $lower_class);
+        $tab_path = VANDEL_PLUGIN_DIR . 'includes/admin/dashboard/class-' . str_replace('_', '-', $tab_name) . '.php';
+        
+        if (file_exists($tab_path)) {
+            require_once $tab_path;
+            return;
+        }
+    }
+    
+    // One last attempt - check all includes directories recursively but only in debug mode
     if (defined('WP_DEBUG') && WP_DEBUG) {
         $missing_class = $class_name;
         
-        // Find all PHP files in includes directory
-        $directory_iterator = new RecursiveDirectoryIterator(VANDEL_PLUGIN_DIR . 'includes');
-        $iterator = new RecursiveIteratorIterator($directory_iterator);
-        $files = [];
-        
-        foreach ($iterator as $file) {
-            if ($file->isFile() && $file->getExtension() === 'php') {
-                $file_contents = file_get_contents($file->getPathname());
-                
-                // Check if class name is in file
-                if (strpos($file_contents, "class {$class_file}") !== false ||
-                    strpos($file_contents, "class {$class_file} ") !== false) {
-                    require_once $file->getPathname();
-                    error_log("VandelBooking: Found {$class_name} in unexpected location: {$file->getPathname()}");
-                    return;
+        // Ensure directory exists before scanning
+        if (is_dir(VANDEL_PLUGIN_DIR . 'includes')) {
+            // Find all PHP files in includes directory
+            $directory_iterator = new RecursiveDirectoryIterator(VANDEL_PLUGIN_DIR . 'includes');
+            $iterator = new RecursiveIteratorIterator($directory_iterator);
+            
+            foreach ($iterator as $file) {
+                if ($file->isFile() && $file->getExtension() === 'php') {
+                    $file_contents = file_get_contents($file->getPathname());
+                    
+                    // Check if class name is in file
+                    if (strpos($file_contents, "class {$class_file}") !== false ||
+                        strpos($file_contents, "class {$class_file} ") !== false) {
+                        require_once $file->getPathname();
+                        error_log("VandelBooking: Found {$class_name} in unexpected location: {$file->getPathname()}");
+                        return;
+                    }
                 }
             }
         }
@@ -125,11 +141,19 @@ spl_autoload_register('vandel_booking_autoloader');
 
 /**
  * Force-load critical classes that might not be found by the autoloader
+ * This is a safety mechanism to ensure core classes are available
  */
 function vandel_load_critical_classes() {
+    static $loaded = false;
+    
+    // Only run once
+    if ($loaded) {
+        return;
+    }
+    
     $critical_files = [
-        'includes/client/class-client-model.php',
         'includes/booking/class-booking-model.php',
+        'includes/client/class-client-model.php',
         'includes/booking/class-booking-manager.php',
         'includes/ajax/class-ajax-handler.php'
     ];
@@ -140,6 +164,8 @@ function vandel_load_critical_classes() {
             require_once $file_path;
         }
     }
+    
+    $loaded = true;
 }
 
 // Call this function to ensure critical classes are loaded

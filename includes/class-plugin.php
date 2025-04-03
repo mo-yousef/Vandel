@@ -33,6 +33,7 @@ class Plugin {
      * Private constructor to prevent direct instantiation
      */
     private function __construct() {
+        // Only define constants if not already defined
         $this->defineConstants();
         $this->loadEssentialFiles();
         $this->initHooks();
@@ -42,44 +43,34 @@ class Plugin {
      * Define plugin constants if not already defined
      */
     private function defineConstants() {
-        if (!defined('VANDEL_VERSION')) {
-            define('VANDEL_VERSION', '1.0.2');
-        }
-        if (!defined('VANDEL_PLUGIN_DIR')) {
-            define('VANDEL_PLUGIN_DIR', plugin_dir_path(dirname(__FILE__)));
-        }
-        if (!defined('VANDEL_PLUGIN_URL')) {
-            define('VANDEL_PLUGIN_URL', plugin_dir_url(dirname(__FILE__)));
-        }
-        if (!defined('VANDEL_PLUGIN_BASENAME')) {
-            define('VANDEL_PLUGIN_BASENAME', plugin_basename(dirname(__FILE__) . '/vandel-cleaning-booking.php'));
-        }
+        // These constants are already defined in the main plugin file,
+        // so we don't need to redefine them here
     }
     
     /**
      * Load essential files before autoloading
      */
     private function loadEssentialFiles() {
-        // Include autoloader
-        require_once VANDEL_PLUGIN_DIR . 'includes/autoload.php';
-        
         // Create required directories
         $this->createRequiredDirectories();
         
-        // Include essential files
+        // Include essential files if they haven't been loaded already
         $essential_files = [
-            'includes/class-helpers.php',
-            'includes/client/class-client-model.php',
             'includes/booking/class-booking-model.php',
+            'includes/client/class-client-model.php',
+            'includes/booking/class-booking-note-model.php',
             'includes/booking/class-booking-manager.php',
-            'includes/ajax/class-ajax-handler.php'
+            'includes/location/class-zip-code-model.php'
         ];
         
         foreach ($essential_files as $file) {
             $file_path = VANDEL_PLUGIN_DIR . $file;
-            if (file_exists($file_path)) {
+            $class_name = basename($file, '.php');
+            
+            // Only load if file exists and component not already loaded
+            if (file_exists($file_path) && !in_array($class_name, $this->loaded_components)) {
                 require_once $file_path;
-                $this->loaded_components[] = basename($file, '.php');
+                $this->loaded_components[] = $class_name;
             }
         }
     }
@@ -108,15 +99,17 @@ class Plugin {
      * Initialize WordPress hooks
      */
     private function initHooks() {
-        register_activation_hook(VANDEL_PLUGIN_DIR . 'vandel-cleaning-booking.php', [$this, 'activate']);
+        // These hooks are for plugin lifecycle events
         register_deactivation_hook(VANDEL_PLUGIN_DIR . 'vandel-cleaning-booking.php', [$this, 'deactivate']);
         
-        add_action('plugins_loaded', [$this, 'loadComponents']);
+        // Add actions to load components
+        add_action('plugins_loaded', [$this, 'loadComponents'], 10); // Lower priority than initial load
         add_action('init', [$this, 'initAjaxHandler']);
     }
     
     /**
      * Plugin activation
+     * Note: Already handled in main plugin file
      */
     public function activate() {
         // Force database tables creation
@@ -198,6 +191,11 @@ class Plugin {
      * Initialize AJAX Handler
      */
     public function initAjaxHandler() {
+        // Only initialize if not already loaded
+        if (in_array('AjaxHandler', $this->loaded_components)) {
+            return;
+        }
+        
         // Initialize AJAX Handler
         if (class_exists('\\VandelBooking\\Ajax\\AjaxHandler')) {
             new \VandelBooking\Ajax\AjaxHandler();
@@ -236,7 +234,7 @@ class Plugin {
         $loaded_components = array_merge($loaded_components, $this->loadApiComponents());
         
         // Load assets
-        if (class_exists('\\VandelBooking\\Assets')) {
+        if (class_exists('\\VandelBooking\\Assets') && !in_array('Assets', $this->loaded_components)) {
             new \VandelBooking\Assets();
             $loaded_components[] = 'Assets';
         }
@@ -256,34 +254,59 @@ class Plugin {
     private function loadAdminComponents() {
         $loaded_components = [];
         
-        // Load AdminLoader
-        if (class_exists('\\VandelBooking\\Admin\\AdminLoader')) {
-            new \VandelBooking\Admin\AdminLoader();
-            $loaded_components[] = 'AdminLoader';
-        } else {
-            // Try to include and instantiate AdminLoader
-            $admin_loader_file = VANDEL_PLUGIN_DIR . 'includes/admin/class-admin-loader.php';
-            if (file_exists($admin_loader_file)) {
-                require_once $admin_loader_file;
-                if (class_exists('\\VandelBooking\\Admin\\AdminLoader')) {
-                    new \VandelBooking\Admin\AdminLoader();
-                    $loaded_components[] = 'AdminLoader';
+        // Only load if not already loaded
+        if (!in_array('AdminLoader', $this->loaded_components)) {
+            // Load AdminLoader
+            if (class_exists('\\VandelBooking\\Admin\\AdminLoader')) {
+                new \VandelBooking\Admin\AdminLoader();
+                $loaded_components[] = 'AdminLoader';
+            } else {
+                // Try to include and instantiate AdminLoader
+                $admin_loader_file = VANDEL_PLUGIN_DIR . 'includes/admin/class-admin-loader.php';
+                if (file_exists($admin_loader_file)) {
+                    require_once $admin_loader_file;
+                    if (class_exists('\\VandelBooking\\Admin\\AdminLoader')) {
+                        new \VandelBooking\Admin\AdminLoader();
+                        $loaded_components[] = 'AdminLoader';
+                    }
                 }
             }
         }
         
-        // Load Dashboard
-        if (class_exists('\\VandelBooking\\Admin\\Dashboard')) {
-            new \VandelBooking\Admin\Dashboard();
-            $loaded_components[] = 'Dashboard';
+        // Only load if not already loaded
+        if (!in_array('Dashboard', $this->loaded_components)) {
+            // Load Dashboard
+            if (class_exists('\\VandelBooking\\Admin\\Dashboard')) {
+                new \VandelBooking\Admin\Dashboard();
+                $loaded_components[] = 'Dashboard';
+            }
         }
         
-        // Load ZIP Code components if feature is enabled
-        if (get_option('vandel_enable_zip_code_feature', 'no') === 'yes') {
+        // Load ZIP Code components if feature is enabled and not already loaded
+        if (get_option('vandel_enable_zip_code_feature', 'no') === 'yes' && 
+            !in_array('ZipCodeAjaxHandler', $this->loaded_components)) {
             // Load ZIP Code Handler if exists
             if (class_exists('\\VandelBooking\\Admin\\ZipCodeAjaxHandler')) {
                 new \VandelBooking\Admin\ZipCodeAjaxHandler();
                 $loaded_components[] = 'ZipCodeAjaxHandler';
+            }
+        }
+        
+        // Check for Dashboard Controller (new structure)
+        if (!in_array('Dashboard_Controller', $this->loaded_components)) {
+            if (class_exists('\\VandelBooking\\Admin\\Dashboard_Controller')) {
+                new \VandelBooking\Admin\Dashboard_Controller();
+                $loaded_components[] = 'Dashboard_Controller';
+            } else {
+                // Try to include and instantiate the controller
+                $controller_file = VANDEL_PLUGIN_DIR . 'includes/admin/dashboard/class-dashboard-controller.php';
+                if (file_exists($controller_file)) {
+                    require_once $controller_file;
+                    if (class_exists('\\VandelBooking\\Admin\\Dashboard_Controller')) {
+                        new \VandelBooking\Admin\Dashboard_Controller();
+                        $loaded_components[] = 'Dashboard_Controller';
+                    }
+                }
             }
         }
         
@@ -298,25 +321,30 @@ class Plugin {
     private function loadFrontendComponents() {
         $loaded_components = [];
         
-        // Load FrontendLoader
-        if (class_exists('\\VandelBooking\\Frontend\\FrontendLoader')) {
-            new \VandelBooking\Frontend\FrontendLoader();
-            $loaded_components[] = 'FrontendLoader';
+        // Only load if not already loaded
+        if (!in_array('FrontendLoader', $this->loaded_components)) {
+            // Load FrontendLoader
+            if (class_exists('\\VandelBooking\\Frontend\\FrontendLoader')) {
+                new \VandelBooking\Frontend\FrontendLoader();
+                $loaded_components[] = 'FrontendLoader';
+            }
         }
         
-        // Register booking form shortcode
-        if (!function_exists('vandel_register_booking_shortcode')) {
-            if (class_exists('\\VandelBooking\\BookingShortcodeRegister')) {
-                new \VandelBooking\BookingShortcodeRegister();
-                $loaded_components[] = 'BookingShortcodeRegister';
-            } else {
-                // Try to include and instantiate BookingShortcodeRegister
-                $shortcode_file = VANDEL_PLUGIN_DIR . 'includes/class-booking-shortcode-register.php';
-                if (file_exists($shortcode_file)) {
-                    require_once $shortcode_file;
-                    if (class_exists('\\VandelBooking\\BookingShortcodeRegister')) {
-                        new \VandelBooking\BookingShortcodeRegister();
-                        $loaded_components[] = 'BookingShortcodeRegister';
+        // Register booking form shortcode if not already loaded
+        if (!in_array('BookingShortcodeRegister', $this->loaded_components)) {
+            if (!function_exists('vandel_register_booking_shortcode')) {
+                if (class_exists('\\VandelBooking\\BookingShortcodeRegister')) {
+                    new \VandelBooking\BookingShortcodeRegister();
+                    $loaded_components[] = 'BookingShortcodeRegister';
+                } else {
+                    // Try to include and instantiate BookingShortcodeRegister
+                    $shortcode_file = VANDEL_PLUGIN_DIR . 'includes/class-booking-shortcode-register.php';
+                    if (file_exists($shortcode_file)) {
+                        require_once $shortcode_file;
+                        if (class_exists('\\VandelBooking\\BookingShortcodeRegister')) {
+                            new \VandelBooking\BookingShortcodeRegister();
+                            $loaded_components[] = 'BookingShortcodeRegister';
+                        }
                     }
                 }
             }
@@ -332,6 +360,13 @@ class Plugin {
      */
     private function loadPostTypes() {
         $loaded_components = [];
+        
+        // Only proceed if post types not already loaded
+        if (in_array('PostTypesRegistry', $this->loaded_components) ||
+            (in_array('ServicePostType', $this->loaded_components) && 
+             in_array('SubServicePostType', $this->loaded_components))) {
+            return $loaded_components;
+        }
         
         // Try to load Registry first
         if (class_exists('\\VandelBooking\\PostTypes\\Registry')) {
@@ -362,14 +397,18 @@ class Plugin {
     private function loadApiComponents() {
         $loaded_components = [];
         
-        // Load APILoader
-        if (class_exists('\\VandelBooking\\API\\APILoader')) {
-            new \VandelBooking\API\APILoader();
-            $loaded_components[] = 'APILoader';
+        // Only load if not already loaded
+        if (!in_array('APILoader', $this->loaded_components)) {
+            // Load APILoader
+            if (class_exists('\\VandelBooking\\API\\APILoader')) {
+                new \VandelBooking\API\APILoader();
+                $loaded_components[] = 'APILoader';
+            }
         }
         
-        // Load ZIP Code API if feature is enabled
-        if (get_option('vandel_enable_zip_code_feature', 'no') === 'yes') {
+        // Load ZIP Code API if feature is enabled and not already loaded
+        if (get_option('vandel_enable_zip_code_feature', 'no') === 'yes' && 
+            !in_array('ZipCodeAPI', $this->loaded_components)) {
             if (class_exists('\\VandelBooking\\API\\ZipCodeAPI')) {
                 new \VandelBooking\API\ZipCodeAPI();
                 $loaded_components[] = 'ZipCodeAPI';
