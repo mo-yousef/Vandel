@@ -826,11 +826,11 @@
   transition: all 0.3s;
 }
 
-.vandel-switch-input:checked + .vandel-switch {
+.vandel-switch-input:checked+.vandel-switch {
   background-color: #286cd6;
 }
 
-.vandel-switch-input:checked + .vandel-switch::after {
+.vandel-switch-input:checked+.vandel-switch::after {
   left: 22px;
 }
 
@@ -949,6 +949,8 @@
 
 .vandel-feature-icon {
   width: 50px;
+  min-width: 50px;
+  min-height: 50px;
   height: 50px;
   background: #286cd6;
   color: white;
@@ -1038,15 +1040,15 @@
   border-radius: 50%;
 }
 
-input:checked + .vandel-toggle-slider {
+input:checked+.vandel-toggle-slider {
   background-color: #286cd6;
 }
 
-input:focus + .vandel-toggle-slider {
+input:focus+.vandel-toggle-slider {
   box-shadow: 0 0 1px #286cd6;
 }
 
-input:checked + .vandel-toggle-slider:before {
+input:checked+.vandel-toggle-slider:before {
   -webkit-transform: translateX(26px);
   -ms-transform: translateX(26px);
   transform: translateX(26px);
@@ -1489,6 +1491,7 @@ input:checked + .vandel-toggle-slider:before {
 .vandel-service-details {
   flex-grow: 1;
 }
+
 .vandel-service-name {
   font-weight: 500;
   display: flex;
@@ -2103,6 +2106,7 @@ input:checked + .vandel-toggle-slider:before {
   from {
     opacity: 0;
   }
+
   to {
     opacity: 1;
   }
@@ -2117,6 +2121,7 @@ input:checked + .vandel-toggle-slider:before {
     transform: translateY(20px);
     opacity: 0;
   }
+
   to {
     transform: translateY(0);
     opacity: 1;
@@ -2129,6 +2134,7 @@ input:checked + .vandel-toggle-slider:before {
 
 /* ============= PRINT STYLES ============= */
 @media print {
+
   .vandel-dashboard-header,
   .vandel-tabs-navigation,
   .vandel-quick-actions,
@@ -2171,6 +2177,7 @@ input:checked + .vandel-toggle-slider:before {
     background: white !important;
   }
 }
+
 /*================================================================*/
 /*================================================================*/
 /*================================================================*/
