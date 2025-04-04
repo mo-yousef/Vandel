@@ -27,6 +27,10 @@ if (!defined('VANDEL_PLUGIN_BASENAME')) {
     define('VANDEL_PLUGIN_BASENAME', plugin_basename(__FILE__));
 }
 
+// Define a global variable to prevent duplicate menu registration
+global $vandel_menu_registered;
+$vandel_menu_registered = false;
+
 // Create required directories
 function vandel_create_directories() {
     $directories = [
@@ -143,6 +147,86 @@ if (file_exists(VANDEL_PLUGIN_DIR . 'includes/post-types/class-post-types-regist
     });
 }
 
+// Add filter to prevent duplicate menu registration
+add_filter('vandel_should_register_menu', function($should_register) {
+    global $vandel_menu_registered;
+    
+    if ($vandel_menu_registered) {
+        return false;
+    }
+    
+    $vandel_menu_registered = true;
+    return true;
+}, 10, 1);
+
+// Patch the AdminLoader class to check the filter before registering menu
+add_action('plugins_loaded', function() {
+    // Add this hook to modify AdminLoader behavior
+    add_action('admin_menu', function() {
+        global $vandel_menu_registered;
+        
+        // Check if class-admin-loader.php exists
+        if (file_exists(VANDEL_PLUGIN_DIR . 'includes/admin/class-admin-loader.php')) {
+            // Get the content of the file
+            $file_content = file_get_contents(VANDEL_PLUGIN_DIR . 'includes/admin/class-admin-loader.php');
+            
+            // If the file content contains the registerMenu method without our filter
+            if (strpos($file_content, 'function registerMenu') !== false 
+                && strpos($file_content, 'vandel_should_register_menu') === false) {
+                
+                // Add our check at the very beginning of the registerMenu method
+                // Only do this once
+                if (!get_option('vandel_admin_loader_patched', false)) {
+                    $modified_content = preg_replace(
+                        '/(public\s+function\s+registerMenu\s*\(\s*\)\s*\{)/',
+                        '$1' . PHP_EOL . '        // Check if we should register this menu' . PHP_EOL .
+                        '        if (!apply_filters(\'vandel_should_register_menu\', true)) {' . PHP_EOL .
+                        '            return;' . PHP_EOL .
+                        '        }',
+                        $file_content
+                    );
+                    
+                    // Only write to the file if we made changes
+                    if ($modified_content !== $file_content) {
+                        file_put_contents(VANDEL_PLUGIN_DIR . 'includes/admin/class-admin-loader.php', $modified_content);
+                        update_option('vandel_admin_loader_patched', true);
+                    }
+                }
+            }
+        }
+        
+        // Check if class-dashboard-controller.php exists
+        if (file_exists(VANDEL_PLUGIN_DIR . 'includes/admin/dashboard/class-dashboard-controller.php')) {
+            // Get the content of the file
+            $file_content = file_get_contents(VANDEL_PLUGIN_DIR . 'includes/admin/dashboard/class-dashboard-controller.php');
+            
+            // If the file content contains the register_admin_menu method without our filter
+            if (strpos($file_content, 'function register_admin_menu') !== false 
+                && strpos($file_content, 'vandel_should_register_menu') === false) {
+                
+                // Add our check at the very beginning of the register_admin_menu method
+                // Only do this once
+                if (!get_option('vandel_dashboard_controller_patched', false)) {
+                    $modified_content = preg_replace(
+                        '/(public\s+function\s+register_admin_menu\s*\(\s*\)\s*\{)/',
+                        '$1' . PHP_EOL . '        // Check if we should register this menu' . PHP_EOL .
+                        '        if (!apply_filters(\'vandel_should_register_menu\', true)) {' . PHP_EOL .
+                        '            return;' . PHP_EOL .
+                        '        }',
+                        $file_content
+                    );
+                    
+                    // Only write to the file if we made changes
+                    if ($modified_content !== $file_content) {
+                        file_put_contents(VANDEL_PLUGIN_DIR . 'includes/admin/dashboard/class-dashboard-controller.php', $modified_content);
+                        update_option('vandel_dashboard_controller_patched', true);
+                    }
+                }
+            }
+        }
+    }, 5); // Run this before admin menu is loaded
+}, 5);
+
 // Initialize AJAX Handler
 function vandel_init_ajax_handler() {
     $ajax_handler_file = VANDEL_PLUGIN_DIR . 'includes/ajax/class-ajax-handler.php';
@@ -173,21 +257,6 @@ function vandel_init_zip_code_ajax_handler() {
     }
 }
 add_action('init', 'vandel_init_zip_code_ajax_handler');
-
-// In your main plugin file or Plugin class
-if (is_admin()) {
-    // Load the dashboard class if it exists
-    // Check both possible file names - dashboard-controller and dashboard
-    if (file_exists(VANDEL_PLUGIN_DIR . 'includes/admin/dashboard/class-dashboard-controller.php')) {
-        require_once VANDEL_PLUGIN_DIR . 'includes/admin/dashboard/class-dashboard-controller.php';
-        
-        add_action('plugins_loaded', function() {
-            if (class_exists('\\VandelBooking\\Admin\\Dashboard_Controller')) {
-                new \VandelBooking\Admin\Dashboard_Controller();
-            }
-        });
-    } 
-}
 
 // Initialize CalendarView for admin
 function vandel_init_calendar_view() {

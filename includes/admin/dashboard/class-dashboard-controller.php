@@ -31,6 +31,10 @@ class Dashboard_Controller {
      * Register admin menu page
      */
     public function register_admin_menu() {
+        // Check if we should register this menu
+        if (!apply_filters('vandel_should_register_menu', true)) {
+            return;
+        }
         add_menu_page(
             __('Vandel Booking', 'vandel-booking'),
             __('Vandel Booking', 'vandel-booking'),

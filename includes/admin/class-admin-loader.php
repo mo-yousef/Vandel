@@ -59,6 +59,10 @@ class AdminLoader {
      * Register admin menu
      */
     public function registerMenu() {
+        // Check if we should register this menu
+        if (!apply_filters('vandel_should_register_menu', true)) {
+            return;
+        }
         add_menu_page(
             __('Vandel Dashboard', 'vandel-booking'),
             __('Vandel Booking', 'vandel-booking'),
