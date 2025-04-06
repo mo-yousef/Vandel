@@ -265,7 +265,7 @@ class Dashboard_Controller {
                 $booking_details->render($booking_id);
                 return;
             }
-        }
+        } 
         
         // Fallback view if the class doesn't exist
         echo '<div id="booking-details" class="vandel-tab-content">';
