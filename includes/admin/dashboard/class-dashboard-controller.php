@@ -45,7 +45,7 @@ class Dashboard_Controller {
             30
         );
     }
-    
+
     /**
      * Initialize dashboard tabs
      */

@@ -417,6 +417,23 @@ function vandel_enqueue_client_management_assets($hook) {
     }
 }
 add_action('admin_enqueue_scripts', 'vandel_enqueue_client_management_assets');
+/**
+ * Enqueue modernized dashboard styles
+ */
+function vandel_enqueue_dashboard_styles($hook) {
+    // Only load on our plugin pages
+    if ($hook !== 'toplevel_page_vandel-dashboard' && strpos($hook, 'page_vandel-dashboard') === false) {
+        return;
+    }
+    
+    wp_enqueue_style(
+        'vandel-modern-dashboard',
+        VANDEL_PLUGIN_URL . 'assets/css/admin-dashboard.css',
+        [],
+        VANDEL_VERSION
+    );
+}
+add_action('admin_enqueue_scripts', 'vandel_enqueue_dashboard_styles');
 
 // Add admin notice for newly added features
 function vandel_admin_notices() {
@@ -483,146 +500,7 @@ function vandel_dismiss_notice() {
 }
 add_action('wp_ajax_vandel_dismiss_notice', 'vandel_dismiss_notice');
 
-/**
- * Add CSS for client management and calendar
- */
-function vandel_admin_styles() {
-    global $pagenow;
-    
-    // Only load on plugin pages
-    if ($pagenow !== 'admin.php' || !isset($_GET['page']) || $_GET['page'] !== 'vandel-dashboard') {
-        return;
-    }
-    
-    // Basic styles for the calendar
-    $styles = '
-    /* Calendar styles */
-    .vandel-calendar-wrap {
-        margin: 15px 0;
-    }
-    
-    .vandel-calendar-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 20px;
-    }
-    
-    .vandel-calendar-navigation {
-        display: flex;
-        align-items: center;
-    }
-    
-    .vandel-calendar-title {
-        margin: 0 15px;
-        font-size: 20px;
-    }
-    
-    .vandel-calendar-filters {
-        display: flex;
-        gap: 10px;
-    }
-    
-    .vandel-calendar-container {
-        background: #fff;
-        padding: 20px;
-        border-radius: 4px;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-    }
-    
-    /* Modal styles */
-    .vandel-modal {
-        display: none;
-        position: fixed;
-        z-index: 1000;
-        left: 0;
-        top: 0;
-        width: 100%;
-        height: 100%;
-        overflow: auto;
-        background-color: rgba(0,0,0,0.4);
-    }
-    
-    .vandel-modal-content {
-        background-color: #fefefe;
-        margin: 10% auto;
-        padding: 20px;
-        border-radius: 4px;
-        width: 50%;
-        max-width: 600px;
-        position: relative;
-    }
-    
-    .vandel-modal-close {
-        color: #aaa;
-        position: absolute;
-        top: 10px;
-        right: 20px;
-        font-size: 28px;
-        font-weight: bold;
-        cursor: pointer;
-    }
-    
-    .vandel-booking-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 20px;
-        border-bottom: 1px solid #eee;
-        padding-bottom: 10px;
-    }
-    
-    .vandel-booking-id {
-        font-size: 14px;
-        color: #777;
-    }
-    
-    .vandel-booking-info p {
-        margin: 5px 0;
-    }
-    
-    .vandel-booking-actions {
-        margin-top: 20px;
-        display: flex;
-        justify-content: space-between;
-        border-top: 1px solid #eee;
-        padding-top: 15px;
-    }
-    
-    .vandel-status-badge {
-        display: inline-block;
-        padding: 3px 8px;
-        border-radius: 3px;
-        font-size: 12px;
-        color: #fff;
-    }
-    
-    .vandel-status-badge-pending {
-        background-color: #f0ad4e;
-    }
-    
-    .vandel-status-badge-confirmed {
-        background-color: #5bc0de;
-    }
-    
-    .vandel-status-badge-completed {
-        background-color: #5cb85c;
-    }
-    
-    .vandel-status-badge-canceled {
-        background-color: #d9534f;
-    }
-    
-    .vandel-status-actions {
-        display: flex;
-        gap: 10px;
-    }
-    ';
-    
-    // Output the inline styles
-    echo '<style>' . $styles . '</style>';
-}
-add_action('admin_head', 'vandel_admin_styles');
+
 
 /**
  * Display suggested PHP extensions for optimal performance
@@ -665,3 +543,4 @@ function vandel_suggest_extensions() {
     <?php
 }
 add_action('admin_notices', 'vandel_suggest_extensions');
+

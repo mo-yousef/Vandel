@@ -116,55 +116,55 @@ class Overview_Tab implements Tab_Interface {
         ?>
         <div id="overview" class="vandel-tab-content">
             
-            <div class="vandel-dashboard-welcome">
-                <div class="vandel-welcome-content">
-                    <h2><?php _e('Welcome to Your Booking Dashboard', 'vandel-booking'); ?></h2>
-                    <p><?php _e('Manage your bookings, services, and clients all in one place. Here\'s a snapshot of your business.', 'vandel-booking'); ?></p>
-                </div>
-                <div class="vandel-quick-stats">
-                    <div class="vandel-stat-cards">
-                        <div class="vandel-stat-card vandel-stat-bookings">
-                            <div class="vandel-stat-header">
-                                <span class="vandel-stat-icon"><span class="dashicons dashicons-calendar-alt"></span></span>
-                                <span class="vandel-stat-value"><?php echo number_format_i18n($booking_stats['total']); ?></span>
-                            </div>
-                            <div class="vandel-stat-footer">
-                                <span class="vandel-stat-label"><?php _e('Total Bookings', 'vandel-booking'); ?></span>
-                            </div>
+        <div class="vandel-dashboard-welcome">
+            <div class="vandel-welcome-content">
+                <h2><?php _e('Welcome to Your Booking Dashboard', 'vandel-booking'); ?></h2>
+                <p><?php _e('Manage your bookings, services, and clients all in one place. Here\'s a snapshot of your business.', 'vandel-booking'); ?></p>
+            </div>
+            <div class="vandel-quick-stats">
+                <div class="vandel-stat-cards">
+                    <div class="vandel-stat-card">
+                        <div class="vandel-stat-header">
+                            <span class="vandel-stat-icon"><span class="dashicons dashicons-calendar-alt"></span></span>
+                            <span class="vandel-stat-value"><?php echo number_format_i18n($booking_stats['total']); ?></span>
                         </div>
-                        
-                        <div class="vandel-stat-card vandel-stat-clients">
-                            <div class="vandel-stat-header">
-                                <span class="vandel-stat-icon"><span class="dashicons dashicons-groups"></span></span>
-                                <span class="vandel-stat-value"><?php echo number_format_i18n($total_clients); ?></span>
-                            </div>
-                            <div class="vandel-stat-footer">
-                                <span class="vandel-stat-label"><?php _e('Total Clients', 'vandel-booking'); ?></span>
-                            </div>
+                        <div class="vandel-stat-footer">
+                            <span class="vandel-stat-label"><?php _e('Total Bookings', 'vandel-booking'); ?></span>
                         </div>
-                        
-                        <div class="vandel-stat-card vandel-stat-services">
-                            <div class="vandel-stat-header">
-                                <span class="vandel-stat-icon"><span class="dashicons dashicons-admin-generic"></span></span>
-                                <span class="vandel-stat-value"><?php echo number_format_i18n($services_count); ?></span>
-                            </div>
-                            <div class="vandel-stat-footer">
-                                <span class="vandel-stat-label"><?php _e('Active Services', 'vandel-booking'); ?></span>
-                            </div>
+                    </div>
+                    
+                    <div class="vandel-stat-card">
+                        <div class="vandel-stat-header">
+                            <span class="vandel-stat-icon"><span class="dashicons dashicons-groups"></span></span>
+                            <span class="vandel-stat-value"><?php echo number_format_i18n($total_clients); ?></span>
                         </div>
-                        
-                        <div class="vandel-stat-card vandel-stat-revenue">
-                            <div class="vandel-stat-header">
-                                <span class="vandel-stat-icon"><span class="dashicons dashicons-chart-line"></span></span>
-                                <span class="vandel-stat-value"><?php echo \VandelBooking\Helpers::formatPrice($total_revenue); ?></span>
-                            </div>
-                            <div class="vandel-stat-footer">
-                                <span class="vandel-stat-label"><?php _e('Total Revenue', 'vandel-booking'); ?></span>
-                            </div>
+                        <div class="vandel-stat-footer">
+                            <span class="vandel-stat-label"><?php _e('Total Clients', 'vandel-booking'); ?></span>
+                        </div>
+                    </div>
+                    
+                    <div class="vandel-stat-card">
+                        <div class="vandel-stat-header">
+                            <span class="vandel-stat-icon"><span class="dashicons dashicons-admin-generic"></span></span>
+                            <span class="vandel-stat-value"><?php echo number_format_i18n($services_count); ?></span>
+                        </div>
+                        <div class="vandel-stat-footer">
+                            <span class="vandel-stat-label"><?php _e('Active Services', 'vandel-booking'); ?></span>
+                        </div>
+                    </div>
+                    
+                    <div class="vandel-stat-card">
+                        <div class="vandel-stat-header">
+                            <span class="vandel-stat-icon"><span class="dashicons dashicons-chart-line"></span></span>
+                            <span class="vandel-stat-value"><?php echo \VandelBooking\Helpers::formatPrice($total_revenue); ?></span>
+                        </div>
+                        <div class="vandel-stat-footer">
+                            <span class="vandel-stat-label"><?php _e('Total Revenue', 'vandel-booking'); ?></span>
                         </div>
                     </div>
                 </div>
             </div>
+        </div>
             
             <div class="vandel-dashboard-grid">
                 <div class="vandel-dashboard-main">

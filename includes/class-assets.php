@@ -86,20 +86,20 @@ class Assets {
         // Dashboard pages
         if ($hook === 'toplevel_page_vandel-dashboard' || strpos($hook, 'page_vandel-dashboard') !== false) {
             // Admin core styles
-            wp_enqueue_style(
-                'vandel-admin-style',
-                VANDEL_PLUGIN_URL . 'assets/css/admin-style.css',
-                [],
-                VANDEL_VERSION
-            );
+            // wp_enqueue_style(
+            //     'vandel-admin-style',
+            //     VANDEL_PLUGIN_URL . 'assets/css/admin-style.css',
+            //     [],
+            //     VANDEL_VERSION
+            // );
             
             // Settings-specific styles
-            wp_enqueue_style(
-                'vandel-settings-style',
-                VANDEL_PLUGIN_URL . 'assets/css/admin-settings.css',
-                [],
-                VANDEL_VERSION
-            );
+            // wp_enqueue_style(
+            //     'vandel-settings-style',
+            //     VANDEL_PLUGIN_URL . 'assets/css/admin-settings.css',
+            //     [],
+            //     VANDEL_VERSION
+            // );
             
             // Chart.js (for possible dashboard charts)
             wp_enqueue_script(
@@ -172,7 +172,7 @@ class Assets {
             );
         }
     }
-    
+
     /**
      * Inject custom styles (frontend & admin)
      */

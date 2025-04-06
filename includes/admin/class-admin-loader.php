@@ -226,12 +226,12 @@ private function printDebugInfo() {
         if ($hook === 'toplevel_page_vandel-dashboard' || 
             strpos($hook, 'page_vandel-dashboard') !== false) {
             
-            wp_enqueue_style(
-                'vandel-admin-styles',
-                VANDEL_PLUGIN_URL . 'assets/css/admin-style.css',
-                [],
-                VANDEL_VERSION
-            );
+            // wp_enqueue_style(
+            //     'vandel-admin-styles',
+            //     VANDEL_PLUGIN_URL . 'assets/css/admin-style.css',
+            //     [],
+            //     VANDEL_VERSION
+            // );
             
             wp_enqueue_script(
                 'vandel-admin-script',

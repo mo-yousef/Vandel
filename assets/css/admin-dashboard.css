@@ -1,0 +1,1969 @@
+/**
+ * Vandel Booking - Modern Dashboard Styles
+ * 
+ * This stylesheet provides a comprehensive redesign of the Vandel Booking dashboard
+ * with modern design principles, consistent styling, and improved user experience.
+ */
+
+/* ===== DASHBOARD LAYOUT FUNDAMENTALS ===== */
+
+.vandel-dashboard-container {
+  padding: 20px;
+  max-width: 1800px;
+  margin: 20px auto;
+  color: #4a5568;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+  background: #f7f9fb;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+/* Hide WordPress notices within our dashboard */
+.vandel-dashboard-container .notice {
+  display: none;
+}
+
+/* Dashboard Header */
+.vandel-dashboard-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 25px;
+  padding: 15px 25px;
+  background: #fff;
+  border-radius: 10px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+}
+
+.vandel-dashboard-title {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 600;
+  color: #1a202c;
+}
+
+.vandel-quick-actions {
+  display: flex;
+  gap: 10px;
+}
+
+/* Action Buttons */
+.vandel-action-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  font-size: 14px;
+  font-weight: 500;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+}
+
+.vandel-action-button .dashicons {
+  font-size: 18px;
+  width: 18px;
+  height: 18px;
+}
+
+.vandel-action-button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+/* Primary Button */
+.button-primary.vandel-action-button {
+  background: #3182ce;
+  border-color: #3182ce;
+}
+
+.button-primary.vandel-action-button:hover {
+  background: #2c5282;
+  border-color: #2c5282;
+}
+
+/* Tabs Navigation */
+.vandel-tabs-navigation {
+  background: #fff;
+  border-radius: 10px;
+  margin-bottom: 25px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+  overflow: hidden;
+}
+
+.vandel-tabs-navigation ul {
+  display: flex;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  overflow-x: auto;
+}
+
+.vandel-tabs-navigation li {
+  margin: 0;
+}
+
+.vandel-tabs-navigation a {
+  display: flex;
+  align-items: center;
+  padding: 15px 20px;
+  color: #718096;
+  text-decoration: none;
+  font-weight: 500;
+  border-bottom: 3px solid transparent;
+  transition: all 0.2s ease;
+}
+
+.vandel-tabs-navigation a:hover {
+  background: #f7fafc;
+  color: #3182ce;
+}
+
+.vandel-tabs-navigation a.active {
+  color: #3182ce;
+  border-bottom-color: #3182ce;
+  background: #ebf8ff;
+}
+
+.vandel-tabs-navigation .dashicons {
+  margin-right: 8px;
+  font-size: 18px;
+  width: 18px;
+  height: 18px;
+}
+
+/* ===== CARD COMPONENTS ===== */
+
+.vandel-card {
+  background: #fff;
+  border-radius: 10px;
+  margin-bottom: 25px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+  overflow: hidden;
+  transition: all 0.2s ease;
+}
+
+.vandel-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.vandel-card-header {
+  padding: 18px 20px;
+  border-bottom: 1px solid #f0f4f8;
+  background: #f8fafc;
+  display: flex;
+  align-items: center;
+}
+
+.vandel-flex-header {
+  justify-content: space-between;
+}
+
+.vandel-card-header h3 {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 600;
+  color: #2d3748;
+}
+
+.vandel-card-body {
+  padding: 20px;
+}
+
+.vandel-card-footer {
+  padding: 15px 20px;
+  background: #f8fafc;
+  border-top: 1px solid #f0f4f8;
+  text-align: center;
+}
+
+.vandel-view-all {
+  color: #3182ce;
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.vandel-view-all:hover {
+  text-decoration: underline;
+  color: #2c5282;
+}
+
+/* ===== GRID LAYOUT ===== */
+
+.vandel-dashboard-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 25px;
+}
+
+.vandel-grid-row {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: 20px;
+}
+
+.vandel-grid-col-6 {
+  grid-column: span 6;
+}
+
+.vandel-grid-col-4 {
+  grid-column: span 4;
+}
+
+.vandel-grid-col-3 {
+  grid-column: span 3;
+}
+
+.vandel-grid-col-8 {
+  grid-column: span 8;
+}
+
+.vandel-grid-col-12 {
+  grid-column: span 12;
+}
+
+/* ===== DASHBOARD STATS & METRICS ===== */
+
+.vandel-welcome-content {
+  padding: 30px;
+}
+
+.vandel-welcome-content h2 {
+  margin-top: 0;
+  margin-bottom: 10px;
+  font-size: 24px;
+  font-weight: 600;
+  color: #fff;
+}
+
+.vandel-welcome-content p {
+  margin-bottom: 0;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 15px;
+}
+
+.vandel-stat-cards {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 15px;
+  padding: 0 20px 25px 20px;
+}
+
+.vandel-stat-card {
+  background: rgba(255, 255, 255, 0.15);
+  padding: 20px;
+  border-radius: 10px;
+  color: white;
+  transition: all 0.2s ease;
+}
+
+.vandel-stat-card:hover {
+  background: rgba(255, 255, 255, 0.25);
+  transform: translateY(-2px);
+}
+
+.vandel-stat-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.vandel-stat-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 12px;
+}
+
+.vandel-stat-icon .dashicons {
+  font-size: 18px;
+  width: 18px;
+  height: 18px;
+  color: white;
+}
+
+.vandel-stat-value {
+  font-size: 24px;
+  font-weight: 600;
+  color: white;
+}
+
+.vandel-stat-footer {
+  padding-left: 52px;
+}
+
+.vandel-stat-label {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+/* Status Summary */
+.vandel-status-summary {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 15px;
+  margin-bottom: 25px;
+}
+
+.vandel-status-item {
+  background: #fff;
+  padding: 20px;
+  border-radius: 10px;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+  transition: all 0.2s ease;
+}
+
+.vandel-status-item:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.vandel-status-pending {
+  border-left: 4px solid #f6ad55;
+}
+
+.vandel-status-confirmed {
+  border-left: 4px solid #4299e1;
+}
+
+.vandel-status-completed {
+  border-left: 4px solid #48bb78;
+}
+
+.vandel-status-canceled {
+  border-left: 4px solid #f56565;
+}
+
+.vandel-status-count {
+  font-size: 28px;
+  font-weight: 700;
+  margin-bottom: 8px;
+  color: #2d3748;
+}
+
+.vandel-status-label {
+  color: #718096;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.vandel-status-icon {
+  position: absolute;
+  right: -10px;
+  bottom: -10px;
+  font-size: 50px;
+  opacity: 0.07;
+  color: #2d3748;
+}
+
+/* ===== CALENDAR STYLES ===== */
+
+.vandel-calendar-wrap {
+  margin: 0 0 25px 0;
+}
+
+.vandel-calendar-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.vandel-calendar-navigation {
+  display: flex;
+  align-items: center;
+}
+
+.vandel-calendar-title {
+  margin: 0 20px;
+  font-size: 20px;
+  font-weight: 600;
+  color: #2d3748;
+}
+
+.vandel-calendar-filters {
+  display: flex;
+  gap: 10px;
+}
+
+.vandel-calendar-filter {
+  padding: 8px 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  font-size: 14px;
+  color: #4a5568;
+  background-color: #fff;
+}
+
+.vandel-calendar-container {
+  background: #fff;
+  padding: 20px;
+  border-radius: 10px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+}
+
+.vandel-calendar-stats {
+  margin-bottom: 20px;
+}
+
+.vandel-stat-summary {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 15px;
+}
+
+.vandel-stat-all {
+  border-left: 4px solid #a0aec0;
+}
+
+/* FullCalendar Customizations */
+.fc-theme-standard .fc-toolbar {
+  margin-bottom: 1.5em;
+}
+
+.fc-theme-standard .fc-toolbar-title {
+  font-size: 20px;
+  font-weight: 600;
+  color: #2d3748;
+}
+
+.fc-theme-standard .fc-button-primary {
+  background-color: #4299e1;
+  border-color: #4299e1;
+  text-transform: capitalize;
+  font-weight: 500;
+}
+
+.fc-theme-standard .fc-button-primary:hover {
+  background-color: #3182ce;
+  border-color: #3182ce;
+}
+
+.fc-theme-standard .fc-button-active {
+  background-color: #2b6cb0 !important;
+  border-color: #2b6cb0 !important;
+}
+
+.fc-theme-standard .fc-event {
+  border-radius: 4px;
+  font-size: 13px;
+}
+
+.fc-theme-standard .fc-daygrid-day-number {
+  font-size: 14px;
+  font-weight: 500;
+  color: #4a5568;
+}
+
+.fc-theme-standard .fc-col-header-cell-cushion {
+  font-weight: 600;
+  color: #2d3748;
+}
+
+/* ===== TABLES & LIST VIEWS ===== */
+
+.vandel-data-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.vandel-data-table th {
+  background: #f7fafc;
+  color: #4a5568;
+  font-weight: 600;
+  padding: 15px;
+  text-align: left;
+  border-bottom: 1px solid #e2e8f0;
+  font-size: 14px;
+}
+
+.vandel-data-table td {
+  padding: 14px 15px;
+  vertical-align: middle;
+  border-bottom: 1px solid #e2e8f0;
+  font-size: 14px;
+}
+
+.vandel-data-table tr:last-child td {
+  border-bottom: none;
+}
+
+.vandel-data-table tr:hover td {
+  background-color: #f7fafc;
+}
+
+.vandel-data-table a {
+  color: #3182ce;
+  text-decoration: none;
+}
+
+.vandel-data-table a:hover {
+  text-decoration: underline;
+  color: #2c5282;
+}
+
+/* ===== CLIENT INFO & DETAILS ===== */
+
+.vandel-client-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.vandel-client-name {
+  font-weight: 600;
+  color: #2d3748;
+  font-size: 14px;
+}
+
+.vandel-client-email {
+  font-size: 13px;
+  color: #718096;
+  margin-top: 3px;
+}
+
+.vandel-client-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 25px;
+  padding-bottom: 15px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.vandel-client-header h2 {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 600;
+  color: #1a202c;
+}
+
+.vandel-client-actions {
+  display: flex;
+  gap: 10px;
+}
+
+/* Setting Fields */
+.vandel-settings-section h2 {
+  border-bottom: 1px solid #e2e4e7;
+  padding-bottom: 10px;
+  margin-bottom: 20px;
+}
+
+.vandel-settings-group {
+  margin-bottom: 20px;
+}
+
+.vandel-setting-row {
+  margin-bottom: 20px;
+}
+
+.vandel-setting-row label {
+  display: block;
+  margin-bottom: 5px;
+  font-weight: 600;
+}
+
+.vandel-setting-row .description {
+  color: #666;
+  font-style: italic;
+  margin-top: 5px;
+  font-size: 12px;
+}
+
+.vandel-setting-row input[type="text"],
+.vandel-setting-row input[type="email"],
+.vandel-setting-row input[type="number"],
+.vandel-setting-row input[type="time"],
+.vandel-setting-row select,
+.vandel-setting-row textarea {
+  width: 100%;
+}
+
+/* ===== BOOKING ITEMS & DETAILS ===== */
+
+.vandel-booking-item {
+  padding: 15px;
+  border-bottom: 1px solid #e2e8f0;
+  transition: all 0.2s ease;
+}
+
+.vandel-booking-item:last-child {
+  border-bottom: none;
+}
+
+.vandel-booking-item:hover {
+  background-color: #f7fafc;
+}
+
+.vandel-booking-item-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.vandel-booking-id a {
+  font-weight: 600;
+  color: #3182ce;
+  text-decoration: none;
+}
+
+.vandel-booking-id a:hover {
+  text-decoration: underline;
+}
+
+.vandel-booking-details {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+  color: #718096;
+}
+
+.vandel-booking-service {
+  font-weight: 500;
+  color: #4a5568;
+}
+
+.vandel-booking-date,
+.vandel-booking-price {
+  font-size: 13px;
+}
+
+/* Status Badges */
+.vandel-status-badge {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.2;
+  text-transform: capitalize;
+}
+
+.vandel-status-badge-warning,
+.vandel-status-badge-pending {
+  background-color: #feebcb;
+  color: #c05621;
+}
+
+.vandel-status-badge-info,
+.vandel-status-badge-confirmed {
+  background-color: #bee3f8;
+  color: #2b6cb0;
+}
+
+.vandel-status-badge-success,
+.vandel-status-badge-completed {
+  background-color: #c6f6d5;
+  color: #2f855a;
+}
+
+.vandel-status-badge-danger,
+.vandel-status-badge-canceled {
+  background-color: #fed7d7;
+  color: #c53030;
+}
+
+/* ===== FORMS & INPUTS ===== */
+
+.vandel-form-row {
+  margin-bottom: 20px;
+}
+
+.vandel-form-row label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 500;
+  color: #4a5568;
+  font-size: 14px;
+}
+
+.vandel-form-row label .required {
+  color: #e53e3e;
+  margin-left: 2px;
+}
+
+.vandel-form-row input[type="text"],
+.vandel-form-row input[type="email"],
+.vandel-form-row input[type="tel"],
+.vandel-form-row input[type="number"],
+.vandel-form-row input[type="date"],
+.vandel-form-row input[type="datetime-local"],
+.vandel-form-row select,
+.vandel-form-row textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  font-size: 14px;
+  color: #4a5568;
+  transition: all 0.2s ease;
+}
+
+.vandel-form-row input:focus,
+.vandel-form-row select:focus,
+.vandel-form-row textarea:focus {
+  border-color: #4299e1;
+  box-shadow: 0 0 0 2px rgba(66, 153, 225, 0.2);
+  outline: none;
+}
+
+.vandel-form-row input.vandel-error,
+.vandel-form-row select.vandel-error,
+.vandel-form-row textarea.vandel-error {
+  border-color: #e53e3e;
+}
+
+.vandel-form-row .description {
+  margin-top: 5px;
+  font-size: 13px;
+  color: #718096;
+}
+
+.vandel-form-actions {
+  margin-top: 25px;
+  padding-top: 20px;
+  border-top: 1px solid #e2e8f0;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+/* Toggle Switch */
+.vandel-toggle {
+  position: relative;
+  display: inline-block;
+  width: 50px;
+  height: 26px;
+}
+
+.vandel-toggle input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.vandel-toggle-slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #cbd5e0;
+  border-radius: 34px;
+  transition: 0.3s;
+}
+
+.vandel-toggle-slider:before {
+  position: absolute;
+  content: "";
+  height: 18px;
+  width: 18px;
+  left: 4px;
+  bottom: 4px;
+  background-color: white;
+  border-radius: 50%;
+  transition: 0.3s;
+}
+
+.vandel-toggle input:checked + .vandel-toggle-slider {
+  background-color: #4299e1;
+}
+
+.vandel-toggle input:checked + .vandel-toggle-slider:before {
+  transform: translateX(24px);
+}
+
+.vandel-toggle-label {
+  margin-left: 10px;
+  font-weight: 500;
+  color: #4a5568;
+}
+
+/* Input Groups */
+.vandel-input-group {
+  position: relative;
+}
+
+.vandel-input-prefix {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #718096;
+  font-weight: 500;
+}
+
+.vandel-input-group input {
+  padding-left: 30px !important;
+}
+
+/* ===== FILTERS & SEARCH ===== */
+
+.vandel-filters-toolbar {
+  margin-bottom: 20px;
+  padding: 15px;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.vandel-filter-form {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.vandel-filter-group {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  flex-grow: 1;
+}
+
+.vandel-filter-select {
+  padding: 8px 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  font-size: 14px;
+  color: #4a5568;
+  min-width: 150px;
+}
+
+.vandel-search-field {
+  position: relative;
+  flex-grow: 1;
+  max-width: 300px;
+}
+
+.vandel-search-field input {
+  width: 100%;
+  padding: 10px 15px;
+  padding-right: 40px;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  font-size: 14px;
+  color: #4a5568;
+}
+
+.vandel-search-button {
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  width: 40px;
+  color: #718096;
+}
+
+.vandel-search-button:hover {
+  color: #4299e1;
+}
+
+.vandel-filter-actions {
+  display: flex;
+  gap: 10px;
+}
+
+/* ===== PAGINATION ===== */
+
+.vandel-pagination {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 20px;
+}
+
+.vandel-pagination-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 36px;
+  height: 36px;
+  padding: 0 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  background: #fff;
+  color: #4a5568;
+  font-size: 14px;
+  text-decoration: none;
+  transition: all 0.2s ease;
+}
+
+.vandel-pagination-btn:hover {
+  background: #f7fafc;
+  color: #3182ce;
+  border-color: #cbd5e0;
+}
+
+.vandel-pagination-current {
+  background: #ebf8ff;
+  color: #3182ce;
+  border-color: #bee3f8;
+  font-weight: 600;
+}
+
+.vandel-pagination-ellipsis {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  color: #718096;
+}
+
+/* ===== MODALS ===== */
+
+.vandel-modal {
+  display: none;
+  position: fixed;
+  z-index: 1000;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  overflow: auto;
+  background-color: rgba(0, 0, 0, 0.5);
+}
+
+.vandel-modal-content {
+  position: relative;
+  background-color: #fff;
+  margin: 10% auto;
+  padding: 20px;
+  width: 90%;
+  max-width: 600px;
+  border-radius: 10px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+  animation: vandelModalOpen 0.3s ease;
+}
+
+@keyframes vandelModalOpen {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.vandel-modal-close {
+  position: absolute;
+  top: 15px;
+  right: 20px;
+  color: #a0aec0;
+  font-size: 28px;
+  font-weight: 600;
+  cursor: pointer;
+  line-height: 0.8;
+}
+
+.vandel-modal-close:hover {
+  color: #4a5568;
+}
+
+.vandel-booking-header {
+  margin-bottom: 20px;
+  padding-bottom: 15px;
+  border-bottom: 1px solid #e2e8f0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.vandel-booking-header h3 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  color: #2d3748;
+}
+
+.vandel-booking-id {
+  padding: 4px 10px;
+  background: #f7fafc;
+  border-radius: 15px;
+  font-size: 14px;
+  color: #718096;
+  font-weight: 500;
+}
+
+.vandel-booking-info {
+  margin-bottom: 25px;
+}
+
+.vandel-booking-info p {
+  margin: 10px 0;
+  font-size: 14px;
+  color: #4a5568;
+}
+
+.vandel-booking-info p strong {
+  font-weight: 600;
+  color: #2d3748;
+  width: 100px;
+  display: inline-block;
+}
+
+.vandel-booking-actions {
+  display: flex;
+  justify-content: space-between;
+  padding-top: 15px;
+  border-top: 1px solid #e2e8f0;
+}
+
+.vandel-status-actions {
+  display: flex;
+  gap: 8px;
+}
+
+/* ===== EMPTY STATES ===== */
+
+.vandel-empty-state {
+  padding: 40px 20px;
+  text-align: center;
+  background: #fff;
+  border-radius: 10px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.vandel-empty-state .dashicons {
+  font-size: 48px;
+  width: 48px;
+  height: 48px;
+  color: #cbd5e0;
+  margin-bottom: 15px;
+}
+
+.vandel-empty-state p {
+  margin-top: 0;
+  margin-bottom: 20px;
+  color: #718096;
+  font-size: 16px;
+}
+
+.vandel-empty-state-small {
+  padding: 20px;
+  text-align: center;
+  color: #718096;
+}
+
+/* ===== ANALYTICS & CHARTS ===== */
+
+.vandel-analytics-stat-item {
+  padding: 15px;
+  background: #f7fafc;
+  border-radius: 8px;
+  margin-bottom: 15px;
+}
+
+.vandel-analytics-stat-item:last-child {
+  margin-bottom: 0;
+}
+
+.vandel-analytics-stat-item .vandel-stat-label {
+  font-size: 14px;
+  color: #718096;
+  margin-bottom: 5px;
+}
+
+.vandel-analytics-stat-item .vandel-stat-value {
+  font-size: 20px;
+  font-weight: 600;
+  color: #2d3748;
+}
+
+.vandel-stat-growth {
+  font-size: 13px;
+  margin-top: 5px;
+  display: flex;
+  align-items: center;
+}
+
+.vandel-stat-growth.positive {
+  color: #48bb78;
+}
+
+.vandel-stat-growth.negative {
+  color: #f56565;
+}
+
+.vandel-stat-growth .dashicons {
+  font-size: 14px;
+  width: 14px;
+  height: 14px;
+  margin-right: 3px;
+}
+
+/* ===== SETTINGS PAGE ===== */
+
+.vandel-settings-container {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  gap: 25px;
+}
+
+.vandel-settings-nav {
+  background: #fff;
+  border-radius: 10px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+  overflow: hidden;
+}
+
+.vandel-settings-nav ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.vandel-settings-nav li {
+  border-bottom: 1px solid #f0f4f8;
+}
+
+.vandel-settings-nav li:last-child {
+  border-bottom: none;
+}
+
+.vandel-settings-nav a {
+  display: flex;
+  align-items: center;
+  padding: 15px 20px;
+  color: #4a5568;
+  text-decoration: none;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.vandel-settings-nav a:hover {
+  background: #f7fafc;
+  color: #3182ce;
+}
+
+.vandel-settings-nav li.active a {
+  background: #ebf8ff;
+  color: #3182ce;
+  border-left: 3px solid #3182ce;
+  padding-left: 17px;
+}
+
+.vandel-settings-nav .dashicons {
+  margin-right: 10px;
+  font-size: 18px;
+  width: 18px;
+  height: 18px;
+}
+
+.vandel-settings-section {
+  margin-bottom: 30px;
+}
+
+.vandel-settings-section h2 {
+  font-size: 22px;
+  font-weight: 600;
+  margin-top: 0;
+  margin-bottom: 20px;
+  color: #1a202c;
+}
+
+.vandel-settings-intro {
+  margin-bottom: 25px;
+  color: #718096;
+  font-size: 15px;
+}
+
+/* Integration Items */
+.vandel-integrations-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 15px;
+  margin-bottom: 20px;
+}
+
+.vandel-integration-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+}
+
+.vandel-integration-item:hover {
+  border-color: #cbd5e0;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+}
+
+.vandel-integration-content {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.vandel-integration-logo {
+  width: 60px;
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.vandel-integration-info h4 {
+  margin: 0 0 5px 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: #2d3748;
+}
+
+.vandel-integration-info p {
+  margin: 0;
+  font-size: 13px;
+  color: #718096;
+}
+
+.vandel-integration-disclaimer {
+  display: flex;
+  align-items: flex-start;
+  gap: 15px;
+  padding: 15px;
+  background: #f7fafc;
+  border-radius: 8px;
+  margin-top: 25px;
+}
+
+.vandel-disclaimer-icon {
+  color: #4299e1;
+  font-size: 24px;
+}
+
+.vandel-disclaimer-content p {
+  margin: 0;
+  color: #4a5568;
+  font-size: 14px;
+}
+
+/* Feature Detail Box */
+.vandel-feature-detail {
+  display: flex;
+  align-items: flex-start;
+  gap: 15px;
+  padding: 20px;
+  background: #f7fafc;
+  border-radius: 8px;
+  margin-top: 20px;
+}
+
+.vandel-feature-icon {
+  width: 50px;
+  height: 50px;
+  background: #3182ce;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  flex-shrink: 0;
+}
+
+.vandel-feature-icon .dashicons {
+  font-size: 22px;
+  width: 22px;
+  height: 22px;
+}
+
+.vandel-feature-info h4 {
+  margin-top: 0;
+  margin-bottom: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  color: #2d3748;
+}
+
+.vandel-feature-info p {
+  margin-top: 0;
+  margin-bottom: 15px;
+  color: #718096;
+  font-size: 14px;
+}
+
+/* Row Actions */
+.vandel-row-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.vandel-row-actions a {
+  color: #4a5568;
+  text-decoration: none;
+  font-size: 13px;
+}
+
+.vandel-row-actions a:hover {
+  color: #3182ce;
+  text-decoration: underline;
+}
+
+.vandel-row-actions .dashicons {
+  font-size: 18px;
+  width: 18px;
+  height: 18px;
+}
+
+/* ===== CLIENT SPECIFIC STYLES ===== */
+
+.vandel-client-meta-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 20px;
+  margin-bottom: 20px;
+}
+
+.vandel-client-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 15px;
+  margin-bottom: 20px;
+}
+
+.vandel-client-stat-box {
+  background: #f7fafc;
+  padding: 15px;
+  border-radius: 8px;
+  text-align: center;
+}
+
+.vandel-client-stat-value {
+  font-size: 22px;
+  font-weight: 600;
+  color: #2d3748;
+  margin-bottom: 5px;
+}
+
+.vandel-client-stat-label {
+  font-size: 13px;
+  color: #718096;
+}
+
+.vandel-client-notes {
+  background: #f7fafc;
+  padding: 15px;
+  border-radius: 8px;
+  margin-top: 15px;
+  white-space: pre-line;
+  color: #4a5568;
+  font-size: 14px;
+}
+
+/* Status Breakdown */
+.vandel-status-breakdown {
+  margin-top: 25px;
+}
+
+.vandel-status-breakdown h4 {
+  margin-top: 0;
+  margin-bottom: 15px;
+  font-size: 16px;
+  font-weight: 600;
+  color: #2d3748;
+}
+
+.vandel-status-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.vandel-status-bar-container {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.vandel-status-bar-label {
+  width: 100px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #4a5568;
+  display: flex;
+  justify-content: space-between;
+}
+
+.vandel-status-count {
+  color: #718096;
+}
+
+.vandel-status-bar {
+  flex-grow: 1;
+  height: 8px;
+  background-color: #edf2f7;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.vandel-status-bar-fill {
+  height: 100%;
+  border-radius: 4px;
+}
+
+.vandel-status-bar-percent {
+  width: 40px;
+  text-align: right;
+  font-size: 12px;
+  color: #718096;
+}
+
+/* ===== BOOKING DETAILS ===== */
+
+.vandel-booking-details-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 25px;
+  margin-bottom: 20px;
+}
+
+.vandel-booking-main-details {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 20px;
+  margin-bottom: 25px;
+}
+
+.vandel-detail-group {
+  margin-bottom: 15px;
+}
+
+.vandel-detail-label {
+  font-size: 13px;
+  color: #718096;
+  margin-bottom: 5px;
+}
+
+.vandel-detail-value {
+  font-size: 15px;
+  font-weight: 500;
+  color: #2d3748;
+}
+
+.vandel-booking-notes {
+  margin-top: 20px;
+  padding: 15px;
+  background: #f7fafc;
+  border-radius: 8px;
+}
+
+.vandel-booking-notes h4 {
+  margin-top: 0;
+  margin-bottom: 15px;
+  font-size: 16px;
+  font-weight: 600;
+  color: #2d3748;
+}
+
+/* Booking Timeline */
+.vandel-booking-timeline {
+  margin-top: 25px;
+}
+
+.vandel-timeline-item {
+  position: relative;
+  padding-left: 30px;
+  padding-bottom: 25px;
+}
+
+.vandel-timeline-item:last-child {
+  padding-bottom: 0;
+}
+
+.vandel-timeline-item:before {
+  content: "";
+  position: absolute;
+  left: 10px;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: #e2e8f0;
+}
+
+.vandel-timeline-item:last-child:before {
+  height: 25px;
+}
+
+.vandel-timeline-dot {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #4299e1;
+  border: 4px solid #ebf8ff;
+  z-index: 1;
+}
+
+.vandel-timeline-content {
+  background: #f7fafc;
+  padding: 15px;
+  border-radius: 8px;
+}
+
+.vandel-timeline-date {
+  font-size: 12px;
+  color: #718096;
+  margin-bottom: 5px;
+}
+
+.vandel-timeline-title {
+  font-weight: 600;
+  margin-bottom: 8px;
+  color: #2d3748;
+}
+
+.vandel-timeline-description {
+  font-size: 14px;
+  color: #4a5568;
+}
+
+/* ===== IMPORTING & EXPORTING ===== */
+
+.vandel-import-section,
+.vandel-export-section {
+  margin-bottom: 30px;
+}
+
+.vandel-import-section h4,
+.vandel-export-section h4 {
+  margin-top: 0;
+  margin-bottom: 10px;
+  font-size: 16px;
+  font-weight: 600;
+  color: #2d3748;
+}
+
+.vandel-drop-zone {
+  padding: 40px 20px;
+  border: 2px dashed #cbd5e0;
+  border-radius: 8px;
+  text-align: center;
+  background: #f7fafc;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-bottom: 20px;
+}
+
+.vandel-drop-zone:hover,
+.vandel-drop-zone.drag-over {
+  border-color: #4299e1;
+  background: #ebf8ff;
+}
+
+.vandel-drop-zone-icon {
+  font-size: 36px;
+  color: #a0aec0;
+  margin-bottom: 15px;
+}
+
+.vandel-drop-zone:hover .vandel-drop-zone-icon,
+.vandel-drop-zone.drag-over .vandel-drop-zone-icon {
+  color: #4299e1;
+}
+
+.vandel-drop-zone-text {
+  margin-bottom: 15px;
+  color: #4a5568;
+  font-size: 16px;
+}
+
+.vandel-file-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  border: 0;
+}
+
+.vandel-selected-file {
+  display: none;
+  padding: 12px 15px;
+  background: #ebf8ff;
+  border: 1px solid #bee3f8;
+  border-radius: 8px;
+  margin-bottom: 20px;
+}
+
+.vandel-selected-file.visible {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.vandel-selected-file-name {
+  font-weight: 500;
+  color: #3182ce;
+}
+
+.vandel-selected-file-remove {
+  cursor: pointer;
+  color: #e53e3e;
+}
+
+.vandel-import-results {
+  margin-top: 30px;
+  padding: 20px;
+  background: #f7fafc;
+  border-radius: 8px;
+  border-left: 4px solid #48bb78;
+}
+
+.vandel-import-results h3 {
+  margin-top: 0;
+  margin-bottom: 20px;
+  font-size: 18px;
+  font-weight: 600;
+  color: #2d3748;
+}
+
+.vandel-import-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 15px;
+  margin-bottom: 20px;
+}
+
+.vandel-import-stat-item {
+  background: #fff;
+  padding: 15px;
+  border-radius: 8px;
+  text-align: center;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.vandel-import-stat-value {
+  font-size: 24px;
+  font-weight: 600;
+  color: #2d3748;
+  margin-bottom: 5px;
+}
+
+.vandel-import-stat-label {
+  font-size: 13px;
+  color: #718096;
+}
+
+.vandel-import-errors {
+  margin-top: 20px;
+  padding: 15px;
+  background: #fff;
+  border-radius: 8px;
+  border-left: 4px solid #f56565;
+}
+
+.vandel-import-errors h4 {
+  margin-top: 0;
+  margin-bottom: 15px;
+  font-size: 16px;
+  font-weight: 600;
+  color: #e53e3e;
+}
+
+.vandel-error-list {
+  margin: 0;
+  padding-left: 20px;
+  color: #718096;
+}
+
+.vandel-error-list li {
+  margin-bottom: 5px;
+}
+
+/* ===== WELCOME SECTION ===== */
+
+.vandel-dashboard-welcome {
+  background: linear-gradient(135deg, #3182ce 0%, #1a365d 100%);
+  border-radius: 10px;
+  margin-bottom: 25px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+}
+
+/* ===== QUICK ACTION BUTTONS ===== */
+
+.vandel-quick-action-buttons {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 15px;
+  margin-bottom: 25px;
+}
+
+.vandel-quick-action-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 20px 15px;
+  text-align: center;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+  color: #4a5568;
+  text-decoration: none;
+  transition: all 0.2s ease;
+}
+
+.vandel-quick-action-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  color: #3182ce;
+}
+
+.vandel-quick-action-btn .dashicons {
+  font-size: 28px;
+  width: 28px;
+  height: 28px;
+  margin-bottom: 10px;
+  color: #4299e1;
+}
+
+.vandel-quick-action-label {
+  font-weight: 500;
+  font-size: 14px;
+}
+
+/* ===== RESPONSIVE STYLES ===== */
+
+@media (max-width: 1200px) {
+  .vandel-dashboard-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .vandel-stat-cards,
+  .vandel-status-summary {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .vandel-booking-details-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .vandel-analytics-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .vandel-client-stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .vandel-import-stats {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 782px) {
+  .vandel-dashboard-header {
+    flex-direction: column;
+    gap: 15px;
+    text-align: center;
+  }
+
+  .vandel-settings-container {
+    grid-template-columns: 1fr;
+  }
+
+  .vandel-settings-nav ul {
+    display: flex;
+    overflow-x: auto;
+    padding-bottom: 5px;
+  }
+
+  .vandel-settings-nav li {
+    flex-shrink: 0;
+    border-bottom: none;
+    border-right: 1px solid #f0f4f8;
+  }
+
+  .vandel-settings-nav li:last-child {
+    border-right: none;
+  }
+
+  .vandel-settings-nav li.active a {
+    border-left: none;
+    border-bottom: 3px solid #3182ce;
+    padding-left: 20px;
+    padding-bottom: 12px;
+  }
+
+  .vandel-client-meta-grid,
+  .vandel-booking-main-details {
+    grid-template-columns: 1fr;
+  }
+
+  .vandel-filter-form {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .vandel-filter-group {
+    width: 100%;
+  }
+
+  .vandel-search-field {
+    width: 100%;
+    max-width: none;
+  }
+
+  .vandel-quick-action-buttons {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 600px) {
+  .vandel-stat-cards,
+  .vandel-status-summary,
+  .vandel-client-stats-grid,
+  .vandel-import-stats {
+    grid-template-columns: 1fr;
+  }
+
+  .vandel-tabs-navigation a {
+    padding: 10px 15px;
+  }
+
+  .vandel-tabs-navigation .dashicons {
+    margin-right: 5px;
+  }
+
+  .vandel-quick-actions {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .vandel-action-button {
+    width: 100%;
+  }
+}
+
+/* ===== CUSTOM THEME COLOR VARIABLES ===== */
+
+:root {
+  --vandel-primary-color: #3182ce;
+  --vandel-primary-dark: #2c5282;
+  --vandel-primary-light: #ebf8ff;
+  --vandel-success-color: #48bb78;
+  --vandel-warning-color: #f6ad55;
+  --vandel-danger-color: #f56565;
+  --vandel-info-color: #4299e1;
+}
+
+/* Apply theme color wherever appropriate */
+.button-primary.vandel-action-button,
+.vandel-toggle input:checked + .vandel-toggle-slider,
+.fc-theme-standard .fc-button-primary,
+.vandel-timeline-dot {
+  background-color: var(--vandel-primary-color);
+  border-color: var(--vandel-primary-color);
+}
+
+.vandel-tabs-navigation a.active,
+.vandel-view-all,
+.vandel-data-table a,
+.vandel-booking-id a {
+  color: var(--vandel-primary-color);
+}
+
+.vandel-tabs-navigation a.active {
+  border-bottom-color: var(--vandel-primary-color);
+}
+
+.vandel-form-row input:focus,
+.vandel-form-row select:focus,
+.vandel-form-row textarea:focus {
+  border-color: var(--vandel-primary-color);
+  box-shadow: 0 0 0 2px rgba(49, 130, 206, 0.2);
+}
+
+/* Optional animation for a polished feel */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.vandel-tab-content {
+  animation: fadeIn 0.3s ease;
+}
+grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 25px;
+  margin-bottom: 25px;
+}
+
+.vandel-analytics-chart-container {
+  background: #fff;
+  border-radius: 10px;
+  padding: 20px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+}
+
+.vandel-analytics-chart-container h4 {
+  margin-top: 0;
+  margin-bottom: 20px;
+  text-align: center;
+  font-size: 16px;
+  font-weight: 600;
+  color: #2d3748;
+}
+
+.vandel-chart-wrapper {
+  height: 300px;
+  position: relative;
+}
+
+.vandel-analytics-stats {
+  background: #fff;
+  border-radius: 10px;
+  padding: 20px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+}
+
+.vandel-analytics-stats h4 {
+  margin-top: 0;
+  margin-bottom: 20px;
+  text-align: center;
+  font-size: 16px;
+  font-weight: 600;
+  color: #2d3748;
+}
+
+.vandel-analytics-stat-item {
+  padding: 15px;
+  background: #f7fafc;
+  border-radius: 8px;
+  margin-bottom: 15px;
+}
