@@ -137,7 +137,190 @@ class ClientDetails {
             exit;
         }
     }
+
+
+/**
+ * Render booking details with improved layout
+ * 
+ * @param object $booking Booking object
+ */
+private function render_booking_details($booking) {
+    $service = get_post($booking->service);
+    $service_name = $service ? $service->post_title : __('Unknown Service', 'vandel-booking');
+    $notes = $this->get_booking_notes($booking->id);
     
+    ?>
+    <div class="vandel-booking-details-grid">
+        <div class="vandel-grid-col">
+            <div class="vandel-card">
+                <div class="vandel-card-header vandel-flex-header">
+                    <h3><?php _e('Booking Information', 'vandel-booking'); ?></h3>
+                    <span class="vandel-status-badge vandel-status-badge-<?php echo esc_attr($booking->status); ?>">
+                        <?php echo ucfirst($booking->status); ?>
+                    </span>
+                </div>
+                <div class="vandel-card-body">
+                    <div class="vandel-booking-main-details">
+                        <div class="vandel-detail-group">
+                            <div class="vandel-detail-label"><?php _e('Booking ID', 'vandel-booking'); ?></div>
+                            <div class="vandel-detail-value">#<?php echo esc_html($booking->id); ?></div>
+                        </div>
+                        
+                        <div class="vandel-detail-group">
+                            <div class="vandel-detail-label"><?php _e('Created On', 'vandel-booking'); ?></div>
+                            <div class="vandel-detail-value"><?php echo date_i18n(get_option('date_format') . ' ' . get_option('time_format'), strtotime($booking->created_at)); ?></div>
+                        </div>
+                        
+                        <div class="vandel-detail-group">
+                            <div class="vandel-detail-label"><?php _e('Service', 'vandel-booking'); ?></div>
+                            <div class="vandel-detail-value"><?php echo esc_html($service_name); ?></div>
+                        </div>
+                        
+                        <div class="vandel-detail-group">
+                            <div class="vandel-detail-label"><?php _e('Booking Date', 'vandel-booking'); ?></div>
+                            <div class="vandel-detail-value"><?php echo date_i18n(get_option('date_format') . ' ' . get_option('time_format'), strtotime($booking->booking_date)); ?></div>
+                        </div>
+                        
+                        <div class="vandel-detail-group">
+                            <div class="vandel-detail-label"><?php _e('Total Price', 'vandel-booking'); ?></div>
+                            <div class="vandel-detail-value"><?php echo \VandelBooking\Helpers::formatPrice($booking->total_price); ?></div>
+                        </div>
+                    </div>
+                    
+                    <?php if (!empty($booking->access_info)): ?>
+                    <div class="vandel-detail-group">
+                        <div class="vandel-detail-label"><?php _e('Access Information', 'vandel-booking'); ?></div>
+                        <div class="vandel-detail-value"><?php echo nl2br(esc_html($booking->access_info)); ?></div>
+                    </div>
+                    <?php endif; ?>
+                    
+                    <!-- Booking timeline -->
+                    <div class="vandel-booking-timeline">
+                        <h4><?php _e('Booking History', 'vandel-booking'); ?></h4>
+                        <div class="vandel-timeline-item">
+                            <div class="vandel-timeline-dot"></div>
+                            <div class="vandel-timeline-content">
+                                <div class="vandel-timeline-date"><?php echo date_i18n(get_option('date_format') . ' ' . get_option('time_format'), strtotime($booking->created_at)); ?></div>
+                                <div class="vandel-timeline-title"><?php _e('Booking Created', 'vandel-booking'); ?></div>
+                                <div class="vandel-timeline-description">
+                                    <?php echo sprintf(__('Booking was created with status: %s', 'vandel-booking'), '<strong>' . ucfirst($booking->status) . '</strong>'); ?>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <?php foreach ($notes as $note): ?>
+                        <div class="vandel-timeline-item">
+                            <div class="vandel-timeline-dot"></div>
+                            <div class="vandel-timeline-content">
+                                <div class="vandel-timeline-date"><?php echo date_i18n(get_option('date_format') . ' ' . get_option('time_format'), strtotime($note->created_at)); ?></div>
+                                <div class="vandel-timeline-title">
+                                    <?php echo $note->user_name ? esc_html($note->user_name) : __('System', 'vandel-booking'); ?>
+                                </div>
+                                <div class="vandel-timeline-description">
+                                    <?php echo nl2br(esc_html($note->note_content)); ?>
+                                </div>
+                            </div>
+                        </div>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="vandel-grid-col">
+            <!-- Client Information -->
+            <div class="vandel-card">
+                <div class="vandel-card-header">
+                    <h3><?php _e('Client Information', 'vandel-booking'); ?></h3>
+                </div>
+                <div class="vandel-card-body">
+                    <div class="vandel-detail-group">
+                        <div class="vandel-detail-label"><?php _e('Name', 'vandel-booking'); ?></div>
+                        <div class="vandel-detail-value"><?php echo esc_html($booking->customer_name); ?></div>
+                    </div>
+                    
+                    <div class="vandel-detail-group">
+                        <div class="vandel-detail-label"><?php _e('Email', 'vandel-booking'); ?></div>
+                        <div class="vandel-detail-value">
+                            <a href="mailto:<?php echo esc_attr($booking->customer_email); ?>"><?php echo esc_html($booking->customer_email); ?></a>
+                        </div>
+                    </div>
+                    
+                    <?php if (!empty($booking->phone)): ?>
+                    <div class="vandel-detail-group">
+                        <div class="vandel-detail-label"><?php _e('Phone', 'vandel-booking'); ?></div>
+                        <div class="vandel-detail-value">
+                            <a href="tel:<?php echo esc_attr($booking->phone); ?>"><?php echo esc_html($booking->phone); ?></a>
+                        </div>
+                    </div>
+                    <?php endif; ?>
+                    
+                    <?php if ($booking->client_id > 0): ?>
+                    <div class="vandel-detail-group">
+                        <a href="<?php echo admin_url('admin.php?page=vandel-dashboard&tab=client-details&client_id=' . $booking->client_id); ?>" class="button">
+                            <span class="dashicons dashicons-admin-users"></span> <?php _e('View Full Client Profile', 'vandel-booking'); ?>
+                        </a>
+                    </div>
+                    <?php endif; ?>
+                </div>
+            </div>
+            
+            <!-- Add Note -->
+            <div class="vandel-card">
+                <div class="vandel-card-header">
+                    <h3><?php _e('Add Note', 'vandel-booking'); ?></h3>
+                </div>
+                <div class="vandel-card-body">
+                    <form method="post" action="">
+                        <?php wp_nonce_field('add_booking_note', 'booking_note_nonce'); ?>
+                        <input type="hidden" name="booking_id" value="<?php echo esc_attr($booking->id); ?>">
+                        
+                        <div class="vandel-form-row">
+                            <label for="note_content"><?php _e('Note', 'vandel-booking'); ?></label>
+                            <textarea id="note_content" name="note_content" rows="4" class="widefat" required></textarea>
+                        </div>
+                        
+                        <div class="vandel-form-actions">
+                            <button type="submit" name="add_booking_note" class="button button-primary">
+                                <?php _e('Add Note', 'vandel-booking'); ?>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            
+            <!-- Actions -->
+            <div class="vandel-card">
+                <div class="vandel-card-header">
+                    <h3><?php _e('Booking Actions', 'vandel-booking'); ?></h3>
+                </div>
+                <div class="vandel-card-body">
+                    <div class="vandel-action-buttons">
+                        <?php if ($booking->status !== 'confirmed'): ?>
+                        <a href="<?php echo wp_nonce_url(admin_url('admin.php?page=vandel-dashboard&tab=booking-details&booking_id=' . $booking->id . '&action=approve'), 'approve_booking_' . $booking->id); ?>" class="button button-primary" style="margin-right: 10px;">
+                            <span class="dashicons dashicons-yes"></span> <?php _e('Confirm Booking', 'vandel-booking'); ?>
+                        </a>
+                        <?php endif; ?>
+                        
+                        <?php if ($booking->status !== 'completed'): ?>
+                        <a href="<?php echo wp_nonce_url(admin_url('admin.php?page=vandel-dashboard&tab=booking-details&booking_id=' . $booking->id . '&action=complete'), 'complete_booking_' . $booking->id); ?>" class="button" style="margin-right: 10px;">
+                            <span class="dashicons dashicons-saved"></span> <?php _e('Mark as Completed', 'vandel-booking'); ?>
+                        </a>
+                        <?php endif; ?>
+                        
+                        <?php if ($booking->status !== 'canceled'): ?>
+                        <a href="<?php echo wp_nonce_url(admin_url('admin.php?page=vandel-dashboard&tab=booking-details&booking_id=' . $booking->id . '&action=cancel'), 'cancel_booking_' . $booking->id); ?>" class="button button-link-delete" onclick="return confirm('<?php esc_attr_e('Are you sure you want to cancel this booking?', 'vandel-booking'); ?>');">
+                            <span class="dashicons dashicons-dismiss"></span> <?php _e('Cancel Booking', 'vandel-booking'); ?>
+                        </a>
+                        <?php endif; ?>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <?php
+}
+
     /**
      * Handle client deletion
      * 
