@@ -1885,7 +1885,10 @@
   background-color: var(--vandel-primary-color);
   border-color: var(--vandel-primary-color);
 }
-
+.vandel-dashboard-container a:focus {
+  outline: none !important;
+  box-shadow: none !important;
+}
 .vandel-tabs-navigation a.active,
 .vandel-view-all,
 .vandel-data-table a,

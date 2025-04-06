@@ -456,7 +456,6 @@ class Bookings_Tab implements Tab_Interface {
                         </a>
                     </div>
                 </div>
-                <h1>ALOOOO</h1>
                 <div class="vandel-card-body">
                     <!-- Filters -->
                     <div class="vandel-filters-toolbar">
