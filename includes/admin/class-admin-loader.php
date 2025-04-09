@@ -59,6 +59,10 @@ class AdminLoader {
      * Register admin menu
      */
     public function registerMenu() {
+        // Check if we should register this menu
+        if (!apply_filters('vandel_should_register_menu', true)) {
+            return;
+        }
         add_menu_page(
             __('Vandel Dashboard', 'vandel-booking'),
             __('Vandel Booking', 'vandel-booking'),
@@ -222,12 +226,12 @@ private function printDebugInfo() {
         if ($hook === 'toplevel_page_vandel-dashboard' || 
             strpos($hook, 'page_vandel-dashboard') !== false) {
             
-            wp_enqueue_style(
-                'vandel-admin-styles',
-                VANDEL_PLUGIN_URL . 'assets/css/admin-style.css',
-                [],
-                VANDEL_VERSION
-            );
+            // wp_enqueue_style(
+            //     'vandel-admin-styles',
+            //     VANDEL_PLUGIN_URL . 'assets/css/admin-style.css',
+            //     [],
+            //     VANDEL_VERSION
+            // );
             
             wp_enqueue_script(
                 'vandel-admin-script',

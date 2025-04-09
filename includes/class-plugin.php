@@ -105,6 +105,116 @@ class Plugin {
         // Add actions to load components
         add_action('plugins_loaded', [$this, 'loadComponents'], 10); // Lower priority than initial load
         add_action('init', [$this, 'initAjaxHandler']);
+        
+        // Add hook to ensure dashboard tabs are properly registered
+        add_action('admin_menu', [$this, 'ensureDashboardTabs'], 999);
+    }
+    
+    /**
+     * Ensure all dashboard tabs (submenu pages) are registered
+     */
+    public function ensureDashboardTabs() {
+        // Only run if we're in admin
+        if (!is_admin()) {
+            return;
+        }
+        
+        global $submenu;
+        
+        // Check if our main menu exists and has submenus
+        if (!isset($submenu['vandel-dashboard']) || empty($submenu['vandel-dashboard'])) {
+            // If no submenu exists, let's add some default tabs
+            $this->registerDefaultDashboardTabs();
+        }
+    }
+    
+    /**
+     * Register default dashboard tabs as submenu items
+     */
+    private function registerDefaultDashboardTabs() {
+        // Only register if main menu exists
+        global $menu;
+        $main_menu_exists = false;
+        foreach ($menu as $item) {
+            if (isset($item[2]) && $item[2] === 'vandel-dashboard') {
+                $main_menu_exists = true;
+                break;
+            }
+        }
+        
+        if (!$main_menu_exists) {
+            // Register the main menu if it doesn't exist
+            add_menu_page(
+                __('Vandel Dashboard', 'vandel-booking'),
+                __('Vandel Booking', 'vandel-booking'),
+                'manage_options',
+                'vandel-dashboard',
+                function() {
+                    // Determine which tab to load
+                    $tab = isset($_GET['tab']) ? sanitize_key($_GET['tab']) : 'overview';
+                    do_action('vandel_dashboard_render_tab', $tab);
+                },
+                'dashicons-calendar-alt',
+                26
+            );
+        }
+        
+        // Register default submenu items
+        add_submenu_page(
+            'vandel-dashboard', 
+            __('Dashboard', 'vandel-booking'), 
+            __('Overview', 'vandel-booking'), 
+            'manage_options', 
+            'vandel-dashboard', 
+            function() {
+                do_action('vandel_dashboard_render_tab', 'overview');
+            }
+        );
+        
+        add_submenu_page(
+            'vandel-dashboard', 
+            __('Bookings', 'vandel-booking'), 
+            __('Bookings', 'vandel-booking'), 
+            'manage_options', 
+            'admin.php?page=vandel-dashboard&tab=bookings', 
+            ''
+        );
+        
+        add_submenu_page(
+            'vandel-dashboard', 
+            __('Clients', 'vandel-booking'), 
+            __('Clients', 'vandel-booking'), 
+            'manage_options', 
+            'admin.php?page=vandel-dashboard&tab=clients', 
+            ''
+        );
+        
+        add_submenu_page(
+            'vandel-dashboard', 
+            __('Analytics', 'vandel-booking'), 
+            __('Analytics', 'vandel-booking'), 
+            'manage_options', 
+            'admin.php?page=vandel-dashboard&tab=analytics', 
+            ''
+        );
+        
+        add_submenu_page(
+            'vandel-dashboard', 
+            __('Calendar', 'vandel-booking'), 
+            __('Calendar', 'vandel-booking'), 
+            'manage_options', 
+            'admin.php?page=vandel-dashboard&tab=calendar', 
+            ''
+        );
+        
+        add_submenu_page(
+            'vandel-dashboard', 
+            __('Settings', 'vandel-booking'), 
+            __('Settings', 'vandel-booking'), 
+            'manage_options', 
+            'admin.php?page=vandel-dashboard&tab=settings', 
+            ''
+        );
     }
     
     /**
@@ -254,14 +364,28 @@ class Plugin {
     private function loadAdminComponents() {
         $loaded_components = [];
         
-        // Only load if not already loaded
-        if (!in_array('AdminLoader', $this->loaded_components)) {
-            // Load AdminLoader
-            if (class_exists('\\VandelBooking\\Admin\\AdminLoader')) {
-                new \VandelBooking\Admin\AdminLoader();
-                $loaded_components[] = 'AdminLoader';
-            } else {
-                // Try to include and instantiate AdminLoader
+        // IMPORTANT: Choose one primary dashboard controller
+        // We'll prefer Dashboard_Controller since it has the tab structure
+        if (class_exists('\\VandelBooking\\Admin\\Dashboard_Controller')) {
+            new \VandelBooking\Admin\Dashboard_Controller();
+            $loaded_components[] = 'Dashboard_Controller';
+        } 
+        elseif (class_exists('\\VandelBooking\\Admin\\AdminLoader')) {
+            new \VandelBooking\Admin\AdminLoader();
+            $loaded_components[] = 'AdminLoader';
+        }
+        else {
+            // Try to load Dashboard_Controller
+            $controller_file = VANDEL_PLUGIN_DIR . 'includes/admin/dashboard/class-dashboard-controller.php';
+            if (file_exists($controller_file)) {
+                require_once $controller_file;
+                if (class_exists('\\VandelBooking\\Admin\\Dashboard_Controller')) {
+                    new \VandelBooking\Admin\Dashboard_Controller();
+                    $loaded_components[] = 'Dashboard_Controller';
+                }
+            } 
+            else {
+                // Try to load AdminLoader as fallback
                 $admin_loader_file = VANDEL_PLUGIN_DIR . 'includes/admin/class-admin-loader.php';
                 if (file_exists($admin_loader_file)) {
                     require_once $admin_loader_file;
@@ -273,18 +397,11 @@ class Plugin {
             }
         }
         
-        // Only load if not already loaded
-        if (!in_array('Dashboard', $this->loaded_components)) {
-            // Load Dashboard
-            if (class_exists('\\VandelBooking\\Admin\\Dashboard')) {
-                new \VandelBooking\Admin\Dashboard();
-                $loaded_components[] = 'Dashboard';
-            }
-        }
+        // Load individual dashboard tab classes
+        $this->loadDashboardTabs();
         
-        // Load ZIP Code components if feature is enabled and not already loaded
-        if (get_option('vandel_enable_zip_code_feature', 'no') === 'yes' && 
-            !in_array('ZipCodeAjaxHandler', $this->loaded_components)) {
+        // Load ZIP Code components if feature is enabled
+        if (get_option('vandel_enable_zip_code_feature', 'no') === 'yes') {
             // Load ZIP Code Handler if exists
             if (class_exists('\\VandelBooking\\Admin\\ZipCodeAjaxHandler')) {
                 new \VandelBooking\Admin\ZipCodeAjaxHandler();
@@ -311,6 +428,71 @@ class Plugin {
         }
         
         return $loaded_components;
+    }
+    
+    /**
+     * Load dashboard tab components
+     */
+    private function loadDashboardTabs() {
+        // Try to load all possible dashboard tab classes
+        $tab_files = [
+            'admin/dashboard/class-tab-interface.php',
+            'admin/dashboard/class-overview-tab.php',
+            'admin/dashboard/class-bookings-tab.php',
+            'admin/dashboard/class-clients-tab.php',
+            'admin/dashboard/class-analytics-tab.php',
+            'admin/dashboard/class-calendar-tab.php',
+            'admin/dashboard/class-settings-tab.php',
+        ];
+        
+        foreach ($tab_files as $file) {
+            $file_path = VANDEL_PLUGIN_DIR . 'includes/' . $file;
+            if (file_exists($file_path)) {
+                require_once $file_path;
+            }
+        }
+        
+        // Initialize tab handler to render content based on current tab
+        add_action('vandel_dashboard_render_tab', function($tab) {
+            switch ($tab) {
+                case 'overview':
+                    if (class_exists('\\VandelBooking\\Admin\\Dashboard\\Overview_Tab')) {
+                        $overview_tab = new \VandelBooking\Admin\Dashboard\Overview_Tab();
+                        $overview_tab->render();
+                    }
+                    break;
+                case 'bookings':
+                    if (class_exists('\\VandelBooking\\Admin\\Dashboard\\Bookings_Tab')) {
+                        $bookings_tab = new \VandelBooking\Admin\Dashboard\Bookings_Tab();
+                        $bookings_tab->render();
+                    }
+                    break;
+                case 'clients':
+                    if (class_exists('\\VandelBooking\\Admin\\Dashboard\\Clients_Tab')) {
+                        $clients_tab = new \VandelBooking\Admin\Dashboard\Clients_Tab();
+                        $clients_tab->render();
+                    }
+                    break;
+                case 'analytics':
+                    if (class_exists('\\VandelBooking\\Admin\\Dashboard\\Analytics_Tab')) {
+                        $analytics_tab = new \VandelBooking\Admin\Dashboard\Analytics_Tab();
+                        $analytics_tab->render();
+                    }
+                    break;
+                case 'calendar':
+                    if (class_exists('\\VandelBooking\\Admin\\Dashboard\\Calendar_Tab')) {
+                        $calendar_tab = new \VandelBooking\Admin\Dashboard\Calendar_Tab();
+                        $calendar_tab->render();
+                    }
+                    break;
+                case 'settings':
+                    if (class_exists('\\VandelBooking\\Admin\\Dashboard\\Settings_Tab')) {
+                        $settings_tab = new \VandelBooking\Admin\Dashboard\Settings_Tab();
+                        $settings_tab->render();
+                    }
+                    break;
+            }
+        });
     }
     
     /**

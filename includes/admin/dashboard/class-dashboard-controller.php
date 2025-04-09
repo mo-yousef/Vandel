@@ -31,6 +31,10 @@ class Dashboard_Controller {
      * Register admin menu page
      */
     public function register_admin_menu() {
+        // Check if we should register this menu
+        if (!apply_filters('vandel_should_register_menu', true)) {
+            return;
+        }
         add_menu_page(
             __('Vandel Booking', 'vandel-booking'),
             __('Vandel Booking', 'vandel-booking'),
@@ -41,7 +45,7 @@ class Dashboard_Controller {
             30
         );
     }
-    
+
     /**
      * Initialize dashboard tabs
      */
@@ -261,7 +265,7 @@ class Dashboard_Controller {
                 $booking_details->render($booking_id);
                 return;
             }
-        }
+        } 
         
         // Fallback view if the class doesn't exist
         echo '<div id="booking-details" class="vandel-tab-content">';

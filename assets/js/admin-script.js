@@ -218,3 +218,382 @@
     return re.test(String(email).toLowerCase());
   }
 })(jQuery);
+/*=======================================================================================
+=======================================================================================
+=======================================================================================
+=======================================================================================
+=======================================================================================
+=======================================================================================
+=======================================================================================
+=======================================================================================
+=======================================================================================
+======================================================================================= */
+/**
+ * Vandel Booking - Enhanced Dashboard JavaScript
+ *
+ * This script improves the dashboard UX, client management, and booking tracking.
+ */
+(function ($) {
+  "use strict";
+
+  // Initialize when DOM is ready
+  $(document).ready(function () {
+    initDashboardEnhancements();
+    initClientManagement();
+    initBookingTracker();
+    initCalendarIntegration();
+    initQuickActions();
+  });
+
+  /**
+   * Dashboard enhancements
+   */
+  function initDashboardEnhancements() {
+    // Add card hover effects
+    $(".vandel-card").hover(
+      function () {
+        $(this).css("transform", "translateY(-5px)");
+      },
+      function () {
+        $(this).css("transform", "translateY(0)");
+      }
+    );
+
+    // Toggle sections
+    $(".vandel-section-toggle").on("click", function () {
+      $($(this).data("target")).slideToggle(200);
+      $(this)
+        .find(".dashicons")
+        .toggleClass("dashicons-arrow-down dashicons-arrow-up");
+    });
+
+    // Remember active tab
+    $(".vandel-tab-link").on("click", function () {
+      localStorage.setItem("vandelActiveTab", $(this).attr("href"));
+    });
+
+    // Load active tab from local storage if available
+    const savedTab = localStorage.getItem("vandelActiveTab");
+    if (savedTab) {
+      $(`a[href="${savedTab}"]`).tab("show");
+    }
+  }
+
+  /**
+   * Client management enhancements
+   */
+  function initClientManagement() {
+    // Quick client search
+    $("#client-quick-search").on("keyup", function () {
+      const searchTerm = $(this).val().toLowerCase();
+      $(".vandel-client-item").each(function () {
+        const clientData = $(this).text().toLowerCase();
+        $(this).toggle(clientData.indexOf(searchTerm) > -1);
+      });
+    });
+
+    // Client notes handling
+    const $clientNotes = $("#client-notes");
+    const $noteForm = $("#add-client-note-form");
+
+    if ($noteForm.length) {
+      $noteForm.on("submit", function (e) {
+        e.preventDefault();
+
+        const noteText = $("#note-text").val().trim();
+        if (!noteText) return;
+
+        const clientId = $(this).data("client-id");
+
+        // Show loading state
+        $(this).find("button").prop("disabled", true);
+
+        // Send AJAX request to save note
+        $.ajax({
+          url: vandelAdmin.ajaxUrl,
+          type: "POST",
+          data: {
+            action: "vandel_add_client_note",
+            client_id: clientId,
+            note: noteText,
+            nonce: vandelAdmin.nonce,
+          },
+          success: function (response) {
+            if (response.success) {
+              // Add note to the list
+              const date = new Date().toLocaleString();
+              const noteHtml = `
+                                <div class="vandel-note-item">
+                                    <div class="vandel-note-header">
+                                        <span class="vandel-note-date">${date}</span>
+                                        <span class="vandel-note-user">${vandelAdmin.currentUser}</span>
+                                    </div>
+                                    <div class="vandel-note-content">${noteText}</div>
+                                </div>
+                            `;
+              $clientNotes.prepend(noteHtml);
+
+              // Clear form
+              $("#note-text").val("");
+            } else {
+              alert(response.data.message || "Failed to add note");
+            }
+          },
+          error: function () {
+            alert("Failed to add note. Please try again.");
+          },
+          complete: function () {
+            $noteForm.find("button").prop("disabled", false);
+          },
+        });
+      });
+    }
+
+    // Client data chart initialization
+    if ($("#client-booking-chart").length) {
+      const ctx = document
+        .getElementById("client-booking-chart")
+        .getContext("2d");
+      new Chart(ctx, {
+        type: "line",
+        data: {
+          labels: vandelAdmin.clientData.labels,
+          datasets: [
+            {
+              label: "Bookings",
+              data: vandelAdmin.clientData.bookings,
+              borderColor: "#3498db",
+              backgroundColor: "rgba(52, 152, 219, 0.1)",
+              tension: 0.4,
+              fill: true,
+            },
+          ],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            y: {
+              beginAtZero: true,
+              precision: 0,
+            },
+          },
+        },
+      });
+    }
+  }
+
+  /**
+   * Booking tracker enhancements
+   */
+  function initBookingTracker() {
+    // Status change handling
+    $(".vandel-booking-status-select").on("change", function () {
+      const bookingId = $(this).data("booking-id");
+      const newStatus = $(this).val();
+
+      if (!confirm(`Change booking #${bookingId} status to ${newStatus}?`)) {
+        // Reset to previous value if user cancels
+        $(this).val($(this).data("original-value"));
+        return;
+      }
+
+      // Send AJAX request to update status
+      $.ajax({
+        url: vandelAdmin.ajaxUrl,
+        type: "POST",
+        data: {
+          action: "vandel_update_booking_status",
+          booking_id: bookingId,
+          status: newStatus,
+          nonce: vandelAdmin.nonce,
+        },
+        success: function (response) {
+          if (response.success) {
+            // Update data attribute
+            $(this).data("original-value", newStatus);
+
+            // Visual feedback
+            const $row = $(this).closest("tr");
+            $row.addClass("status-changed");
+            setTimeout(() => {
+              $row.removeClass("status-changed");
+            }, 1500);
+          } else {
+            alert(response.data.message || "Failed to update status");
+            // Reset to original value
+            $(this).val($(this).data("original-value"));
+          }
+        },
+        error: function () {
+          alert("Failed to update booking status");
+          // Reset to original value
+          $(this).val($(this).data("original-value"));
+        },
+      });
+    });
+
+    // Batch booking actions
+    $("#vandel-batch-action-btn").on("click", function () {
+      const selectedAction = $("#vandel-batch-action").val();
+      const selectedBookings = $('input[name="booking_ids[]"]:checked')
+        .map(function () {
+          return $(this).val();
+        })
+        .get();
+
+      if (!selectedAction || selectedBookings.length === 0) {
+        alert("Please select an action and at least one booking");
+        return;
+      }
+
+      if (
+        !confirm(
+          `Apply "${selectedAction}" to ${selectedBookings.length} selected bookings?`
+        )
+      ) {
+        return;
+      }
+
+      // Perform batch action via AJAX
+      $.ajax({
+        url: vandelAdmin.ajaxUrl,
+        type: "POST",
+        data: {
+          action: "vandel_batch_booking_action",
+          booking_ids: selectedBookings,
+          batch_action: selectedAction,
+          nonce: vandelAdmin.nonce,
+        },
+        success: function (response) {
+          if (response.success) {
+            alert(`${response.data.count} bookings updated successfully`);
+            window.location.reload();
+          } else {
+            alert(response.data.message || "Failed to process batch action");
+          }
+        },
+        error: function () {
+          alert("Failed to process batch action");
+        },
+      });
+    });
+  }
+
+  /**
+   * Calendar integration enhancements
+   */
+  function initCalendarIntegration() {
+    if ($("#vandel-calendar").length === 0) return;
+
+    // Initialize FullCalendar
+    const calendar = new FullCalendar.Calendar(
+      document.getElementById("vandel-calendar"),
+      {
+        initialView: "dayGridMonth",
+        headerToolbar: {
+          left: "prev,next today",
+          center: "title",
+          right: "dayGridMonth,timeGridWeek,timeGridDay",
+        },
+        events:
+          vandelAdmin.ajaxUrl +
+          "?action=vandel_get_calendar_events&nonce=" +
+          vandelAdmin.nonce,
+        eventClick: function (info) {
+          showBookingDetails(info.event.id);
+        },
+        eventDidMount: function (info) {
+          $(info.el).tooltip({
+            title: info.event.extendedProps.description,
+            placement: "top",
+            trigger: "hover",
+            container: "body",
+          });
+        },
+      }
+    );
+
+    calendar.render();
+
+    function showBookingDetails(bookingId) {
+      // Show loading state
+      $("#vandel-booking-modal .modal-body").html(
+        '<div class="text-center"><div class="spinner-border" role="status"></div><p>Loading booking details...</p></div>'
+      );
+      $("#vandel-booking-modal").modal("show");
+
+      // Fetch booking details via AJAX
+      $.ajax({
+        url: vandelAdmin.ajaxUrl,
+        type: "POST",
+        data: {
+          action: "vandel_get_booking_details",
+          booking_id: bookingId,
+          nonce: vandelAdmin.nonce,
+        },
+        success: function (response) {
+          if (response.success) {
+            $("#vandel-booking-modal .modal-body").html(response.data.html);
+          } else {
+            $("#vandel-booking-modal .modal-body").html(
+              '<div class="alert alert-danger">Failed to load booking details</div>'
+            );
+          }
+        },
+        error: function () {
+          $("#vandel-booking-modal .modal-body").html(
+            '<div class="alert alert-danger">Failed to load booking details</div>'
+          );
+        },
+      });
+    }
+  }
+
+  /**
+   * Quick actions
+   */
+  function initQuickActions() {
+    // Add quick action handling
+    $(".vandel-quick-action").on("click", function (e) {
+      const action = $(this).data("action");
+      const id = $(this).data("id");
+      const confirmMsg = $(this).data("confirm");
+
+      if (confirmMsg && !confirm(confirmMsg)) {
+        e.preventDefault();
+        return false;
+      }
+
+      if (action && id) {
+        e.preventDefault();
+
+        // Perform quick action via AJAX
+        $.ajax({
+          url: vandelAdmin.ajaxUrl,
+          type: "POST",
+          data: {
+            action: "vandel_quick_action",
+            quick_action: action,
+            target_id: id,
+            nonce: vandelAdmin.nonce,
+          },
+          success: function (response) {
+            if (response.success) {
+              if (response.data.redirect) {
+                window.location.href = response.data.redirect;
+              } else {
+                window.location.reload();
+              }
+            } else {
+              alert(response.data.message || "Action failed");
+            }
+          },
+          error: function () {
+            alert("Action failed. Please try again.");
+          },
+        });
+      }
+    });
+  }
+})(jQuery);

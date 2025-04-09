@@ -194,3 +194,52 @@ add_action('init', 'vandel_check_clients_table');
 
 
 
+/**
+ * Add custom inline styles for primary color
+ */
+function vandel_add_custom_dashboard_colors() {
+    $screen = get_current_screen();
+    if (!$screen || strpos($screen->base, 'vandel-dashboard') === false) {
+        return;
+    }
+    
+    $primary_color = get_option('vandel_primary_color', '#3182ce');
+    
+    // Generate darker and lighter variants
+    $primary_dark = vandel_adjust_brightness($primary_color, -20);
+    $primary_light = vandel_adjust_brightness($primary_color, 40);
+    
+    $custom_css = "
+    :root {
+      --vandel-primary-color: {$primary_color};
+      --vandel-primary-dark: {$primary_dark};
+      --vandel-primary-light: {$primary_light};
+    }
+    
+    .vandel-dashboard-welcome {
+      background: linear-gradient(135deg, {$primary_color} 0%, {$primary_dark} 100%);
+    }";
+    
+    wp_add_inline_style('vandel-modern-dashboard', $custom_css);
+}
+add_action('admin_enqueue_scripts', 'vandel_add_custom_dashboard_colors', 20);
+
+/**
+ * Helper function to adjust color brightness
+ */
+function vandel_adjust_brightness($hex, $steps) {
+    // Convert hex to rgb
+    $hex = str_replace('#', '', $hex);
+    
+    $r = hexdec(substr($hex, 0, 2));
+    $g = hexdec(substr($hex, 2, 2));
+    $b = hexdec(substr($hex, 4, 2));
+    
+    // Adjust brightness
+    $r = max(0, min(255, $r + $steps));
+    $g = max(0, min(255, $g + $steps));
+    $b = max(0, min(255, $b + $steps));
+    
+    // Convert back to hex
+    return '#' . sprintf('%02x%02x%02x', $r, $g, $b);
+}
