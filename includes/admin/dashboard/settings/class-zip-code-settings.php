@@ -36,13 +36,16 @@ class ZipCode_Settings {
             return;
         }
 
+        // Debug log
+        error_log('ZIP code settings process_actions called. POST data: ' . print_r($_POST, true));
+
         // Check for ZIP Code add action
         if (isset($_POST['vandel_add_zip_code']) && 
             isset($_POST['vandel_zip_code_nonce']) && 
             wp_verify_nonce($_POST['vandel_zip_code_nonce'], 'vandel_add_zip_code')) {
             
             // Log the form submission
-            error_log('Processing ZIP code form submission: ' . print_r($_POST, true));
+            error_log('Processing ZIP code form submission with nonce verification passed');
             
             $this->add_zip_code($_POST);
         }

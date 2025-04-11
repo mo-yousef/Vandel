@@ -38,11 +38,12 @@ class ZipCodeAjaxHandler {
      */
     public function importZipCodes() {
         // Security check - FIXED the syntax error here
-    check_ajax_referer('vandel_zip_code_nonce', 'nonce');
+        check_ajax_referer('vandel_zip_code_nonce', 'nonce');
         
         // Check user capabilities
         if (!current_user_can('manage_options')) {
             wp_send_json_error(['message' => __('Insufficient permissions', 'vandel-booking')]);
+            return;
         }
 
         // Check if file was uploaded

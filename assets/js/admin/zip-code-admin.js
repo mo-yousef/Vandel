@@ -86,7 +86,7 @@
  * ZIP Code Admin Interactions
  */
 (function ($) {
-  "use strict";
+  ("use strict");
 
   $(document).ready(function () {
     console.log("ZIP Code admin script initialized");
@@ -107,9 +107,14 @@
   /**
    * Initialize Edit ZIP Code functionality
    */
+  /**
+   * Initialize Edit ZIP Code functionality
+   */
   function initEditZipCode() {
-    $(".vandel-edit-zip-code").on("click", function (e) {
+    // Use event delegation to handle dynamically added elements
+    $(document).on("click", ".vandel-edit-zip-code", function (e) {
       e.preventDefault();
+      console.log("Edit ZIP code button clicked");
 
       // Get ZIP code data from data attributes
       const zipCode = $(this).data("zip-code");
@@ -120,7 +125,15 @@
       const serviceFee = $(this).data("service-fee");
       const isServiceable = $(this).data("is-serviceable");
 
-      console.log("Edit clicked for ZIP code:", zipCode);
+      console.log("Loading ZIP code data:", {
+        zipCode,
+        city,
+        state,
+        country,
+        priceAdjustment,
+        serviceFee,
+        isServiceable,
+      });
 
       // Populate edit form
       $("#edit-original-zip-code").val(zipCode);
@@ -137,7 +150,7 @@
     });
 
     // Close modal when clicking X button
-    $(".vandel-modal-close").on("click", function () {
+    $(document).on("click", ".vandel-modal-close", function () {
       $("#vandel-edit-zip-code-modal").hide();
     });
 

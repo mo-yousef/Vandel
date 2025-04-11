@@ -68,6 +68,7 @@ class ZipCodeModel {
         
         // Make sure required fields are present
         if (empty($data['zip_code']) || empty($data['city']) || empty($data['country'])) {
+            error_log('ZIP code add failed: required fields missing');
             return false;
         }
         
@@ -76,18 +77,27 @@ class ZipCodeModel {
             'city' => $data['city'],
             'state' => isset($data['state']) ? $data['state'] : '',
             'country' => $data['country'],
-            'price_adjustment' => isset($data['price_adjustment']) ? $data['price_adjustment'] : 0,
-            'service_fee' => isset($data['service_fee']) ? $data['service_fee'] : 0,
+            'price_adjustment' => isset($data['price_adjustment']) ? floatval($data['price_adjustment']) : 0,
+            'service_fee' => isset($data['service_fee']) ? floatval($data['service_fee']) : 0,
             'is_serviceable' => isset($data['is_serviceable']) ? $data['is_serviceable'] : 'yes',
             'created_at' => current_time('mysql')
         ];
         
         // Make sure table exists before attempting insert
-        $table_exists = $wpdb->get_var("SHOW TABLES LIKE '{$this->table}'") === $this->table;
-        if (!$table_exists) {
-            $this->ensureTableExists();
+        $this->ensureTableExists();
+        
+        // Check if ZIP code already exists
+        $exists = $wpdb->get_var($wpdb->prepare(
+            "SELECT COUNT(*) FROM {$this->table} WHERE zip_code = %s",
+            $data['zip_code']
+        ));
+        
+        if ($exists) {
+            error_log('ZIP code already exists: ' . $data['zip_code']);
+            return false;
         }
         
+        // Perform the insert
         $result = $wpdb->insert(
             $this->table,
             $insert_data,
@@ -99,8 +109,10 @@ class ZipCodeModel {
             return false;
         }
         
+        error_log('ZIP code added successfully: ' . $data['zip_code'] . ' (ID: ' . $wpdb->insert_id . ')');
         return $wpdb->insert_id;
     }
+    
     /**
      * Get ZIP Code details
      * 
