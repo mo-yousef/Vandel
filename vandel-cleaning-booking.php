@@ -547,3 +547,46 @@ function vandel_suggest_extensions() {
 }
 add_action('admin_notices', 'vandel_suggest_extensions');
 
+
+
+// Add this to the beginning of vandel-cleaning-booking.php
+if (isset($_POST['vandel_add_zip_code'])) {
+    // Write to a separate log file to ensure we see the output
+    file_put_contents(
+        WP_CONTENT_DIR . '/zip-code-debug.log',
+        date('[Y-m-d H:i:s] ') . 'Form submitted: ' . print_r($_POST, true) . "\n",
+        FILE_APPEND
+    );
+}
+
+
+
+add_action('admin_init', function() {
+    // Only run on the settings page with zip-codes section
+    if (isset($_GET['page']) && $_GET['page'] === 'vandel-dashboard' && 
+        isset($_GET['tab']) && $_GET['tab'] === 'settings' &&
+        isset($_GET['section']) && $_GET['section'] === 'zip-codes') {
+        
+        global $wpdb;
+        $table_name = $wpdb->prefix . 'vandel_zip_codes';
+        
+        // Check if table exists
+        $table_exists = $wpdb->get_var("SHOW TABLES LIKE '$table_name'") === $table_name;
+        
+        file_put_contents(
+            WP_CONTENT_DIR . '/zip-code-debug.log',
+            date('[Y-m-d H:i:s] ') . 'ZIP code table exists: ' . ($table_exists ? 'Yes' : 'No') . "\n",
+            FILE_APPEND
+        );
+        
+        if ($table_exists) {
+            // Check table structure
+            $columns = $wpdb->get_results("DESCRIBE $table_name");
+            file_put_contents(
+                WP_CONTENT_DIR . '/zip-code-debug.log',
+                date('[Y-m-d H:i:s] ') . 'Table columns: ' . print_r($columns, true) . "\n",
+                FILE_APPEND
+            );
+        }
+    }
+});

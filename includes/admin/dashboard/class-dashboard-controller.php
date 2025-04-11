@@ -75,7 +75,8 @@ class Dashboard_Controller {
      * Load tab class files
      */
     private function load_tab_classes() {
-        $tab_classes = [
+        // First, load all the files in the dashboard subfolder
+        $dashboard_classes = [
             'class-tab-interface.php',
             'class-overview-tab.php',
             'class-bookings-tab.php',
@@ -85,14 +86,27 @@ class Dashboard_Controller {
             'class-settings-tab.php',
         ];
         
-        foreach ($tab_classes as $class_file) {
-            $file_path = VANDEL_PLUGIN_DIR . 'includes/admin/dashboard/' . $class_file;
+        foreach ($dashboard_classes as $file) {
+            $file_path = VANDEL_PLUGIN_DIR . 'includes/admin/dashboard/' . $file;
+            if (file_exists($file_path)) {
+                require_once $file_path;
+            }
+        }
+
+        // Then explicitly load the detail files from includes/admin
+        $detail_files = [
+            'class-booking-details.php',
+            'class-client-details.php'
+        ];
+        
+        foreach ($detail_files as $file) {
+            $file_path = VANDEL_PLUGIN_DIR . 'includes/admin/' . $file;
             if (file_exists($file_path)) {
                 require_once $file_path;
             }
         }
     }
-    
+
     /**
      * Register all plugin settings
      */
@@ -266,7 +280,12 @@ class Dashboard_Controller {
                 return;
             }
         } 
-        
+        var_dump(
+    'Exists:' . class_exists('\\VandelBooking\\Admin\\BookingDetails')
+);
+var_dump( 'Exists:', class_exists('\\VandelBooking\\Admin\\BookingDetails') );
+
+
         // Fallback view if the class doesn't exist
         echo '<div id="booking-details" class="vandel-tab-content">';
         echo '<div class="vandel-card">';

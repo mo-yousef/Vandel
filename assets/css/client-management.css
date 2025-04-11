@@ -4,493 +4,497 @@
 
 /* Client List */
 .vandel-client-list {
-    margin-top: 20px;
+  margin-top: 20px;
 }
 
 .vandel-quick-search {
-    padding: 10px;
-    width: 300px;
-    margin-bottom: 15px;
-    border-radius: 4px;
-    border: 1px solid #ddd;
+  padding: 10px;
+  width: 300px;
+  margin-bottom: 15px;
+  border-radius: 4px;
+  border: 1px solid #ddd;
 }
 
 .vandel-client-row {
-    background: #fff;
-    border: 1px solid #e5e5e5;
-    box-shadow: 0 1px 1px rgba(0, 0, 0, .04);
-    margin-bottom: 10px;
-    padding: 15px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    border-radius: 3px;
-    transition: all .2s ease;
+  background: #fff;
+  border: 1px solid #e5e5e5;
+  box-shadow: 0 1px 1px rgba(0, 0, 0, 0.04);
+  margin-bottom: 10px;
+  padding: 15px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-radius: 3px;
+  transition: all 0.2s ease;
 }
 
 .vandel-client-row:hover {
-    background: #f9f9f9;
-    border-color: #ccc;
+  background: #f9f9f9;
+  border-color: #ccc;
 }
 
 .vandel-client-info {
-    flex: 3;
+  flex: 3;
 }
 
 .vandel-client-name {
-    font-size: 16px;
-    font-weight: bold;
-    color: #23282d;
-    margin-bottom: 5px;
+  font-size: 16px;
+  font-weight: bold;
+  color: #23282d;
+  margin-bottom: 5px;
 }
 
 .vandel-client-email {
-    color: #555;
-    font-size: 13px;
+  color: #555;
+  font-size: 13px;
 }
 
 .vandel-client-phone {
-    color: #777;
-    font-size: 13px;
+  color: #777;
+  font-size: 13px;
 }
 
 .vandel-client-stats {
-    flex: 2;
-    text-align: center;
+  flex: 2;
+  text-align: center;
 }
 
 .vandel-client-stats-item {
-    display: inline-block;
-    margin: 0 10px;
+  display: inline-block;
+  margin: 0 10px;
 }
 
 .vandel-stats-value {
-    font-size: 16px;
-    font-weight: bold;
-    color: #0073aa;
+  font-size: 16px;
+  font-weight: bold;
+  color: #0073aa;
 }
 
 .vandel-stats-label {
-    color: #777;
-    font-size: 12px;
+  color: #777;
+  font-size: 12px;
 }
 
 .vandel-client-actions {
-    flex: 1;
-    text-align: right;
+  flex: 1;
+  text-align: right;
 }
 
 /* Client Details */
 .vandel-client-details {
-    margin-top: 20px;
+  margin-top: 20px;
 }
 
 .vandel-client-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 20px;
-    padding-bottom: 10px;
-    border-bottom: 1px solid #eee;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #eee;
 }
 
 .vandel-grid-row {
-    display: flex;
-    flex-wrap: wrap;
-    margin: 0 -15px;
+  display: flex;
+  flex-wrap: wrap;
+  margin: 0 -15px;
 }
 
 .vandel-grid-col {
-    flex: 1;
-    padding: 0 15px;
-    min-width: 300px;
+  flex: 1;
+  padding: 0 15px;
+  min-width: 300px;
 }
 
 .vandel-card {
-    background: #fff;
-    border: 1px solid #e5e5e5;
-    box-shadow: 0 1px 1px rgba(0, 0, 0, .04);
-    margin-bottom: 20px;
-    border-radius: 4px;
+  background: #fff;
+  border: 1px solid #e5e5e5;
+  box-shadow: 0 1px 1px rgba(0, 0, 0, 0.04);
+  margin-bottom: 20px;
+  border-radius: 4px;
 }
 
 .vandel-card-header {
-    padding: 15px 15px;
-    border-bottom: 1px solid #eee;
+  padding: 15px 15px;
+  border-bottom: 1px solid #eee;
 }
 
 .vandel-card-header h3 {
-    margin: 0;
-    font-size: 16px;
-    line-height: 1.4;
+  margin: 0;
+  font-size: 16px;
+  line-height: 1.4;
 }
 
 .vandel-card-body {
-    padding: 15px;
+  padding: 15px;
 }
 
 .vandel-info-table {
-    width: 100%;
-    border-collapse: collapse;
+  width: 100%;
+  border-collapse: collapse;
 }
 
 .vandel-info-table th,
 .vandel-info-table td {
-    padding: 10px 5px;
-    text-align: left;
-    border-bottom: 1px solid #f1f1f1;
+  padding: 10px 5px;
+  text-align: left;
+  border-bottom: 1px solid #f1f1f1;
 }
 
 .vandel-info-table th {
-    width: 140px;
-    font-weight: 600;
-    color: #23282d;
+  width: 140px;
+  font-weight: 600;
+  color: #23282d;
 }
 
 .vandel-client-notes {
-    background: #f9f9f9;
-    padding: 15px;
-    border-radius: 4px;
-    margin-top: 15px;
-    white-space: pre-line;
+  background: #f9f9f9;
+  padding: 15px;
+  border-radius: 4px;
+  margin-top: 15px;
+  white-space: pre-line;
 }
 
 .vandel-stats-grid {
-    display: flex;
-    flex-wrap: wrap;
-    margin: 0 -10px;
+  display: flex;
+  flex-wrap: wrap;
+  padding: 30px;
+  background: linear-gradient(135deg, #3182ce 0%, #1a365d 100%);
+  border-radius: 10px;
+  margin-bottom: 25px;
+  overflow: hidden;
 }
 
 .vandel-stat-box {
-    flex: 1;
-    min-width: 120px;
-    padding: 15px 10px;
-    text-align: center;
-    border-right: 1px solid #f1f1f1;
+  flex: 1;
+  min-width: 120px;
+  padding: 15px 10px;
+  text-align: center;
+  border-right: 1px solid #f1f1f127;
 }
 
 .vandel-stat-box:last-child {
-    border-right: 0;
+  border-right: 0;
 }
 
 .vandel-stat-value {
-    font-size: 24px;
-    font-weight: bold;
-    margin-bottom: 5px;
-    color: #0073aa;
+  font-size: 24px;
+  font-weight: bold;
+  margin-bottom: 5px;
+  color: #0073aa;
 }
 
 .vandel-stat-label {
-    color: #777;
-    font-size: 13px;
+  color: #777;
+  font-size: 13px;
 }
 
 .vandel-status-breakdown {
-    margin-top: 20px;
-    padding-top: 20px;
-    border-top: 1px solid #eee;
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid #eee;
 }
 
 .vandel-status-bars {
-    margin-top: 15px;
+  margin-top: 15px;
 }
 
 .vandel-status-bar-container {
-    margin-bottom: 15px;
+  margin-bottom: 15px;
 }
 
 .vandel-status-bar-label {
-    display: flex;
-    justify-content: space-between;
-    margin-bottom: 5px;
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 5px;
 }
 
 .vandel-status-bar {
-    height: 8px;
-    background: #f1f1f1;
-    border-radius: 4px;
-    overflow: hidden;
+  height: 8px;
+  background: #f1f1f1;
+  border-radius: 4px;
+  overflow: hidden;
 }
 
 .vandel-status-bar-fill {
-    height: 100%;
-    border-radius: 4px;
+  height: 100%;
+  border-radius: 4px;
 }
 
 .vandel-status-bar-percent {
-    text-align: right;
-    font-size: 12px;
-    color: #777;
-    margin-top: 3px;
+  text-align: right;
+  font-size: 12px;
+  color: #777;
+  margin-top: 3px;
 }
 
 .vandel-recent-bookings-list {
-    margin-top: 10px;
+  margin-top: 10px;
 }
 
 .vandel-booking-item {
-    padding: 15px 10px;
-    border-bottom: 1px solid #f1f1f1;
+  padding: 15px 10px;
+  border-bottom: 1px solid #f1f1f1;
 }
 
 .vandel-booking-item:last-child {
-    border-bottom: 0;
+  border-bottom: 0;
 }
 
 .vandel-booking-item-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 5px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 5px;
 }
 
 .vandel-booking-id a {
-    font-weight: bold;
-    text-decoration: none;
+  font-weight: bold;
+  text-decoration: none;
 }
 
 .vandel-booking-details {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    font-size: 13px;
-    color: #666;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+  color: #666;
 }
 
 .vandel-card-footer {
-    padding: 15px;
-    border-top: 1px solid #eee;
-    text-align: center;
+  padding: 15px;
+  border-top: 1px solid #eee;
+  text-align: center;
 }
 
 /* Forms */
 .vandel-form-row {
-    margin-bottom: 15px;
+  margin-bottom: 15px;
 }
 
 .vandel-form-row:last-child {
-    margin-bottom: 0;
+  margin-bottom: 0;
 }
 
 .vandel-form-row label {
-    display: block;
-    margin-bottom: 5px;
-    font-weight: 600;
+  display: block;
+  margin-bottom: 5px;
+  font-weight: 600;
 }
 
 .vandel-form-row .widefat {
-    width: 100%;
+  width: 100%;
 }
 
 .vandel-form-actions {
-    margin-top: 20px;
-    padding-top: 15px;
-    border-top: 1px solid #f1f1f1;
-    text-align: right;
+  margin-top: 20px;
+  padding-top: 15px;
+  border-top: 1px solid #f1f1f1;
+  text-align: right;
 }
 
 /* Import/Export */
 .vandel-import-form {
-    margin-top: 20px;
+  margin-top: 20px;
 }
 
 .vandel-drop-zone {
-    border: 2px dashed #bbb;
-    border-radius: 5px;
-    padding: 30px;
-    text-align: center;
-    margin-bottom: 20px;
-    background: #f9f9f9;
-    cursor: pointer;
-    transition: all .2s ease;
+  border: 2px dashed #bbb;
+  border-radius: 5px;
+  padding: 30px;
+  text-align: center;
+  margin-bottom: 20px;
+  background: #f9f9f9;
+  cursor: pointer;
+  transition: all 0.2s ease;
 }
 
 .vandel-drop-zone:hover,
 .vandel-drop-zone.drag-over {
-    border-color: #0073aa;
-    background: #f0f7fa;
+  border-color: #0073aa;
+  background: #f0f7fa;
 }
 
 .vandel-drop-zone-icon {
-    font-size: 32px;
-    color: #bbb;
-    margin-bottom: 10px;
+  font-size: 32px;
+  color: #bbb;
+  margin-bottom: 10px;
 }
 
 .vandel-drop-zone:hover .vandel-drop-zone-icon,
 .vandel-drop-zone.drag-over .vandel-drop-zone-icon {
-    color: #0073aa;
+  color: #0073aa;
 }
 
 .vandel-drop-zone-text {
-    margin-bottom: 15px;
-    color: #666;
+  margin-bottom: 15px;
+  color: #666;
 }
 
 .vandel-file-input {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    padding: 0;
-    margin: -1px;
-    overflow: hidden;
-    clip: rect(0, 0, 0, 0);
-    border: 0;
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  border: 0;
 }
 
 .vandel-selected-file {
-    display: none;
-    background: #f1f7fa;
-    border: 1px solid #c6e1ec;
-    border-radius: 4px;
-    padding: 10px 15px;
-    margin-bottom: 20px;
+  display: none;
+  background: #f1f7fa;
+  border: 1px solid #c6e1ec;
+  border-radius: 4px;
+  padding: 10px 15px;
+  margin-bottom: 20px;
 }
 
 .vandel-selected-file.visible {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
 .vandel-selected-file-name {
-    font-weight: bold;
-    color: #0073aa;
+  font-weight: bold;
+  color: #0073aa;
 }
 
 .vandel-selected-file-remove {
-    cursor: pointer;
-    color: #dc3232;
+  cursor: pointer;
+  color: #dc3232;
 }
 
 .vandel-import-submit {
-    text-align: right;
+  text-align: right;
 }
 
 .vandel-import-results {
-    margin-top: 20px;
+  margin-top: 20px;
 }
 
 .vandel-import-stats {
-    display: flex;
-    justify-content: space-around;
-    margin: 20px 0;
-    background: #f9f9f9;
-    padding: 20px;
-    border-radius: 4px;
+  display: flex;
+  justify-content: space-around;
+  margin: 20px 0;
+  background: #f9f9f9;
+  padding: 20px;
+  border-radius: 4px;
 }
 
 .vandel-import-stat-item {
-    text-align: center;
+  text-align: center;
 }
 
 .vandel-import-stat-value {
-    font-size: 24px;
-    font-weight: bold;
-    margin-bottom: 5px;
-    color: #0073aa;
+  font-size: 24px;
+  font-weight: bold;
+  margin-bottom: 5px;
+  color: #0073aa;
 }
 
 .vandel-import-stat-label {
-    color: #666;
+  color: #666;
 }
 
 .vandel-import-errors {
-    background: #fdf1f1;
-    border: 1px solid #f8cdce;
-    padding: 15px;
-    border-radius: 4px;
-    margin-bottom: 20px;
+  background: #fdf1f1;
+  border: 1px solid #f8cdce;
+  padding: 15px;
+  border-radius: 4px;
+  margin-bottom: 20px;
 }
 
 .vandel-error-list {
-    margin: 10px 0 0 20px;
-    color: #dc3232;
+  margin: 10px 0 0 20px;
+  color: #dc3232;
 }
 
 /* Utilities */
 .vandel-empty-state {
-    padding: 40px 20px;
-    text-align: center;
-    color: #777;
+  padding: 40px 20px;
+  text-align: center;
+  color: #777;
 }
 
 .vandel-empty-state-small {
-    padding: 20px;
-    text-align: center;
-    color: #777;
+  padding: 20px;
+  text-align: center;
+  color: #777;
 }
 
 .vandel-empty-state .dashicons {
-    font-size: 48px;
-    width: 48px;
-    height: 48px;
-    color: #ddd;
-    margin-bottom: 15px;
+  font-size: 48px;
+  width: 48px;
+  height: 48px;
+  color: #ddd;
+  margin-bottom: 15px;
 }
 
 /* Status Badges */
 .vandel-status-badge {
-    display: inline-block;
-    padding: 3px 8px;
-    border-radius: 3px;
-    font-size: 12px;
-    color: white;
+  display: inline-block;
+  padding: 3px 8px;
+  border-radius: 3px;
+  font-size: 12px;
+  color: white;
 }
 
 .vandel-status-badge-pending {
-    background-color: #f0ad4e;
+  background-color: #f0ad4e;
 }
 
 .vandel-status-badge-confirmed {
-    background-color: #5bc0de;
+  background-color: #5bc0de;
 }
 
 .vandel-status-badge-completed {
-    background-color: #5cb85c;
+  background-color: #5cb85c;
 }
 
 .vandel-status-badge-canceled {
-    background-color: #d9534f;
+  background-color: #d9534f;
 }
 
 /* Responsive */
 @media screen and (max-width: 782px) {
-    .vandel-grid-row {
-        flex-direction: column;
-    }
+  .vandel-grid-row {
+    flex-direction: column;
+  }
 
-    .vandel-grid-col {
-        width: 100%;
-    }
+  .vandel-grid-col {
+    width: 100%;
+  }
 
-    .vandel-client-row {
-        flex-direction: column;
-        align-items: flex-start;
-    }
+  .vandel-client-row {
+    flex-direction: column;
+    align-items: flex-start;
+  }
 
-    .vandel-client-stats,
-    .vandel-client-actions {
-        margin-top: 10px;
-        text-align: left;
-    }
+  .vandel-client-stats,
+  .vandel-client-actions {
+    margin-top: 10px;
+    text-align: left;
+  }
 
-    .vandel-client-stats {
-        width: 100%;
-    }
+  .vandel-client-stats {
+    width: 100%;
+  }
 
-    .vandel-client-stats-item {
-        margin: 5px 10px 5px 0;
-    }
+  .vandel-client-stats-item {
+    margin: 5px 10px 5px 0;
+  }
 
-    .vandel-booking-details {
-        flex-direction: column;
-        align-items: flex-start;
-    }
+  .vandel-booking-details {
+    flex-direction: column;
+    align-items: flex-start;
+  }
 
-    .vandel-booking-service,
-    .vandel-booking-date,
-    .vandel-booking-price {
-        margin-bottom: 5px;
-    }
+  .vandel-booking-service,
+  .vandel-booking-date,
+  .vandel-booking-price {
+    margin-bottom: 5px;
+  }
 }

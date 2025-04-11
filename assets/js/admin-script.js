@@ -250,14 +250,14 @@
    */
   function initDashboardEnhancements() {
     // Add card hover effects
-    $(".vandel-card").hover(
-      function () {
-        $(this).css("transform", "translateY(-5px)");
-      },
-      function () {
-        $(this).css("transform", "translateY(0)");
-      }
-    );
+    // $(".vandel-card").hover(
+    //   function () {
+    //     $(this).css("transform", "translateY(-5px)");
+    //   },
+    //   function () {
+    //     $(this).css("transform", "translateY(0)");
+    //   }
+    // );
 
     // Toggle sections
     $(".vandel-section-toggle").on("click", function () {

@@ -59,6 +59,8 @@ class SettingsPage {
      * Handle ZIP Code CRUD actions
      */
     public function handleZipCodeActions() {
+    // Add this debug line
+    error_log('handleZipCodeActions method called. POST data: ' . print_r($_POST, true));
         // Check if we're on the correct page and have necessary permissions
         if (!current_user_can('manage_options')) {
             return;
@@ -91,6 +93,9 @@ class SettingsPage {
      * @param array $data ZIP Code data
      */
     private function addZipCode($data) {
+    // Add this debug line
+    error_log('addZipCode method called with data: ' . print_r($data, true));
+
         $zip_code = sanitize_text_field($data['zip_code']);
         $city = sanitize_text_field($data['city']);
         $state = sanitize_text_field($data['state']);
@@ -294,7 +299,7 @@ class SettingsPage {
             <div class="vandel-zip-code-form">
                 <h3><?php _e('Add New ZIP Code', 'vandel-booking'); ?></h3>
                 <form method="post" action="">
-                    <?php wp_nonce_field('vandel_add_zip_code', 'vandel_zip_code_nonce'); ?>
+    <?php wp_nonce_field('vandel_add_zip_code', 'vandel_zip_code_nonce'); ?>
                     <div class="vandel-row">
                         <div class="vandel-col">
                             <label><?php _e('ZIP Code', 'vandel-booking'); ?></label>
@@ -340,9 +345,9 @@ class SettingsPage {
                             <span class="vandel-toggle-label"><?php _e('Serviceable Area', 'vandel-booking'); ?></span>
                         </div>
                     </div>
-                    <button type="submit" name="vandel_add_zip_code" class="button button-primary">
-                        <?php _e('Add ZIP Code', 'vandel-booking'); ?>
-                    </button>
+    <button type="submit" name="vandel_add_zip_code" class="button button-primary">
+        <?php _e('Add ZIP Code', 'vandel-booking'); ?>
+    </button>
                 </form>
             </div>
 

@@ -50,13 +50,13 @@
 
 /* Action Buttons */
 .vandel-action-button {
-  display: inline-flex;
+  display: inline-flex !important;
   align-items: center;
   gap: 8px;
-  padding: 8px 16px;
-  font-size: 14px;
+  padding: 8px 16px !important;
+  font-size: 14px !important;
   font-weight: 500;
-  border-radius: 6px;
+  border-radius: 6px !important;
   transition: all 0.2s ease;
 }
 
@@ -199,7 +199,7 @@
 
 .vandel-grid-row {
   display: grid;
-  grid-template-columns: repeat(12, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   gap: 20px;
 }
 
@@ -301,7 +301,6 @@
   font-size: 14px;
   color: rgba(255, 255, 255, 0.8);
 }
-
 /* Status Summary */
 .vandel-status-summary {
   display: grid;
