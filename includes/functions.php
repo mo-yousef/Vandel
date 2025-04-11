@@ -243,3 +243,42 @@ function vandel_adjust_brightness($hex, $steps) {
     // Convert back to hex
     return '#' . sprintf('%02x%02x%02x', $r, $g, $b);
 }
+
+
+
+/**
+ * Enqueue ZIP Code admin scripts 
+ */
+function vandel_enqueue_zip_code_admin_scripts($hook) {
+    // Only load on the ZIP code settings page
+    if ($hook !== 'toplevel_page_vandel-dashboard' && strpos($hook, 'page_vandel-dashboard') === false) {
+        return;
+    }
+    
+    // Check if we're on the ZIP codes settings page
+    if (!isset($_GET['tab']) || $_GET['tab'] !== 'settings' || 
+        !isset($_GET['section']) || $_GET['section'] !== 'zip-codes') {
+        return;
+    }
+    
+    // Enqueue the ZIP code admin script
+    wp_enqueue_script(
+        'vandel-zip-code-admin',
+        VANDEL_PLUGIN_URL . 'assets/js/admin/zip-code-admin.js',
+        ['jquery'],
+        VANDEL_VERSION,
+        true
+    );
+    
+    // Localize the script
+    wp_localize_script(
+        'vandel-zip-code-admin',
+        'vandelZipCodeAdmin',
+        [
+            'ajaxUrl' => admin_url('admin-ajax.php'),
+            'nonce' => wp_create_nonce('vandel_zip_code_nonce'),
+            'confirmDelete' => __('Are you sure you want to delete this ZIP code?', 'vandel-booking')
+        ]
+    );
+}
+add_action('admin_enqueue_scripts', 'vandel_enqueue_zip_code_admin_scripts');

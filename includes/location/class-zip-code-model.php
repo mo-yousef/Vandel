@@ -63,6 +63,14 @@ class ZipCodeModel {
     public function add($data) {
         global $wpdb;
         
+        // Log the data being added
+        error_log('Adding ZIP code with data: ' . print_r($data, true));
+        
+        // Make sure required fields are present
+        if (empty($data['zip_code']) || empty($data['city']) || empty($data['country'])) {
+            return false;
+        }
+        
         $insert_data = [
             'zip_code' => $data['zip_code'],
             'city' => $data['city'],
@@ -74,15 +82,25 @@ class ZipCodeModel {
             'created_at' => current_time('mysql')
         ];
         
+        // Make sure table exists before attempting insert
+        $table_exists = $wpdb->get_var("SHOW TABLES LIKE '{$this->table}'") === $this->table;
+        if (!$table_exists) {
+            $this->ensureTableExists();
+        }
+        
         $result = $wpdb->insert(
             $this->table,
             $insert_data,
             ['%s', '%s', '%s', '%s', '%f', '%f', '%s', '%s']
         );
         
-        return $result ? $wpdb->insert_id : false;
+        if ($result === false) {
+            error_log('Error adding ZIP code: ' . $wpdb->last_error);
+            return false;
+        }
+        
+        return $wpdb->insert_id;
     }
-    
     /**
      * Get ZIP Code details
      * 

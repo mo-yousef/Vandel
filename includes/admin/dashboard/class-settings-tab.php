@@ -75,6 +75,10 @@ class Settings_Tab implements Tab_Interface {
                 
             'zip-codes' => class_exists('\\VandelBooking\\Admin\\Dashboard\\Settings\\ZipCode_Settings') ? 
                 new \VandelBooking\Admin\Dashboard\Settings\ZipCode_Settings() : null,
+
+            $this->section_classes['zip-codes'] = class_exists('\\VandelBooking\\Admin\\Dashboard\\Settings\\ZipCode_Settings') ? 
+                new \VandelBooking\Admin\Dashboard\Settings\ZipCode_Settings() : null,
+
         ];
     }
     
