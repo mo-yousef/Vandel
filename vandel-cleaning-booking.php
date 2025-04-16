@@ -147,6 +147,22 @@ if (file_exists(VANDEL_PLUGIN_DIR . 'includes/post-types/class-post-types-regist
     });
 }
 
+// Force-load post type classes
+if (file_exists(VANDEL_PLUGIN_DIR . 'includes/post-types/class-service-post-type.php')) {
+    require_once VANDEL_PLUGIN_DIR . 'includes/post-types/class-service-post-type.php';
+    add_action('init', function() {
+        if (class_exists('\\VandelBooking\\PostTypes\\ServicePostType')) {
+            new \VandelBooking\PostTypes\ServicePostType();
+        }
+    });
+}
+
+// Force-load location classes
+if (file_exists(VANDEL_PLUGIN_DIR . 'includes/location/class-location-model.php')) {
+    require_once VANDEL_PLUGIN_DIR . 'includes/location/class-location-model.php';
+}
+
+
 // Add filter to prevent duplicate menu registration
 add_filter('vandel_should_register_menu', function($should_register) {
     global $vandel_menu_registered;
@@ -257,6 +273,22 @@ function vandel_init_zip_code_ajax_handler() {
     }
 }
 add_action('init', 'vandel_init_zip_code_ajax_handler');
+
+// Initialize LocationAjaxHandler
+function vandel_init_location_ajax_handler() {
+    if (file_exists(VANDEL_PLUGIN_DIR . 'includes/admin/class-location-ajax-handler.php')) {
+        require_once VANDEL_PLUGIN_DIR . 'includes/admin/class-location-ajax-handler.php';
+        if (class_exists('VandelBooking\\Admin\\LocationAjaxHandler')) {
+            new VandelBooking\Admin\LocationAjaxHandler();
+        }
+    }
+}
+add_action('init', 'vandel_init_location_ajax_handler');
+
+
+
+
+
 
 // Initialize CalendarView for admin
 function vandel_init_calendar_view() {
@@ -452,37 +484,37 @@ function vandel_admin_notices() {
     }
     
     ?>
-    <div class="notice notice-info is-dismissible vandel-feature-notice">
-        <p>
-            <?php _e('<strong>New Feature:</strong> The Vandel Booking Calendar is now available! Navigate to the Calendar tab to view and manage your bookings in a calendar view.', 'vandel-booking'); ?>
-        </p>
-        <p>
-            <a href="<?php echo admin_url('admin.php?page=vandel-dashboard&tab=calendar'); ?>" class="button">
-                <?php _e('View Calendar', 'vandel-booking'); ?>
-            </a>
-            <a href="#" class="dismiss-notice" style="margin-left: 10px;">
-                <?php _e('Dismiss', 'vandel-booking'); ?>
-            </a>
-        </p>
-    </div>
-    <script>
-    jQuery(document).ready(function($) {
-        $('.vandel-feature-notice .dismiss-notice').on('click', function(e) {
-            e.preventDefault();
-            
-            // Hide the notice
-            $(this).closest('.notice').fadeOut();
-            
-            // Save the dismissal to the server
-            $.post(ajaxurl, {
-                action: 'vandel_dismiss_notice',
-                notice: 'calendar',
-                nonce: '<?php echo wp_create_nonce('vandel_dismiss_notice'); ?>'
-            });
+<div class="notice notice-info is-dismissible vandel-feature-notice">
+    <p>
+        <?php _e('<strong>New Feature:</strong> The Vandel Booking Calendar is now available! Navigate to the Calendar tab to view and manage your bookings in a calendar view.', 'vandel-booking'); ?>
+    </p>
+    <p>
+        <a href="<?php echo admin_url('admin.php?page=vandel-dashboard&tab=calendar'); ?>" class="button">
+            <?php _e('View Calendar', 'vandel-booking'); ?>
+        </a>
+        <a href="#" class="dismiss-notice" style="margin-left: 10px;">
+            <?php _e('Dismiss', 'vandel-booking'); ?>
+        </a>
+    </p>
+</div>
+<script>
+jQuery(document).ready(function($) {
+    $('.vandel-feature-notice .dismiss-notice').on('click', function(e) {
+        e.preventDefault();
+
+        // Hide the notice
+        $(this).closest('.notice').fadeOut();
+
+        // Save the dismissal to the server
+        $.post(ajaxurl, {
+            action: 'vandel_dismiss_notice',
+            notice: 'calendar',
+            nonce: '<?php echo wp_create_nonce('vandel_dismiss_notice'); ?>'
         });
     });
-    </script>
-    <?php
+});
+</script>
+<?php
 }
 add_action('admin_notices', 'vandel_admin_notices');
 
@@ -534,16 +566,18 @@ function vandel_suggest_extensions() {
     }
     
     ?>
-    <div class="notice notice-warning">
-        <p><?php _e('For optimal performance of Vandel Booking, we recommend installing the following PHP extensions:', 'vandel-booking'); ?></p>
-        <ul style="list-style-type: disc; padding-left: 20px;">
-            <?php foreach ($missing_extensions as $ext => $desc): ?>
-                <li><strong><?php echo $ext; ?></strong>: <?php echo $desc; ?></li>
-            <?php endforeach; ?>
-        </ul>
-        <p><?php _e('Please contact your hosting provider for assistance with installing these extensions.', 'vandel-booking'); ?></p>
-    </div>
-    <?php
+<div class="notice notice-warning">
+    <p><?php _e('For optimal performance of Vandel Booking, we recommend installing the following PHP extensions:', 'vandel-booking'); ?>
+    </p>
+    <ul style="list-style-type: disc; padding-left: 20px;">
+        <?php foreach ($missing_extensions as $ext => $desc): ?>
+        <li><strong><?php echo $ext; ?></strong>: <?php echo $desc; ?></li>
+        <?php endforeach; ?>
+    </ul>
+    <p><?php _e('Please contact your hosting provider for assistance with installing these extensions.', 'vandel-booking'); ?>
+    </p>
+</div>
+<?php
 }
 add_action('admin_notices', 'vandel_suggest_extensions');
 
@@ -592,3 +626,36 @@ add_action('admin_init', function() {
 });
 
 // From Workspace
+
+// Load Database Installer first to ensure tables exist
+if (file_exists(VANDEL_PLUGIN_DIR . 'includes/database/class-installer.php')) {
+    require_once VANDEL_PLUGIN_DIR . 'includes/database/class-installer.php';
+    
+    // Create/update tables on activation
+    register_activation_hook(__FILE__, function() {
+        if (class_exists('\\VandelBooking\\Database\\Installer')) {
+            $installer = new \VandelBooking\Database\Installer();
+            $installer->install();
+        }
+        
+        // Initialize the location data with Sweden locations
+        if (class_exists('\\VandelBooking\\Location\\LocationModel')) {
+            $location_model = new \VandelBooking\Location\LocationModel();
+            
+            // Check if the model has the initializeSweden method
+            if (method_exists($location_model, 'initializeSweden')) {
+                $location_model->initializeSweden();
+            }
+        }
+    });
+    
+    // Check for database updates on plugin load
+    add_action('plugins_loaded', function() {
+        if (class_exists('\\VandelBooking\\Database\\Installer')) {
+            $installer = new \VandelBooking\Database\Installer();
+            if (method_exists($installer, 'needsUpdate') && $installer->needsUpdate()) {
+                $installer->update();
+            }
+        }
+    });
+}

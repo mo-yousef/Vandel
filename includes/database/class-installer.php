@@ -21,7 +21,8 @@ class Installer {
         'bookings',
         'clients',
         'booking_notes',
-        'zip_codes'
+        'zip_codes',
+        'locations'
     ];
 
     /**
@@ -223,7 +224,45 @@ class Installer {
         return $wpdb->get_var("SHOW TABLES LIKE '$table_name'") === $table_name;
     }
 
-    /**
+   /**
+     * Create locations table
+     * 
+     * @return bool Whether table was created
+     */
+    private function create_locations_table() {
+        global $wpdb;
+        $table_name = $wpdb->prefix . 'vandel_locations';
+        
+        // Check if table already exists
+        $table_exists = $wpdb->get_var("SHOW TABLES LIKE '$table_name'") === $table_name;
+        
+        // Get WordPress dbDelta function
+        require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
+        
+        $charset_collate = $wpdb->get_charset_collate();
+        
+        $sql = "CREATE TABLE $table_name (
+            id MEDIUMINT(9) NOT NULL AUTO_INCREMENT,
+            country VARCHAR(100) NOT NULL,
+            city VARCHAR(100) NOT NULL,
+            area_name VARCHAR(255) NOT NULL,
+            zip_code VARCHAR(20) NOT NULL,
+            price_adjustment DECIMAL(10, 2) DEFAULT 0,
+            service_fee DECIMAL(10, 2) DEFAULT 0,
+            is_active ENUM('yes', 'no') DEFAULT 'yes',
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (id),
+            UNIQUE KEY location_zip (country, city, area_name, zip_code)
+        ) $charset_collate;";
+        
+        dbDelta($sql);
+        
+        // Check if table exists after creation attempt
+        return $wpdb->get_var("SHOW TABLES LIKE '$table_name'") === $table_name;
+    }
+
+
+ /**
      * Update tables if needed
      * This method handles database migrations when structure changes
      * 
@@ -295,8 +334,17 @@ class Installer {
                 if (empty($column_exists)) {
                     $wpdb->query("ALTER TABLE $bookings_table ADD COLUMN updated_at DATETIME NULL AFTER created_at");
                 }
+            },
+            '1.0.4' => function() {
+                // Create locations table
+                $this->create_locations_table();
             }
         ];
+        
+
+
+
+
         
         // Loop through versions and apply updates
         foreach ($versions as $version => $update_function) {

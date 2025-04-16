@@ -83,115 +83,121 @@ class BookingForm {
         
         ob_start();
         ?>
-        <div class="vandel-booking-form-container">
-            <div class="vandel-booking-header">
-                <?php if (!empty($atts['title'])): ?>
-                    <h2 class="vandel-booking-title"><?php echo esc_html($atts['title']); ?></h2>
-                <?php endif; ?>
-                
-                <?php if (!empty($atts['subtitle'])): ?>
-                    <p class="vandel-booking-subtitle"><?php echo esc_html($atts['subtitle']); ?></p>
-                <?php endif; ?>
-            </div>
-            
-            <div class="vandel-booking-progress">
-                <ul class="vandel-steps">
-                    <?php if ($show_zip_code): ?>
-                    <li class="vandel-step active" data-step="location">
-                        <span class="vandel-step-number">1</span>
-                        <span class="vandel-step-label"><?php _e('Location', 'vandel-booking'); ?></span>
-                    </li>
-                    <li class="vandel-step" data-step="service">
-                        <span class="vandel-step-number">2</span>
-                        <span class="vandel-step-label"><?php _e('Service', 'vandel-booking'); ?></span>
-                    </li>
-                    <li class="vandel-step" data-step="details">
-                        <span class="vandel-step-number">3</span>
-                        <span class="vandel-step-label"><?php _e('Details', 'vandel-booking'); ?></span>
-                    </li>
-                    <li class="vandel-step" data-step="confirmation">
-                        <span class="vandel-step-number">4</span>
-                        <span class="vandel-step-label"><?php _e('Confirmation', 'vandel-booking'); ?></span>
-                    </li>
-                    <?php else: ?>
-                    <li class="vandel-step active" data-step="service">
-                        <span class="vandel-step-number">1</span>
-                        <span class="vandel-step-label"><?php _e('Service', 'vandel-booking'); ?></span>
-                    </li>
-                    <li class="vandel-step" data-step="details">
-                        <span class="vandel-step-number">2</span>
-                        <span class="vandel-step-label"><?php _e('Details', 'vandel-booking'); ?></span>
-                    </li>
-                    <li class="vandel-step" data-step="confirmation">
-                        <span class="vandel-step-number">3</span>
-                        <span class="vandel-step-label"><?php _e('Confirmation', 'vandel-booking'); ?></span>
-                    </li>
-                    <?php endif; ?>
-                </ul>
-            </div>
-            
-            <div id="vandel-booking-form" class="vandel-booking-form">
-                <input type="hidden" id="vandel-selected-service" name="service_id" value="<?php echo esc_attr($atts['service_id']); ?>">
-                <input type="hidden" id="vandel-zip-code-data" name="zip_code_data" value="">
-                <input type="hidden" id="vandel-total-price" name="total_price" value="0">
-                
-                <?php if ($show_zip_code): ?>
-                <!-- Step 1: ZIP Code Validation -->
-                <div class="vandel-booking-step active" data-step="location">
-                    <?php $this->renderZipCodeStep(); ?>
-                    
-                    <div class="vandel-booking-nav">
-                        <button type="button" class="vandel-btn vandel-btn-next"><?php _e('Next', 'vandel-booking'); ?></button>
-                    </div>
-                </div>
-                <?php endif; ?>
-                
-                <!-- Step 2: Service Selection -->
-                <div class="vandel-booking-step <?php echo !$show_zip_code ? 'active' : ''; ?>" data-step="service">
-                    <?php $this->renderServiceStep($atts['service_id']); ?>
-                    
-                    <div class="vandel-booking-nav">
-                        <?php if ($show_zip_code): ?>
-                        <button type="button" class="vandel-btn vandel-btn-prev"><?php _e('Previous', 'vandel-booking'); ?></button>
-                        <?php endif; ?>
-                        <button type="button" class="vandel-btn vandel-btn-next"><?php _e('Next', 'vandel-booking'); ?></button>
-                    </div>
-                </div>
-                
-                <!-- Step 3: Customer Details -->
-                <div class="vandel-booking-step" data-step="details">
-                    <?php $this->renderDetailsStep(); ?>
-                    
-                    <div class="vandel-booking-nav">
-                        <button type="button" class="vandel-btn vandel-btn-prev"><?php _e('Previous', 'vandel-booking'); ?></button>
-                        <button type="button" class="vandel-btn vandel-btn-next"><?php _e('Next', 'vandel-booking'); ?></button>
-                    </div>
-                </div>
-                
-                <!-- Step 4: Confirmation -->
-                <div class="vandel-booking-step" data-step="confirmation">
-                    <?php $this->renderConfirmationStep(); ?>
-                    
-                    <div class="vandel-booking-nav">
-                        <button type="button" class="vandel-btn vandel-btn-prev"><?php _e('Previous', 'vandel-booking'); ?></button>
-                        <button type="button" class="vandel-btn vandel-btn-primary vandel-btn-submit"><?php _e('Book Now', 'vandel-booking'); ?></button>
-                    </div>
-                </div>
-                
-                <!-- Success Message (Initially Hidden) -->
-                <div class="vandel-booking-success" style="display: none;">
-                    <div class="vandel-success-icon">
-                        <span class="dashicons dashicons-yes-alt"></span>
-                    </div>
-                    <h3><?php _e('Thank you for your booking!', 'vandel-booking'); ?></h3>
-                    <p><?php _e('Your booking has been submitted successfully. You will receive a confirmation email shortly.', 'vandel-booking'); ?></p>
-                    <div class="vandel-booking-reference">
-                        <p><?php _e('Booking Reference:', 'vandel-booking'); ?> <span id="vandel-booking-reference"></span></p>
-                    </div>
-                </div>
+<div class="vandel-booking-form-container">
+    <div class="vandel-booking-header">
+        <?php if (!empty($atts['title'])): ?>
+        <h2 class="vandel-booking-title"><?php echo esc_html($atts['title']); ?></h2>
+        <?php endif; ?>
+
+        <?php if (!empty($atts['subtitle'])): ?>
+        <p class="vandel-booking-subtitle"><?php echo esc_html($atts['subtitle']); ?></p>
+        <?php endif; ?>
+    </div>
+
+    <div class="vandel-booking-progress">
+        <ul class="vandel-steps">
+            <?php if ($show_zip_code): ?>
+            <li class="vandel-step active" data-step="location">
+                <span class="vandel-step-number">1</span>
+                <span class="vandel-step-label"><?php _e('Location', 'vandel-booking'); ?></span>
+            </li>
+            <li class="vandel-step" data-step="service">
+                <span class="vandel-step-number">2</span>
+                <span class="vandel-step-label"><?php _e('Service', 'vandel-booking'); ?></span>
+            </li>
+            <li class="vandel-step" data-step="details">
+                <span class="vandel-step-number">3</span>
+                <span class="vandel-step-label"><?php _e('Details', 'vandel-booking'); ?></span>
+            </li>
+            <li class="vandel-step" data-step="confirmation">
+                <span class="vandel-step-number">4</span>
+                <span class="vandel-step-label"><?php _e('Confirmation', 'vandel-booking'); ?></span>
+            </li>
+            <?php else: ?>
+            <li class="vandel-step active" data-step="service">
+                <span class="vandel-step-number">1</span>
+                <span class="vandel-step-label"><?php _e('Service', 'vandel-booking'); ?></span>
+            </li>
+            <li class="vandel-step" data-step="details">
+                <span class="vandel-step-number">2</span>
+                <span class="vandel-step-label"><?php _e('Details', 'vandel-booking'); ?></span>
+            </li>
+            <li class="vandel-step" data-step="confirmation">
+                <span class="vandel-step-number">3</span>
+                <span class="vandel-step-label"><?php _e('Confirmation', 'vandel-booking'); ?></span>
+            </li>
+            <?php endif; ?>
+        </ul>
+    </div>
+
+    <div id="vandel-booking-form" class="vandel-booking-form">
+        <input type="hidden" id="vandel-selected-service" name="service_id"
+            value="<?php echo esc_attr($atts['service_id']); ?>">
+        <input type="hidden" id="vandel-zip-code-data" name="zip_code_data" value="">
+        <input type="hidden" id="vandel-total-price" name="total_price" value="0">
+
+        <?php if ($show_zip_code): ?>
+        <!-- Step 1: ZIP Code Validation -->
+        <div class="vandel-booking-step active" data-step="location">
+            <?php $this->renderZipCodeStep(); ?>
+
+            <div class="vandel-booking-nav">
+                <button type="button" class="vandel-btn vandel-btn-next"><?php _e('Next', 'vandel-booking'); ?></button>
             </div>
         </div>
-        <?php
+        <?php endif; ?>
+
+        <!-- Step 2: Service Selection -->
+        <div class="vandel-booking-step <?php echo !$show_zip_code ? 'active' : ''; ?>" data-step="service">
+            <?php $this->renderServiceStep($atts['service_id']); ?>
+
+            <div class="vandel-booking-nav">
+                <?php if ($show_zip_code): ?>
+                <button type="button"
+                    class="vandel-btn vandel-btn-prev"><?php _e('Previous', 'vandel-booking'); ?></button>
+                <?php endif; ?>
+                <button type="button" class="vandel-btn vandel-btn-next"><?php _e('Next', 'vandel-booking'); ?></button>
+            </div>
+        </div>
+
+        <!-- Step 3: Customer Details -->
+        <div class="vandel-booking-step" data-step="details">
+            <?php $this->renderDetailsStep(); ?>
+
+            <div class="vandel-booking-nav">
+                <button type="button"
+                    class="vandel-btn vandel-btn-prev"><?php _e('Previous', 'vandel-booking'); ?></button>
+                <button type="button" class="vandel-btn vandel-btn-next"><?php _e('Next', 'vandel-booking'); ?></button>
+            </div>
+        </div>
+
+        <!-- Step 4: Confirmation -->
+        <div class="vandel-booking-step" data-step="confirmation">
+            <?php $this->renderConfirmationStep(); ?>
+
+            <div class="vandel-booking-nav">
+                <button type="button"
+                    class="vandel-btn vandel-btn-prev"><?php _e('Previous', 'vandel-booking'); ?></button>
+                <button type="button"
+                    class="vandel-btn vandel-btn-primary vandel-btn-submit"><?php _e('Book Now', 'vandel-booking'); ?></button>
+            </div>
+        </div>
+
+        <!-- Success Message (Initially Hidden) -->
+        <div class="vandel-booking-success" style="display: none;">
+            <div class="vandel-success-icon">
+                <span class="dashicons dashicons-yes-alt"></span>
+            </div>
+            <h3><?php _e('Thank you for your booking!', 'vandel-booking'); ?></h3>
+            <p><?php _e('Your booking has been submitted successfully. You will receive a confirmation email shortly.', 'vandel-booking'); ?>
+            </p>
+            <div class="vandel-booking-reference">
+                <p><?php _e('Booking Reference:', 'vandel-booking'); ?> <span id="vandel-booking-reference"></span></p>
+            </div>
+        </div>
+    </div>
+</div>
+<?php
         return ob_get_clean();
     }
     
@@ -200,32 +206,33 @@ class BookingForm {
      */
     private function renderZipCodeStep() {
         ?>
-        <div class="vandel-form-section">
-            <h3><?php _e('Enter Your Location', 'vandel-booking'); ?></h3>
-            <p><?php _e('Please enter your ZIP code to check service availability in your area.', 'vandel-booking'); ?></p>
-            
-            <div class="vandel-form-row">
-                <div class="vandel-form-group">
-                    <label for="vandel-zip-code"><?php _e('ZIP Code', 'vandel-booking'); ?> <span class="required">*</span></label>
-                    <input type="text" id="vandel-zip-code" name="zip_code" required>
-                </div>
+<div class="vandel-form-section">
+    <h3><?php _e('Enter Your Location', 'vandel-booking'); ?></h3>
+    <p><?php _e('Please enter your ZIP code to check service availability in your area.', 'vandel-booking'); ?></p>
+
+    <div class="vandel-form-row">
+        <div class="vandel-form-group">
+            <label for="vandel-zip-code"><?php _e('ZIP Code', 'vandel-booking'); ?> <span
+                    class="required">*</span></label>
+            <input type="text" id="vandel-zip-code" name="zip_code" required>
+        </div>
+    </div>
+
+    <div id="vandel-zip-validation-message" class="vandel-validation-message"></div>
+
+    <div id="vandel-location-details" class="vandel-location-details" style="display: none;">
+        <div class="vandel-location-info">
+            <div class="vandel-location-icon">
+                <span class="dashicons dashicons-location"></span>
             </div>
-            
-            <div id="vandel-zip-validation-message" class="vandel-validation-message"></div>
-            
-            <div id="vandel-location-details" class="vandel-location-details" style="display: none;">
-                <div class="vandel-location-info">
-                    <div class="vandel-location-icon">
-                        <span class="dashicons dashicons-location"></span>
-                    </div>
-                    <div class="vandel-location-text">
-                        <span id="vandel-city-state"></span>
-                        <span id="vandel-country"></span>
-                    </div>
-                </div>
+            <div class="vandel-location-text">
+                <span id="vandel-city-state"></span>
+                <span id="vandel-country"></span>
             </div>
         </div>
-        <?php
+    </div>
+</div>
+<?php
     }
     
     /**
@@ -235,12 +242,12 @@ class BookingForm {
      */
     private function renderServiceStep($selected_service_id = 0) {
         ?>
-        <div class="vandel-form-section">
-            <h3><?php _e('Select Service', 'vandel-booking'); ?></h3>
-            <p><?php _e('Please choose the service you would like to book.', 'vandel-booking'); ?></p>
-            
-            <div class="vandel-services-grid">
-                <?php
+<div class="vandel-form-section">
+    <h3><?php _e('Select Service', 'vandel-booking'); ?></h3>
+    <p><?php _e('Please choose the service you would like to book.', 'vandel-booking'); ?></p>
+
+    <div class="vandel-services-grid">
+        <?php
                 if (empty($this->services)) {
                     echo '<p class="vandel-notice">' . __('No services available. Please check back later.', 'vandel-booking') . '</p>';
                 } else {
@@ -253,44 +260,45 @@ class BookingForm {
                             $service_classes .= ' selected';
                         }
                         ?>
-                        <div class="<?php echo esc_attr($service_classes); ?>" data-service-id="<?php echo esc_attr($service['id']); ?>">
-                            <?php if ($is_popular): ?>
-                            <span class="vandel-popular-badge"><?php _e('Popular', 'vandel-booking'); ?></span>
-                            <?php endif; ?>
-                            
-                            <div class="vandel-service-icon">
-                                <?php if (!empty($service['icon'])): ?>
-                                <img src="<?php echo esc_url($service['icon']); ?>" alt="<?php echo esc_attr($service['title']); ?>">
-                                <?php else: ?>
-                                <span class="dashicons dashicons-admin-generic"></span>
-                                <?php endif; ?>
-                            </div>
-                            
-                            <div class="vandel-service-info">
-                                <h4 class="vandel-service-title"><?php echo esc_html($service['title']); ?></h4>
-                                <?php if (!empty($service['subtitle'])): ?>
-                                <p class="vandel-service-subtitle"><?php echo esc_html($service['subtitle']); ?></p>
-                                <?php endif; ?>
-                                
-                                <div class="vandel-service-price">
-                                    <?php echo \VandelBooking\Helpers::formatPrice($service['price']); ?>
-                                </div>
-                            </div>
-                        </div>
-                        <?php
-                    }
-                }
-                ?>
+        <div class="<?php echo esc_attr($service_classes); ?>"
+            data-service-id="<?php echo esc_attr($service['id']); ?>">
+            <?php if ($is_popular): ?>
+            <span class="vandel-popular-badge"><?php _e('Popular', 'vandel-booking'); ?></span>
+            <?php endif; ?>
+
+            <div class="vandel-service-icon">
+                <?php if (!empty($service['icon'])): ?>
+                <img src="<?php echo esc_url($service['icon']); ?>" alt="<?php echo esc_attr($service['title']); ?>">
+                <?php else: ?>
+                <span class="dashicons dashicons-admin-generic"></span>
+                <?php endif; ?>
             </div>
-            
-            <div id="vandel-service-options" class="vandel-service-options" style="display: none;">
-                <h4><?php _e('Service Options', 'vandel-booking'); ?></h4>
-                <div id="vandel-options-container" class="vandel-options-container">
-                    <!-- Options will be loaded here via AJAX -->
+
+            <div class="vandel-service-info">
+                <h4 class="vandel-service-title"><?php echo esc_html($service['title']); ?></h4>
+                <?php if (!empty($service['subtitle'])): ?>
+                <p class="vandel-service-subtitle"><?php echo esc_html($service['subtitle']); ?></p>
+                <?php endif; ?>
+
+                <div class="vandel-service-price">
+                    <?php echo \VandelBooking\Helpers::formatPrice($service['price']); ?>
                 </div>
             </div>
         </div>
         <?php
+                    }
+                }
+                ?>
+    </div>
+
+    <div id="vandel-service-options" class="vandel-service-options" style="display: none;">
+        <h4><?php _e('Service Options', 'vandel-booking'); ?></h4>
+        <div id="vandel-options-container" class="vandel-options-container">
+            <!-- Options will be loaded here via AJAX -->
+        </div>
+    </div>
+</div>
+<?php
     }
     
     /**
@@ -298,40 +306,42 @@ class BookingForm {
      */
     private function renderDetailsStep() {
         ?>
-        <div class="vandel-form-section">
-            <h3><?php _e('Your Details', 'vandel-booking'); ?></h3>
-            <p><?php _e('Please provide your contact information and preferred date.', 'vandel-booking'); ?></p>
-            
-            <div class="vandel-form-row">
-                <div class="vandel-form-group">
-                    <label for="vandel-name"><?php _e('Name', 'vandel-booking'); ?> <span class="required">*</span></label>
-                    <input type="text" id="vandel-name" name="name" required>
-                </div>
-                
-                <div class="vandel-form-group">
-                    <label for="vandel-email"><?php _e('Email', 'vandel-booking'); ?> <span class="required">*</span></label>
-                    <input type="email" id="vandel-email" name="email" required>
-                </div>
-            </div>
-            
-            <div class="vandel-form-row">
-                <div class="vandel-form-group">
-                    <label for="vandel-phone"><?php _e('Phone', 'vandel-booking'); ?> <span class="required">*</span></label>
-                    <input type="tel" id="vandel-phone" name="phone" required>
-                </div>
-                
-                <div class="vandel-form-group">
-                    <label for="vandel-date"><?php _e('Preferred Date', 'vandel-booking'); ?> <span class="required">*</span></label>
-                    <input type="date" id="vandel-date" name="date" required min="<?php echo date('Y-m-d'); ?>">
-                </div>
-            </div>
-            
-            <div class="vandel-form-row">
-                <div class="vandel-form-group full-width">
-                    <label for="vandel-time"><?php _e('Preferred Time', 'vandel-booking'); ?> <span class="required">*</span></label>
-                    <select id="vandel-time" name="time" required>
-                        <option value=""><?php _e('Select a time', 'vandel-booking'); ?></option>
-                        <?php
+<div class="vandel-form-section">
+    <h3><?php _e('Your Details', 'vandel-booking'); ?></h3>
+    <p><?php _e('Please provide your contact information and preferred date.', 'vandel-booking'); ?></p>
+
+    <div class="vandel-form-row">
+        <div class="vandel-form-group">
+            <label for="vandel-name"><?php _e('Name', 'vandel-booking'); ?> <span class="required">*</span></label>
+            <input type="text" id="vandel-name" name="name" required>
+        </div>
+
+        <div class="vandel-form-group">
+            <label for="vandel-email"><?php _e('Email', 'vandel-booking'); ?> <span class="required">*</span></label>
+            <input type="email" id="vandel-email" name="email" required>
+        </div>
+    </div>
+
+    <div class="vandel-form-row">
+        <div class="vandel-form-group">
+            <label for="vandel-phone"><?php _e('Phone', 'vandel-booking'); ?> <span class="required">*</span></label>
+            <input type="tel" id="vandel-phone" name="phone" required>
+        </div>
+
+        <div class="vandel-form-group">
+            <label for="vandel-date"><?php _e('Preferred Date', 'vandel-booking'); ?> <span
+                    class="required">*</span></label>
+            <input type="date" id="vandel-date" name="date" required min="<?php echo date('Y-m-d'); ?>">
+        </div>
+    </div>
+
+    <div class="vandel-form-row">
+        <div class="vandel-form-group full-width">
+            <label for="vandel-time"><?php _e('Preferred Time', 'vandel-booking'); ?> <span
+                    class="required">*</span></label>
+            <select id="vandel-time" name="time" required>
+                <option value=""><?php _e('Select a time', 'vandel-booking'); ?></option>
+                <?php
                         // Get business hours from settings
                         $start_hour = get_option('vandel_business_hours_start', '09:00');
                         $end_hour = get_option('vandel_business_hours_end', '17:00');
@@ -346,35 +356,36 @@ class BookingForm {
                             echo '<option value="' . date('H:i', $time) . '">' . date('g:i A', $time) . '</option>';
                         }
                         ?>
-                    </select>
-                </div>
-            </div>
-            
-            <div class="vandel-form-row">
-                <div class="vandel-form-group full-width">
-                    <label for="vandel-comments"><?php _e('Special Instructions', 'vandel-booking'); ?></label>
-                    <textarea id="vandel-comments" name="comments" rows="3" placeholder="<?php _e('Please provide any additional information or special requests', 'vandel-booking'); ?>"></textarea>
-                </div>
-            </div>
-            
-            <div class="vandel-form-row">
-                <div class="vandel-form-group full-width">
-                    <label class="vandel-checkbox-label">
-                        <input type="checkbox" id="vandel-terms" name="terms" required>
-                        <span class="vandel-checkbox-text">
-                            <?php 
+            </select>
+        </div>
+    </div>
+
+    <div class="vandel-form-row">
+        <div class="vandel-form-group full-width">
+            <label for="vandel-comments"><?php _e('Special Instructions', 'vandel-booking'); ?></label>
+            <textarea id="vandel-comments" name="comments" rows="3"
+                placeholder="<?php _e('Please provide any additional information or special requests', 'vandel-booking'); ?>"></textarea>
+        </div>
+    </div>
+
+    <div class="vandel-form-row">
+        <div class="vandel-form-group full-width">
+            <label class="vandel-checkbox-label">
+                <input type="checkbox" id="vandel-terms" name="terms" required>
+                <span class="vandel-checkbox-text">
+                    <?php 
                             printf(
                                 __('I agree to the %sTerms and Conditions%s', 'vandel-booking'),
                                 '<a href="#" target="_blank">',
                                 '</a>'
                             ); 
                             ?>
-                        </span>
-                    </label>
-                </div>
-            </div>
+                </span>
+            </label>
         </div>
-        <?php
+    </div>
+</div>
+<?php
     }
     
     /**
@@ -382,90 +393,90 @@ class BookingForm {
      */
     private function renderConfirmationStep() {
         ?>
-        <div class="vandel-form-section">
-            <h3><?php _e('Confirm Your Booking', 'vandel-booking'); ?></h3>
-            <p><?php _e('Please review your booking details before submitting.', 'vandel-booking'); ?></p>
-            
-            <div class="vandel-booking-summary">
-                <div class="vandel-summary-section">
-                    <h4><?php _e('Service Details', 'vandel-booking'); ?></h4>
-                    <div class="vandel-summary-item">
-                        <span class="vandel-summary-label"><?php _e('Service:', 'vandel-booking'); ?></span>
-                        <span class="vandel-summary-value" id="summary-service">--</span>
-                    </div>
-                    <div class="vandel-summary-item" id="summary-options-container" style="display: none;">
-                        <span class="vandel-summary-label"><?php _e('Options:', 'vandel-booking'); ?></span>
-                        <div class="vandel-summary-value" id="summary-options">
-                            <!-- Options will be displayed here -->
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="vandel-summary-section">
-                    <h4><?php _e('Contact Information', 'vandel-booking'); ?></h4>
-                    <div class="vandel-summary-item">
-                        <span class="vandel-summary-label"><?php _e('Name:', 'vandel-booking'); ?></span>
-                        <span class="vandel-summary-value" id="summary-name">--</span>
-                    </div>
-                    <div class="vandel-summary-item">
-                        <span class="vandel-summary-label"><?php _e('Email:', 'vandel-booking'); ?></span>
-                        <span class="vandel-summary-value" id="summary-email">--</span>
-                    </div>
-                    <div class="vandel-summary-item">
-                        <span class="vandel-summary-label"><?php _e('Phone:', 'vandel-booking'); ?></span>
-                        <span class="vandel-summary-value" id="summary-phone">--</span>
-                    </div>
-                </div>
-                
-                <div class="vandel-summary-section">
-                    <h4><?php _e('Booking Details', 'vandel-booking'); ?></h4>
-                    <div class="vandel-summary-item">
-                        <span class="vandel-summary-label"><?php _e('Date:', 'vandel-booking'); ?></span>
-                        <span class="vandel-summary-value" id="summary-date">--</span>
-                    </div>
-                    <div class="vandel-summary-item">
-                        <span class="vandel-summary-label"><?php _e('Time:', 'vandel-booking'); ?></span>
-                        <span class="vandel-summary-value" id="summary-time">--</span>
-                    </div>
-                    <?php if ($this->zip_code_feature_enabled): ?>
-                    <div class="vandel-summary-item">
-                        <span class="vandel-summary-label"><?php _e('Location:', 'vandel-booking'); ?></span>
-                        <span class="vandel-summary-value" id="summary-location">--</span>
-                    </div>
-                    <?php endif; ?>
-                    <div class="vandel-summary-item">
-                        <span class="vandel-summary-label"><?php _e('Special Instructions:', 'vandel-booking'); ?></span>
-                        <span class="vandel-summary-value" id="summary-comments">--</span>
-                    </div>
-                </div>
-                
-                <div class="vandel-summary-section vandel-price-summary">
-                    <div class="vandel-summary-item">
-                        <span class="vandel-summary-label"><?php _e('Service Price:', 'vandel-booking'); ?></span>
-                        <span class="vandel-summary-value" id="summary-base-price">--</span>
-                    </div>
-                    <div class="vandel-summary-item" id="summary-options-price-container" style="display: none;">
-                        <span class="vandel-summary-label"><?php _e('Options:', 'vandel-booking'); ?></span>
-                        <span class="vandel-summary-value" id="summary-options-price">--</span>
-                    </div>
-                    <?php if ($this->zip_code_feature_enabled): ?>
-                    <div class="vandel-summary-item" id="summary-adjustment-container" style="display: none;">
-                        <span class="vandel-summary-label"><?php _e('Location Adjustment:', 'vandel-booking'); ?></span>
-                        <span class="vandel-summary-value" id="summary-adjustment">--</span>
-                    </div>
-                    <div class="vandel-summary-item" id="summary-service-fee-container" style="display: none;">
-                        <span class="vandel-summary-label"><?php _e('Service Fee:', 'vandel-booking'); ?></span>
-                        <span class="vandel-summary-value" id="summary-service-fee">--</span>
-                    </div>
-                    <?php endif; ?>
-                    <div class="vandel-summary-total">
-                        <span class="vandel-summary-label"><?php _e('Total:', 'vandel-booking'); ?></span>
-                        <span class="vandel-summary-value" id="summary-total">--</span>
-                    </div>
+<div class="vandel-form-section">
+    <h3><?php _e('Confirm Your Booking', 'vandel-booking'); ?></h3>
+    <p><?php _e('Please review your booking details before submitting.', 'vandel-booking'); ?></p>
+
+    <div class="vandel-booking-summary">
+        <div class="vandel-summary-section">
+            <h4><?php _e('Service Details', 'vandel-booking'); ?></h4>
+            <div class="vandel-summary-item">
+                <span class="vandel-summary-label"><?php _e('Service:', 'vandel-booking'); ?></span>
+                <span class="vandel-summary-value" id="summary-service">--</span>
+            </div>
+            <div class="vandel-summary-item" id="summary-options-container" style="display: none;">
+                <span class="vandel-summary-label"><?php _e('Options:', 'vandel-booking'); ?></span>
+                <div class="vandel-summary-value" id="summary-options">
+                    <!-- Options will be displayed here -->
                 </div>
             </div>
         </div>
-        <?php
+
+        <div class="vandel-summary-section">
+            <h4><?php _e('Contact Information', 'vandel-booking'); ?></h4>
+            <div class="vandel-summary-item">
+                <span class="vandel-summary-label"><?php _e('Name:', 'vandel-booking'); ?></span>
+                <span class="vandel-summary-value" id="summary-name">--</span>
+            </div>
+            <div class="vandel-summary-item">
+                <span class="vandel-summary-label"><?php _e('Email:', 'vandel-booking'); ?></span>
+                <span class="vandel-summary-value" id="summary-email">--</span>
+            </div>
+            <div class="vandel-summary-item">
+                <span class="vandel-summary-label"><?php _e('Phone:', 'vandel-booking'); ?></span>
+                <span class="vandel-summary-value" id="summary-phone">--</span>
+            </div>
+        </div>
+
+        <div class="vandel-summary-section">
+            <h4><?php _e('Booking Details', 'vandel-booking'); ?></h4>
+            <div class="vandel-summary-item">
+                <span class="vandel-summary-label"><?php _e('Date:', 'vandel-booking'); ?></span>
+                <span class="vandel-summary-value" id="summary-date">--</span>
+            </div>
+            <div class="vandel-summary-item">
+                <span class="vandel-summary-label"><?php _e('Time:', 'vandel-booking'); ?></span>
+                <span class="vandel-summary-value" id="summary-time">--</span>
+            </div>
+            <?php if ($this->zip_code_feature_enabled): ?>
+            <div class="vandel-summary-item">
+                <span class="vandel-summary-label"><?php _e('Location:', 'vandel-booking'); ?></span>
+                <span class="vandel-summary-value" id="summary-location">--</span>
+            </div>
+            <?php endif; ?>
+            <div class="vandel-summary-item">
+                <span class="vandel-summary-label"><?php _e('Special Instructions:', 'vandel-booking'); ?></span>
+                <span class="vandel-summary-value" id="summary-comments">--</span>
+            </div>
+        </div>
+
+        <div class="vandel-summary-section vandel-price-summary">
+            <div class="vandel-summary-item">
+                <span class="vandel-summary-label"><?php _e('Service Price:', 'vandel-booking'); ?></span>
+                <span class="vandel-summary-value" id="summary-base-price">--</span>
+            </div>
+            <div class="vandel-summary-item" id="summary-options-price-container" style="display: none;">
+                <span class="vandel-summary-label"><?php _e('Options:', 'vandel-booking'); ?></span>
+                <span class="vandel-summary-value" id="summary-options-price">--</span>
+            </div>
+            <?php if ($this->zip_code_feature_enabled): ?>
+            <div class="vandel-summary-item" id="summary-adjustment-container" style="display: none;">
+                <span class="vandel-summary-label"><?php _e('Location Adjustment:', 'vandel-booking'); ?></span>
+                <span class="vandel-summary-value" id="summary-adjustment">--</span>
+            </div>
+            <div class="vandel-summary-item" id="summary-service-fee-container" style="display: none;">
+                <span class="vandel-summary-label"><?php _e('Service Fee:', 'vandel-booking'); ?></span>
+                <span class="vandel-summary-value" id="summary-service-fee">--</span>
+            </div>
+            <?php endif; ?>
+            <div class="vandel-summary-total">
+                <span class="vandel-summary-label"><?php _e('Total:', 'vandel-booking'); ?></span>
+                <span class="vandel-summary-value" id="summary-total">--</span>
+            </div>
+        </div>
+    </div>
+</div>
+<?php
     }
     
     /**
@@ -896,5 +907,92 @@ public function renderSubServices($sub_services) {
         }
         
         return $services;
+    }
+
+
+
+/**
+     * Enqueue booking form scripts and styles
+     */
+    public function enqueue_scripts() {
+        wp_enqueue_style(
+            'vandel-booking-form',
+            VANDEL_PLUGIN_URL . 'assets/css/booking-form.css',
+            [],
+            VANDEL_VERSION
+        );
+        
+        wp_enqueue_script(
+            'vandel-booking-form',
+            VANDEL_PLUGIN_URL . 'assets/js/booking-form.js',
+            ['jquery'],
+            VANDEL_VERSION,
+            true
+        );
+        
+        // Enqueue location selection script
+        wp_enqueue_script(
+            'vandel-location-select',
+            VANDEL_PLUGIN_URL . 'assets/js/location-select.js',
+            ['jquery', 'vandel-booking-form'],
+            VANDEL_VERSION,
+            true
+        );
+        
+        // Get currency symbol for price formatting
+        $currency_symbol = $this->get_currency_symbol();
+        
+        wp_localize_script(
+            'vandel-booking-form',
+            'vandelBooking',
+            [
+                'ajaxUrl' => admin_url('admin-ajax.php'),
+                'nonce'   => wp_create_nonce('vandel_booking_form'),
+                'currencySymbol' => $currency_symbol,
+                'strings' => [
+                    'errorRequired'     => __('This field is required.', 'vandel-booking'),
+                    'errorEmail'        => __('Please enter a valid email address.', 'vandel-booking'),
+                    'errorPhone'        => __('Please enter a valid phone number.', 'vandel-booking'),
+                    'errorDate'         => __('Please select a valid date.', 'vandel-booking'),
+                    'errorTime'         => __('Please select a valid time.', 'vandel-booking'),
+                    'errorZipCode'      => __('Please enter a valid ZIP code.', 'vandel-booking'),
+                    'errorLocationValidation' => __('Failed to validate location.', 'vandel-booking'),
+                    'errorForm'         => __('Please check the form and fix all errors.', 'vandel-booking'),
+                    'successBooking'    => __('Your booking has been submitted successfully!', 'vandel-booking'),
+                    'errorBooking'      => __('There was an error submitting your booking. Please try again.', 'vandel-booking'),
+                    'loadingText'       => __('Loading...', 'vandel-booking'),
+                    'submittingText'    => __('Submitting...', 'vandel-booking'),
+                    'validatingZipCode' => __('Validating ZIP code...', 'vandel-booking'),
+                    'selectCountry'     => __('Select Country', 'vandel-booking'),
+                    'selectCity'        => __('Select City', 'vandel-booking'),
+                    'selectArea'        => __('Select Area', 'vandel-booking'),
+                    'loadingCities'     => __('Loading cities', 'vandel-booking'),
+                    'loadingAreas'      => __('Loading areas', 'vandel-booking'),
+                    'selectedArea'      => __('Selected Area', 'vandel-booking'),
+                    'priceAdjustment'   => __('Price Adjustment', 'vandel-booking'),
+                    'serviceFee'        => __('Service Fee', 'vandel-booking'),
+                ]
+            ]
+        );
+    }
+    
+    /**
+     * Get currency symbol based on settings
+     * 
+     * @return string Currency symbol
+     */
+    private function get_currency_symbol() {
+        $currency = get_option('vandel_currency', 'EUR');
+        
+        $symbols = [
+            'USD' => '$',
+            'EUR' => '€',
+            'GBP' => '£',
+            'SEK' => 'kr',
+            'NOK' => 'kr',
+            'DKK' => 'kr'
+        ];
+        
+        return isset($symbols[$currency]) ? $symbols[$currency] : $currency;
     }
 }
