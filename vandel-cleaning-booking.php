@@ -659,3 +659,20 @@ if (file_exists(VANDEL_PLUGIN_DIR . 'includes/database/class-installer.php')) {
         }
     });
 }
+
+// Enqueue scripts and styles for the admin area
+wp_enqueue_script(
+    'vandel-zip-code-admin',
+    VANDEL_PLUGIN_URL . 'assets/js/admin/location-admin.js',
+    ['jquery'],
+    VANDEL_VERSION,
+    true
+);
+// Enqueue location-importer.js
+wp_enqueue_script(
+    'vandel-location-importer',
+    VANDEL_PLUGIN_URL . 'assets/js/admin/location-importer.js',
+    ['jquery'],
+    VANDEL_VERSION,
+    true
+);
