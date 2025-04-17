@@ -5,10 +5,9 @@ use VandelBooking\Booking\BookingManager;
 use VandelBooking\Booking\NoteModel;
 use VandelBooking\Helpers;
 
-
 /**
  * Enhanced Booking Details Management Class
- * Provides a more comprehensive view of booking details
+ * Provides a more comprehensive view of booking details with fixed action handling
  */
 class BookingDetails {
     /**
@@ -35,12 +34,12 @@ class BookingDetails {
             $this->note_model = new NoteModel();
         }
         
-        // Handle booking actions
-        add_action('admin_init', [$this, 'handleBookingActions']);
+        // Handle booking actions - high priority to run early
+        add_action('admin_init', [$this, 'handleBookingActions'], 5);
     }
     
     /**
-     * Handle booking actions
+     * Handle booking actions with improved debugging and status handling
      */
     public function handleBookingActions() {
         // Only process if we're on our dashboard page with booking-details tab
@@ -54,35 +53,76 @@ class BookingDetails {
             return;
         }
         
+        // Debug log
+        error_log("BookingDetails->handleBookingActions: Processing for booking ID $booking_id");
+        
         // Handle status changes
         if (isset($_GET['action']) && isset($_GET['_wpnonce'])) {
             $action = sanitize_key($_GET['action']);
             
-            // Verify nonce
-            if (!wp_verify_nonce($_GET['_wpnonce'], $action . '_booking_' . $booking_id)) {
-                wp_die(__('Security check failed', 'vandel-booking'));
+            // Debug log
+            error_log("BookingDetails->handleBookingActions: Processing action '$action'");
+            
+            // Check nonce
+            $nonce = $_GET['_wpnonce'];
+            $expected_nonce_action = $action . '_booking_' . $booking_id;
+            $valid_nonce = wp_verify_nonce($nonce, $expected_nonce_action);
+            
+            if (!$valid_nonce) {
+                error_log("BookingDetails->handleBookingActions: Nonce verification failed for action '$action'");
+                wp_die(__('Security check failed. Please try again.', 'vandel-booking'));
                 return;
             }
             
+            error_log("BookingDetails->handleBookingActions: Nonce verification passed for action '$action'");
+            
             switch ($action) {
                 case 'approve':
-                    $this->updateBookingStatus($booking_id, 'confirmed');
-                    wp_redirect(admin_url('admin.php?page=vandel-dashboard&tab=booking-details&booking_id=' . $booking_id . '&message=booking_approved'));
-                    exit;
+                    $result = $this->updateBookingStatus($booking_id, 'confirmed');
+                    if ($result) {
+                        error_log("BookingDetails->handleBookingActions: Successfully approved booking #$booking_id");
+                        wp_redirect(admin_url('admin.php?page=vandel-dashboard&tab=booking-details&booking_id=' . $booking_id . '&message=booking_approved'));
+                        exit;
+                    } else {
+                        error_log("BookingDetails->handleBookingActions: Failed to approve booking #$booking_id");
+                        wp_redirect(admin_url('admin.php?page=vandel-dashboard&tab=booking-details&booking_id=' . $booking_id . '&message=status_update_failed'));
+                        exit;
+                    }
+                    break;
                     
                 case 'cancel':
-                    $this->updateBookingStatus($booking_id, 'canceled');
-                    wp_redirect(admin_url('admin.php?page=vandel-dashboard&tab=booking-details&booking_id=' . $booking_id . '&message=booking_canceled'));
-                    exit;
+                    $result = $this->updateBookingStatus($booking_id, 'canceled');
+                    if ($result) {
+                        error_log("BookingDetails->handleBookingActions: Successfully canceled booking #$booking_id");
+                        wp_redirect(admin_url('admin.php?page=vandel-dashboard&tab=booking-details&booking_id=' . $booking_id . '&message=booking_canceled'));
+                        exit;
+                    } else {
+                        error_log("BookingDetails->handleBookingActions: Failed to cancel booking #$booking_id");
+                        wp_redirect(admin_url('admin.php?page=vandel-dashboard&tab=booking-details&booking_id=' . $booking_id . '&message=status_update_failed'));
+                        exit;
+                    }
+                    break;
                     
                 case 'complete':
-                    $this->updateBookingStatus($booking_id, 'completed');
-                    wp_redirect(admin_url('admin.php?page=vandel-dashboard&tab=booking-details&booking_id=' . $booking_id . '&message=booking_completed'));
-                    exit;
+                    $result = $this->updateBookingStatus($booking_id, 'completed');
+                    if ($result) {
+                        error_log("BookingDetails->handleBookingActions: Successfully completed booking #$booking_id");
+                        wp_redirect(admin_url('admin.php?page=vandel-dashboard&tab=booking-details&booking_id=' . $booking_id . '&message=booking_completed'));
+                        exit;
+                    } else {
+                        error_log("BookingDetails->handleBookingActions: Failed to complete booking #$booking_id");
+                        wp_redirect(admin_url('admin.php?page=vandel-dashboard&tab=booking-details&booking_id=' . $booking_id . '&message=status_update_failed'));
+                        exit;
+                    }
+                    break;
                     
                 case 'download_invoice':
                     $this->downloadInvoice($booking_id);
                     exit;
+                    
+                default:
+                    error_log("BookingDetails->handleBookingActions: Unknown action '$action'");
+                    break;
             }
         }
         
@@ -93,9 +133,16 @@ class BookingDetails {
             $note_content = isset($_POST['note_content']) ? sanitize_textarea_field($_POST['note_content']) : '';
             
             if (!empty($note_content)) {
-                $this->addBookingNote($booking_id, $note_content);
-                wp_redirect(admin_url('admin.php?page=vandel-dashboard&tab=booking-details&booking_id=' . $booking_id . '&message=note_added'));
-                exit;
+                $result = $this->addBookingNote($booking_id, $note_content);
+                if ($result) {
+                    error_log("BookingDetails->handleBookingActions: Successfully added note to booking #$booking_id");
+                    wp_redirect(admin_url('admin.php?page=vandel-dashboard&tab=booking-details&booking_id=' . $booking_id . '&message=note_added'));
+                    exit;
+                } else {
+                    error_log("BookingDetails->handleBookingActions: Failed to add note to booking #$booking_id");
+                    wp_redirect(admin_url('admin.php?page=vandel-dashboard&tab=booking-details&booking_id=' . $booking_id . '&message=note_failed'));
+                    exit;
+                }
             }
         }
         
@@ -103,33 +150,67 @@ class BookingDetails {
         if (isset($_POST['update_booking']) && isset($_POST['booking_update_nonce']) && 
             wp_verify_nonce($_POST['booking_update_nonce'], 'update_booking_' . $booking_id)) {
             
-            $this->updateBookingDetails($booking_id, $_POST);
-            wp_redirect(admin_url('admin.php?page=vandel-dashboard&tab=booking-details&booking_id=' . $booking_id . '&message=booking_updated'));
-            exit;
+            $result = $this->updateBookingDetails($booking_id, $_POST);
+            if ($result) {
+                error_log("BookingDetails->handleBookingActions: Successfully updated booking #$booking_id");
+                wp_redirect(admin_url('admin.php?page=vandel-dashboard&tab=booking-details&booking_id=' . $booking_id . '&message=booking_updated'));
+                exit;
+            } else {
+                error_log("BookingDetails->handleBookingActions: Failed to update booking #$booking_id");
+                wp_redirect(admin_url('admin.php?page=vandel-dashboard&tab=booking-details&booking_id=' . $booking_id . '&message=booking_update_failed'));
+                exit;
+            }
         }
     }
     
     /**
-     * Update booking status
+     * Update booking status with enhanced error handling
      * 
      * @param int $booking_id Booking ID
      * @param string $status New status
      * @return bool Success
      */
     private function updateBookingStatus($booking_id, $status) {
+        error_log("BookingDetails->updateBookingStatus: Attempting to change booking #$booking_id status to '$status'");
+        
+        // First try to use BookingManager
         if ($this->booking_manager && method_exists($this->booking_manager, 'updateBookingStatus')) {
-            return $this->booking_manager->updateBookingStatus($booking_id, $status);
+            error_log("BookingDetails->updateBookingStatus: Using BookingManager");
+            $result = $this->booking_manager->updateBookingStatus($booking_id, $status);
+            
+            // Debug log
+            if ($result) {
+                error_log("BookingDetails->updateBookingStatus: Successfully updated status using BookingManager");
+            } else {
+                error_log("BookingDetails->updateBookingStatus: Failed to update status using BookingManager");
+            }
+            
+            return $result;
         }
         
         // Fallback if BookingManager not available
+        error_log("BookingDetails->updateBookingStatus: Using direct database query (fallback)");
         global $wpdb;
         $bookings_table = $wpdb->prefix . 'vandel_bookings';
+        
+        // Check if table exists
+        if ($wpdb->get_var("SHOW TABLES LIKE '$bookings_table'") !== $bookings_table) {
+            error_log("BookingDetails->updateBookingStatus: Bookings table does not exist");
+            return false;
+        }
         
         // Get current status for comparison
         $old_status = $wpdb->get_var($wpdb->prepare(
             "SELECT status FROM $bookings_table WHERE id = %d",
             $booking_id
         ));
+        
+        if ($old_status === null) {
+            error_log("BookingDetails->updateBookingStatus: Could not retrieve current status for booking #$booking_id");
+            return false;
+        }
+        
+        error_log("BookingDetails->updateBookingStatus: Current status is '$old_status'");
         
         // Update the status
         $result = $wpdb->update(
@@ -140,8 +221,26 @@ class BookingDetails {
             ['%d']
         );
         
+        // Debug log
+        if ($result === false) {
+            error_log("BookingDetails->updateBookingStatus: Database error: " . $wpdb->last_error);
+            return false;
+        } elseif ($result === 0) {
+            // This happens when the status is already set to the requested value
+            error_log("BookingDetails->updateBookingStatus: No rows affected (booking #$booking_id already has status '$status')");
+            
+            // Consider this a success if the status already matches what we want
+            if ($old_status === $status) {
+                return true;
+            }
+            
+            return false;
+        }
+        
+        error_log("BookingDetails->updateBookingStatus: Successfully updated status in database");
+        
         // Trigger status change action for other plugins
-        if ($result && $old_status !== $status) {
+        if ($old_status !== $status) {
             do_action('vandel_booking_status_changed', $booking_id, $old_status, $status);
             
             // Add note about status change
@@ -155,18 +254,19 @@ class BookingDetails {
             );
         }
         
-        return $result !== false;
+        return true;
     }
     
     /**
-     * Add booking note
+     * Add booking note with improved error handling
      * 
      * @param int $booking_id Booking ID
      * @param string $note_content Note content
      * @param string $type Note type (user or system)
-     * @return bool Success
+     * @return int|bool Note ID or false on failure
      */
     private function addBookingNote($booking_id, $note_content, $type = 'user') {
+        // Try to use NoteModel
         if ($this->note_model && method_exists($this->note_model, 'addNote')) {
             $user_id = $type === 'system' ? 0 : get_current_user_id();
             return $this->note_model->addNote($booking_id, $note_content, $user_id);
@@ -178,6 +278,7 @@ class BookingDetails {
         
         // Check if table exists
         if ($wpdb->get_var("SHOW TABLES LIKE '$notes_table'") !== $notes_table) {
+            error_log("BookingDetails->addBookingNote: Notes table does not exist");
             return false;
         }
         
@@ -199,7 +300,12 @@ class BookingDetails {
             ]
         );
         
-        return $result !== false;
+        if ($result === false) {
+            error_log("BookingDetails->addBookingNote: Database error: " . $wpdb->last_error);
+            return false;
+        }
+        
+        return $wpdb->insert_id;
     }
     
     /**
@@ -212,6 +318,12 @@ class BookingDetails {
     private function updateBookingDetails($booking_id, $data) {
         global $wpdb;
         $bookings_table = $wpdb->prefix . 'vandel_bookings';
+        
+        // Check if table exists
+        if ($wpdb->get_var("SHOW TABLES LIKE '$bookings_table'") !== $bookings_table) {
+            error_log("BookingDetails->updateBookingDetails: Bookings table does not exist");
+            return false;
+        }
         
         // Prepare booking data for update
         $update_data = [];
@@ -253,7 +365,7 @@ class BookingDetails {
         }
         
         // Total price
-        if (isset($data['total_price']) && !empty($data['total_price'])) {
+        if (isset($data['total_price']) && $data['total_price'] !== '') {
             $update_data['total_price'] = floatval($data['total_price']);
         }
         
@@ -279,35 +391,70 @@ class BookingDetails {
         
         // Only update if there's data to update
         if (empty($update_data)) {
+            error_log("BookingDetails->updateBookingDetails: No data to update");
             return false;
         }
         
         // Add updated_at timestamp
         $update_data['updated_at'] = current_time('mysql');
         
+        // Prepare formats for wpdb update
+        $formats = [];
+        foreach ($update_data as $key => $value) {
+            if (is_numeric($value)) {
+                $formats[] = is_float($value + 0) ? '%f' : '%d';
+            } else {
+                $formats[] = '%s';
+            }
+        }
+        
         // Perform update
         $result = $wpdb->update(
             $bookings_table,
             $update_data,
             ['id' => $booking_id],
-            array_map(function ($value) {
-                return is_numeric($value) ? (is_float($value) ? '%f' : '%d') : '%s';
-            }, $update_data),
+            $formats,
             ['%d']
         );
         
-        // Add note about update
-        if ($result !== false) {
-            $this->addBookingNote(
-                $booking_id,
-                __('Booking details updated by admin', 'vandel-booking'),
-                'system'
-            );
+        if ($result === false) {
+            error_log("BookingDetails->updateBookingDetails: Database error: " . $wpdb->last_error);
+            return false;
         }
         
-        return $result !== false;
+        // Add note about update
+        $this->addBookingNote(
+            $booking_id,
+            __('Booking details updated by admin', 'vandel-booking'),
+            'system'
+        );
+        
+        return true;
     }
-    
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     /**
      * Generate and download booking invoice
      * 
