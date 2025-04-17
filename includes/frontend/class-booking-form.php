@@ -600,99 +600,130 @@ public function renderSubServices($sub_services) {
     /**
      * AJAX handler to submit booking
      */
-    public function ajaxSubmitBooking() {
-        check_ajax_referer('vandel_booking_nonce', 'nonce');
+/**
+ * AJAX handler to submit booking
+ */
+public function ajaxSubmitBooking() {
+    check_ajax_referer('vandel_booking_nonce', 'nonce');
+    
+    try {
+        // Validate form data
+        $required_fields = ['service_id', 'name', 'email', 'phone', 'date', 'time', 'terms'];
         
-        try {
-            // Validate form data
-            $required_fields = ['service_id', 'name', 'email', 'phone', 'date', 'time', 'terms'];
-            
-            $data = [];
-            foreach ($required_fields as $field) {
-                if (empty($_POST[$field])) {
-                    throw new \Exception(sprintf(__('Missing required field: %s', 'vandel-booking'), $field));
+        $data = [];
+        foreach ($required_fields as $field) {
+            if (empty($_POST[$field])) {
+                throw new \Exception(sprintf(__('Missing required field: %s', 'vandel-booking'), $field));
+            }
+            $data[$field] = sanitize_text_field($_POST[$field]);
+        }
+        
+        // Validate email
+        if (!is_email($data['email'])) {
+            throw new \Exception(__('Invalid email address', 'vandel-booking'));
+        }
+        
+        // Validate service
+        $service_id = intval($data['service_id']);
+        $service = get_post($service_id);
+        if (!$service || $service->post_type !== 'vandel_service') {
+            throw new \Exception(__('Invalid service selection', 'vandel-booking'));
+        }
+        
+        // Validate ZIP code if feature is enabled
+        global $vandel_zip_code_manager;
+        $zip_code_data = [];
+        
+        if ($vandel_zip_code_manager && $vandel_zip_code_manager->is_enabled()) {
+            // Check if we have ZIP code data submitted
+            if (!empty($_POST['zip_code'])) {
+                $zip_code = sanitize_text_field($_POST['zip_code']);
+                $zip_details = $vandel_zip_code_manager->validate($zip_code);
+                
+                if (!$zip_details) {
+                    throw new \Exception(__('ZIP Code is not in our service area', 'vandel-booking'));
                 }
-                $data[$field] = sanitize_text_field($_POST[$field]);
-            }
-            
-            // Validate email
-            if (!is_email($data['email'])) {
-                throw new \Exception(__('Invalid email address', 'vandel-booking'));
-            }
-            
-            // Validate service
-            $service_id = intval($data['service_id']);
-            $service = get_post($service_id);
-            if (!$service || $service->post_type !== 'vandel_service') {
-                throw new \Exception(__('Invalid service selection', 'vandel-booking'));
-            }
-            
-            // Combine date and time
-            $booking_date = date('Y-m-d H:i:s', strtotime($data['date'] . ' ' . $data['time']));
-            
-            // Collect selected options
-            $selected_options = [];
-            if (!empty($_POST['options']) && is_array($_POST['options'])) {
-                foreach ($_POST['options'] as $option_id => $option_value) {
-                    $selected_options[$option_id] = sanitize_text_field($option_value);
-                }
-            }
-            
-            // Get ZIP code data if available
-            $zip_code_data = [];
-            if (!empty($_POST['zip_code_data'])) {
+                
+                // Store ZIP code details for later use
+                $zip_code_data = [
+                    'zip_code' => $zip_details->zip_code,
+                    'city' => $zip_details->city,
+                    'state' => $zip_details->state,
+                    'country' => $zip_details->country,
+                    'price_adjustment' => floatval($zip_details->price_adjustment),
+                    'service_fee' => floatval($zip_details->service_fee)
+                ];
+            } else if (!empty($_POST['zip_code_data'])) {
+                // If we have JSON data submitted
                 $zip_code_data = json_decode(stripslashes($_POST['zip_code_data']), true);
             }
-            
-            // Calculate total price
-            $base_price = floatval(get_post_meta($service_id, '_vandel_service_base_price', true));
-            $options_price = $this->calculateOptionsPrice($selected_options);
-            $price_adjustment = isset($zip_code_data['price_adjustment']) ? floatval($zip_code_data['price_adjustment']) : 0;
-            $service_fee = isset($zip_code_data['service_fee']) ? floatval($zip_code_data['service_fee']) : 0;
-            
-            $total_price = $base_price + $options_price + $price_adjustment + $service_fee;
-            
-            // Prepare booking data
-            $booking_data = [
-                'service' => $service_id,
-                'name' => $data['name'],
-                'email' => $data['email'],
-                'phone' => $data['phone'],
-                'date' => $booking_date,
-                'options' => $selected_options,
-                'total' => $total_price,
-                'comments' => isset($_POST['comments']) ? sanitize_textarea_field($_POST['comments']) : '',
-                'access_info' => isset($zip_code_data['zip_code']) ? sanitize_text_field($zip_code_data['zip_code']) : '',
-                'access_type' => 'zip_code'
-            ];
-            
-            // Create booking
-            if (class_exists('\\VandelBooking\\Booking\\BookingManager')) {
-                $booking_manager = new \VandelBooking\Booking\BookingManager();
-                $booking_id = $booking_manager->createBooking($booking_data);
-                
-                if (is_wp_error($booking_id)) {
-                    throw new \Exception($booking_id->get_error_message());
-                }
-                
-                wp_send_json_success([
-                    'booking_id' => $booking_id,
-                    'message' => __('Booking created successfully', 'vandel-booking')
-                ]);
-            } else {
-                // For demo/debug purposes when BookingManager doesn't exist
-                wp_send_json_success([
-                    'booking_id' => rand(1000, 9999),
-                    'message' => __('Booking created successfully (demo mode)', 'vandel-booking'),
-                    'debug_data' => $booking_data
-                ]);
+        }
+        
+        // Combine date and time
+        $booking_date = date('Y-m-d H:i:s', strtotime($data['date'] . ' ' . $data['time']));
+        
+        // Collect selected options
+        $selected_options = [];
+        if (!empty($_POST['options']) && is_array($_POST['options'])) {
+            foreach ($_POST['options'] as $option_id => $option_value) {
+                $selected_options[$option_id] = sanitize_text_field($option_value);
             }
-        } catch (\Exception $e) {
-            wp_send_json_error([
-                'message' => $e->getMessage()
+        }
+        
+        // Calculate total price
+        $base_price = floatval(get_post_meta($service_id, '_vandel_service_base_price', true));
+        $options_price = $this->calculateOptionsPrice($selected_options);
+        $price_adjustment = isset($zip_code_data['price_adjustment']) ? floatval($zip_code_data['price_adjustment']) : 0;
+        $service_fee = isset($zip_code_data['service_fee']) ? floatval($zip_code_data['service_fee']) : 0;
+        
+        $total_price = $base_price + $options_price + $price_adjustment + $service_fee;
+        
+        // Prepare booking data
+        $booking_data = [
+            'service' => $service_id,
+            'name' => $data['name'],
+            'email' => $data['email'],
+            'phone' => $data['phone'],
+            'date' => $booking_date,
+            'options' => $selected_options,
+            'total' => $total_price,
+            'comments' => isset($_POST['comments']) ? sanitize_textarea_field($_POST['comments']) : '',
+            'access_info' => isset($zip_code_data['zip_code']) ? sanitize_text_field($zip_code_data['zip_code']) : '',
+            'access_type' => 'zip_code'
+        ];
+        
+        // Add any additional ZIP code data to the booking
+        if (!empty($zip_code_data)) {
+            $booking_data['zip_code_data'] = $zip_code_data;
+        }
+        
+        // Create booking
+        if (class_exists('\\VandelBooking\\Booking\\BookingManager')) {
+            $booking_manager = new \VandelBooking\Booking\BookingManager();
+            $booking_id = $booking_manager->createBooking($booking_data);
+            
+            if (is_wp_error($booking_id)) {
+                throw new \Exception($booking_id->get_error_message());
+            }
+            
+            wp_send_json_success([
+                'booking_id' => $booking_id,
+                'message' => __('Booking created successfully', 'vandel-booking')
+            ]);
+        } else {
+            // For demo/debug purposes when BookingManager doesn't exist
+            wp_send_json_success([
+                'booking_id' => rand(1000, 9999),
+                'message' => __('Booking created successfully (demo mode)', 'vandel-booking'),
+                'debug_data' => $booking_data
             ]);
         }
+    } catch (\Exception $e) {
+        wp_send_json_error([
+            'message' => $e->getMessage()
+        ]);
     }
+}
     
     /**
      * Calculate the total price for selected options

@@ -3,7 +3,7 @@
  */
 (function ($) {
   "use strict";
-
+  console.log("Vandel Settings JS loaded");
   // Initialize when DOM is ready
   $(document).ready(function () {
     initSettingsNav();

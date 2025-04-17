@@ -3,7 +3,7 @@
  */
 (function ($) {
   "use strict";
-
+  console.log("Sub-Service Admin JS loaded");
   // Initialize when DOM is ready
   $(document).ready(function () {
     initInputTypeToggle();

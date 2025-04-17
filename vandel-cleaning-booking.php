@@ -630,6 +630,18 @@ add_action('admin_init', function() {
 
 // From Workspace
 
+// Load ZIP Code Manager
+if (file_exists(VANDEL_PLUGIN_DIR . 'includes/location/class-zip-code-manager.php')) {
+    require_once VANDEL_PLUGIN_DIR . 'includes/location/class-zip-code-manager.php';
+    
+    // Initialize the ZIP Code Manager
+    add_action('init', function() {
+        if (class_exists('\\VandelBooking\\Location\\ZipCodeManager')) {
+            global $vandel_zip_code_manager;
+            $vandel_zip_code_manager = new \VandelBooking\Location\ZipCodeManager();
+        }
+    });
+}
 // Load Database Installer first to ensure tables exist
 if (file_exists(VANDEL_PLUGIN_DIR . 'includes/database/class-installer.php')) {
     require_once VANDEL_PLUGIN_DIR . 'includes/database/class-installer.php';
