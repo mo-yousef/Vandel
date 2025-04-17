@@ -1,6 +1,9 @@
 <?php
 namespace VandelBooking\Admin\Dashboard;
 
+use DateTime;  // Add this line
+use VandelBooking\Helpers;  // Ensure this is imported if you're using Helpers class
+
 /**
  * Enhanced Bookings Tab
  * Handles the bookings listing and management tab with improved UI and functionality

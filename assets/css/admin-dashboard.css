@@ -1441,7 +1441,7 @@
 
 .vandel-booking-details-grid {
   display: grid;
-  grid-template-columns: 2fr 1fr;
+  /* grid-template-columns: 2fr 1fr; */
   gap: 25px;
   margin-bottom: 20px;
 }

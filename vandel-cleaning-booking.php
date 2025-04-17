@@ -464,12 +464,12 @@ function vandel_enqueue_dashboard_styles($hook) {
         return;
     }
     
-    wp_enqueue_style(
-        'vandel-modern-dashboard',
-        VANDEL_PLUGIN_URL . 'assets/css/admin-dashboard.css',
-        [],
-        VANDEL_VERSION
-    );
+    // wp_enqueue_style(
+    //     'vandel-modern-dashboard',
+    //     VANDEL_PLUGIN_URL . 'assets/css/admin-dashboard.css',
+    //     [],
+    //     VANDEL_VERSION
+    // );
 }
 add_action('admin_enqueue_scripts', 'vandel_enqueue_dashboard_styles');
 

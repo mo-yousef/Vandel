@@ -5,6 +5,7 @@ use VandelBooking\Booking\BookingManager;
 use VandelBooking\Booking\NoteModel;
 use VandelBooking\Helpers;
 
+
 /**
  * Enhanced Booking Details Management Class
  * Provides a more comprehensive view of booking details
@@ -389,41 +390,46 @@ class BookingDetails {
         ));
     }
     
-    /**
-     * Get sub services data
-     * 
-     * @param string $sub_services_json JSON string of sub services
-     * @return array Sub services data
-     */
-    private function get_sub_services_data($sub_services_json) {
-        $sub_services = [];
-        
-        if (empty($sub_services_json)) {
-            return $sub_services;
-        }
-        
-        $sub_services_array = json_decode($sub_services_json, true);
-        if (!is_array($sub_services_array)) {
-            return $sub_services;
-        }
-        
-        foreach ($sub_services_array as $id => $value) {
-            $sub_service = get_post($id);
-            if (!$sub_service) {
-                continue;
-            }
-            
-            $sub_services[] = [
-                'id' => $id,
-                'name' => $sub_service->post_title,
-                'value' => $value,
-                'price' => get_post_meta($id, '_vandel_sub_service_price', true),
-                'type' => get_post_meta($id, '_vandel_sub_service_type', true)
-            ];
-        }
-        
-        return $sub_services;
+/**
+ * Get sub services data
+ * 
+ * @param string|array|object $sub_services Sub services data
+ * @return array Sub services data
+ */
+private function get_sub_services_data($sub_services) {
+    $sub_services_array = [];
+    
+    // Handle different input types
+    if (is_string($sub_services)) {
+        // If it's a JSON string, decode it
+        $sub_services = json_decode($sub_services, true);
+    } elseif (is_object($sub_services)) {
+        // If it's an object, convert to array
+        $sub_services = (array)$sub_services;
     }
+    
+    // Ensure we have an array
+    if (!is_array($sub_services)) {
+        return [];
+    }
+    
+    foreach ($sub_services as $id => $value) {
+        $sub_service = get_post($id);
+        if (!$sub_service) {
+            continue;
+        }
+        
+        $sub_services_array[] = [
+            'id' => $id,
+            'name' => $sub_service->post_title,
+            'value' => $value,
+            'price' => get_post_meta($id, '_vandel_sub_service_price', true),
+            'type' => get_post_meta($id, '_vandel_sub_service_type', true)
+        ];
+    }
+    
+    return $sub_services_array;
+}
     
     /**
      * Render booking details
@@ -719,5 +725,354 @@ class BookingDetails {
                                             <?php _e('Canceled', 'vandel-booking'); ?></option>
                                     </select>
                                 </div>
+
                                 <div class="vandel-form-group">
                                     <label for="total_price"><?php _e('Total Price', 'vandel-booking'); ?></label>
+                                    <div class="vandel-input-group">
+                                        <span
+                                            class="vandel-input-prefix"><?php echo Helpers::getCurrencySymbol(); ?></span>
+                                        <input type="number" name="total_price" id="total_price"
+                                            value="<?php echo esc_attr($booking->total_price); ?>" step="0.01" min="0"
+                                            class="vandel-price-field">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="vandel-form-row">
+                                <div class="vandel-form-group">
+                                    <label for="customer_name"><?php _e('Customer Name', 'vandel-booking'); ?></label>
+                                    <input type="text" name="customer_name" id="customer_name"
+                                        value="<?php echo esc_attr($booking->customer_name); ?>"
+                                        class="vandel-text-field">
+                                </div>
+                                <div class="vandel-form-group">
+                                    <label for="customer_email"><?php _e('Customer Email', 'vandel-booking'); ?></label>
+                                    <input type="email" name="customer_email" id="customer_email"
+                                        value="<?php echo esc_attr($booking->customer_email); ?>"
+                                        class="vandel-text-field">
+                                </div>
+                            </div>
+
+                            <div class="vandel-form-row">
+                                <div class="vandel-form-group">
+                                    <label for="phone"><?php _e('Phone', 'vandel-booking'); ?></label>
+                                    <input type="tel" name="phone" id="phone"
+                                        value="<?php echo esc_attr($booking->phone); ?>" class="vandel-text-field">
+                                </div>
+                                <div class="vandel-form-group">
+                                    <label
+                                        for="access_info"><?php _e('Access Information', 'vandel-booking'); ?></label>
+                                    <textarea name="access_info" id="access_info"
+                                        class="vandel-textarea"><?php echo esc_textarea($booking->access_info); ?></textarea>
+                                </div>
+                            </div>
+
+                            <div class="vandel-form-actions">
+                                <button type="button" class="button vandel-edit-toggle" data-target="booking-info-view">
+                                    <?php _e('Cancel', 'vandel-booking'); ?>
+                                </button>
+                                <button type="submit" class="button button-primary">
+                                    <?php _e('Update Booking', 'vandel-booking'); ?>
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sub-Services Column -->
+            <div class="vandel-grid-col vandel-secondary-col">
+                <div class="vandel-card">
+                    <div class="vandel-card-header">
+                        <h3><?php _e('Sub-Services', 'vandel-booking'); ?></h3>
+                    </div>
+                    <div class="vandel-card-body">
+                        <?php if (empty($sub_services)): ?>
+                        <div class="vandel-notice vandel-notice-info">
+                            <p><?php _e('No sub-services selected for this booking.', 'vandel-booking'); ?></p>
+                        </div>
+                        <?php else: ?>
+                        <table class="vandel-sub-services-table">
+                            <thead>
+                                <tr>
+                                    <th><?php _e('Sub-Service', 'vandel-booking'); ?></th>
+                                    <th><?php _e('Type', 'vandel-booking'); ?></th>
+                                    <th><?php _e('Value', 'vandel-booking'); ?></th>
+                                    <th><?php _e('Price', 'vandel-booking'); ?></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php foreach ($sub_services as $sub_service): ?>
+                                <tr>
+                                    <td><?php echo esc_html($sub_service['name']); ?></td>
+                                    <td><?php echo esc_html(ucfirst($sub_service['type'])); ?></td>
+                                    <td><?php 
+                                                // Display value based on type
+                                                if ($sub_service['type'] === 'number') {
+                                                    echo intval($sub_service['value']);
+                                                } elseif ($sub_service['type'] === 'checkbox') {
+                                                    echo $sub_service['value'] === 'yes' ? 'Yes' : 'No';
+                                                } else {
+                                                    echo esc_html($sub_service['value']);
+                                                }
+                                            ?></td>
+                                    <td><?php echo Helpers::formatPrice($sub_service['price']); ?></td>
+                                </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                            <tfoot>
+                                <tr>
+                                    <th colspan="3"><?php _e('Sub-Services Total', 'vandel-booking'); ?></th>
+                                    <th><?php echo Helpers::formatPrice($sub_services_total); ?></th>
+                                </tr>
+                            </tfoot>
+                        </table>
+                        <?php endif; ?>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Notes and Client History Column -->
+        <div class="vandel-booking-notes-section">
+            <div class="vandel-card">
+                <div class="vandel-card-header">
+                    <h3><?php _e('Booking Notes', 'vandel-booking'); ?></h3>
+                    <button type="button" class="button button-small" id="vandel-add-note-toggle">
+                        <span class="dashicons dashicons-plus-alt"></span> <?php _e('Add Note', 'vandel-booking'); ?>
+                    </button>
+                </div>
+                <div class="vandel-card-body">
+                    <!-- Add Note Form (initially hidden) -->
+                    <div id="vandel-add-note-form" style="display: none;">
+                        <form method="post" action="">
+                            <?php wp_nonce_field('add_booking_note', 'booking_note_nonce'); ?>
+                            <textarea name="note_content" rows="3"
+                                placeholder="<?php _e('Enter your note...', 'vandel-booking'); ?>" required></textarea>
+                            <div class="vandel-form-actions">
+                                <button type="submit" name="add_booking_note" class="button button-primary">
+                                    <?php _e('Save Note', 'vandel-booking'); ?>
+                                </button>
+                                <button type="button" id="vandel-cancel-note" class="button">
+                                    <?php _e('Cancel', 'vandel-booking'); ?>
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- Notes List -->
+                    <?php if (empty($notes)): ?>
+                    <div class="vandel-notice vandel-notice-info">
+                        <p><?php _e('No notes for this booking yet.', 'vandel-booking'); ?></p>
+                    </div>
+                    <?php else: ?>
+                    <div class="vandel-notes-list">
+                        <?php foreach ($notes as $note): ?>
+                        <div class="vandel-note">
+                            <div class="vandel-note-header">
+                                <span class="vandel-note-author">
+                                    <?php echo esc_html($note->user_name ?: __('System', 'vandel-booking')); ?>
+                                </span>
+                                <span class="vandel-note-date">
+                                    <?php echo date_i18n(get_option('date_format') . ' ' . get_option('time_format'), strtotime($note->created_at)); ?>
+                                </span>
+                            </div>
+                            <div class="vandel-note-content">
+                                <?php echo nl2br(esc_html($note->note_content)); ?>
+                            </div>
+                        </div>
+                        <?php endforeach; ?>
+                    </div>
+                    <?php endif; ?>
+                </div>
+            </div>
+
+            <!-- Client Booking History -->
+            <?php if ($client): ?>
+            <div class="vandel-card">
+                <div class="vandel-card-header">
+                    <h3><?php _e('Client Booking History', 'vandel-booking'); ?></h3>
+                </div>
+                <div class="vandel-card-body">
+                    <?php if (empty($client_bookings)): ?>
+                    <div class="vandel-notice vandel-notice-info">
+                        <p><?php _e('No previous bookings for this client.', 'vandel-booking'); ?></p>
+                    </div>
+                    <?php else: ?>
+                    <table class="vandel-client-bookings-table">
+                        <thead>
+                            <tr>
+                                <th><?php _e('ID', 'vandel-booking'); ?></th>
+                                <th><?php _e('Service', 'vandel-booking'); ?></th>
+                                <th><?php _e('Date', 'vandel-booking'); ?></th>
+                                <th><?php _e('Status', 'vandel-booking'); ?></th>
+                                <th><?php _e('Total', 'vandel-booking'); ?></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($client_bookings as $client_booking): ?>
+                            <tr>
+                                <td>
+                                    <a
+                                        href="<?php echo admin_url('admin.php?page=vandel-dashboard&tab=booking-details&booking_id=' . $client_booking->id); ?>">#<?php echo $client_booking->id; ?></a>
+                                </td>
+                                <td><?php echo esc_html($client_booking->service_name); ?></td>
+                                <td><?php echo date_i18n(get_option('date_format'), strtotime($client_booking->booking_date)); ?>
+                                </td>
+                                <td>
+                                    <span class="vandel-status-badge 
+                                                    <?php 
+                                                    $status_classes = [
+                                                        'pending' => 'vandel-status-badge-warning',
+                                                        'confirmed' => 'vandel-status-badge-success',
+                                                        'completed' => 'vandel-status-badge-info',
+                                                        'canceled' => 'vandel-status-badge-danger'
+                                                    ];
+                                                    echo isset($status_classes[$client_booking->status]) ? $status_classes[$client_booking->status] : '';
+                                                    ?>">
+                                        <?php echo ucfirst($client_booking->status); ?>
+                                    </span>
+                                </td>
+                                <td><?php echo Helpers::formatPrice($client_booking->total_price); ?></td>
+                            </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                    <?php endif; ?>
+                </div>
+            </div>
+            <?php endif; ?>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Edit toggle functionality
+    const editToggleButtons = document.querySelectorAll('.vandel-edit-toggle');
+    editToggleButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            const targetId = this.getAttribute('data-target');
+            const viewMode = document.getElementById(targetId);
+            const editMode = document.getElementById(this.closest('.vandel-edit-mode').id);
+
+            if (viewMode && editMode) {
+                viewMode.style.display = 'block';
+                editMode.style.display = 'none';
+            }
+        });
+    });
+
+    // Add Note Toggle
+    const addNoteToggle = document.getElementById('vandel-add-note-toggle');
+    const addNoteForm = document.getElementById('vandel-add-note-form');
+    const cancelNoteButton = document.getElementById('vandel-cancel-note');
+
+    if (addNoteToggle && addNoteForm && cancelNoteButton) {
+        addNoteToggle.addEventListener('click', function() {
+            addNoteForm.style.display = 'block';
+            this.style.display = 'none';
+        });
+
+        cancelNoteButton.addEventListener('click', function() {
+            addNoteForm.style.display = 'none';
+            addNoteToggle.style.display = 'block';
+        });
+    }
+});
+</script>
+
+<style>
+.vandel-booking-details-container {
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.vandel-booking-details-grid {
+    display: grid;
+    /* grid-template-columns: 2fr 1fr; */
+    gap: 20px;
+}
+
+.vandel-booking-notes-section {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    margin-top: 20px;
+}
+
+.vandel-booking-header-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px;
+    background: #fff;
+    border-radius: 10px;
+    margin-bottom: 25px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+}
+
+.vandel-notes-list {
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.vandel-note {
+    margin-bottom: 15px;
+    padding: 10px;
+    background: #f4f4f4;
+    border-radius: 5px;
+}
+
+.vandel-note-header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 5px;
+    color: #666;
+    font-size: 12px;
+}
+
+.vandel-sub-services-table,
+.vandel-client-bookings-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.vandel-sub-services-table th,
+.vandel-sub-services-table td,
+.vandel-client-bookings-table th,
+.vandel-client-bookings-table td {
+    border: 1px solid #e0e0e0;
+    padding: 8px;
+    text-align: left;
+}
+
+.vandel-sub-services-table thead,
+.vandel-client-bookings-table thead {
+    background: #f9f9f9;
+}
+
+.vandel-form-row {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 15px;
+}
+
+.vandel-form-group {
+    flex: 1;
+}
+
+.vandel-input-group {
+    display: flex;
+    align-items: center;
+}
+
+.vandel-input-prefix {
+    margin-right: 10px;
+}
+</style>
+
+<?php {
+    }
+}
+}
