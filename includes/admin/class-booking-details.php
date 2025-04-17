@@ -79,6 +79,10 @@ class BookingDetails {
                     $this->updateBookingStatus($booking_id, 'completed');
                     wp_redirect(admin_url('admin.php?page=vandel-dashboard&tab=booking-details&booking_id=' . $booking_id . '&message=booking_completed'));
                     exit;
+                    
+                case 'download_invoice':
+                    $this->downloadInvoice($booking_id);
+                    exit;
             }
         }
         
@@ -164,7 +168,7 @@ class BookingDetails {
      */
     private function addBookingNote($booking_id, $note_content, $type = 'user') {
         if ($this->note_model && method_exists($this->note_model, 'addNote')) {
-            $user_id = get_current_user_id();
+            $user_id = $type === 'system' ? 0 : get_current_user_id();
             return $this->note_model->addNote($booking_id, $note_content, $user_id);
         }
         
@@ -177,7 +181,7 @@ class BookingDetails {
             return false;
         }
         
-        $user_id = get_current_user_id();
+        $user_id = $type === 'system' ? 0 : get_current_user_id();
         
         $result = $wpdb->insert(
             $notes_table,
@@ -302,6 +306,361 @@ class BookingDetails {
         }
         
         return $result !== false;
+    }
+    
+    /**
+     * Generate and download booking invoice
+     * 
+     * @param int $booking_id Booking ID
+     */
+    private function downloadInvoice($booking_id) {
+        // Get booking data
+        $booking = null;
+        
+        if ($this->booking_manager && method_exists($this->booking_manager, 'getBooking')) {
+            $booking = $this->booking_manager->getBooking($booking_id);
+        } else {
+            // Fallback to direct database query
+            global $wpdb;
+            $bookings_table = $wpdb->prefix . 'vandel_bookings';
+            $booking = $wpdb->get_row($wpdb->prepare(
+                "SELECT * FROM $bookings_table WHERE id = %d",
+                $booking_id
+            ));
+        }
+        
+        if (!$booking) {
+            wp_die(__('Booking not found', 'vandel-booking'));
+            return;
+        }
+        
+        // Get service information
+        $service = get_post($booking->service);
+        $service_name = $service ? $service->post_title : __('Unknown Service', 'vandel-booking');
+        
+        // Business information
+        $business_name = get_option('vandel_business_name', get_bloginfo('name'));
+        $business_address = get_option('vandel_business_address', '');
+        $business_phone = get_option('vandel_business_phone', '');
+        $business_email = get_option('vandel_business_email', get_option('admin_email'));
+        
+        // Generate invoice number
+        $invoice_prefix = get_option('vandel_invoice_prefix', 'INV-');
+        $invoice_number = $invoice_prefix . $booking_id . '-' . date('Ymd');
+        
+        // Prepare booking date
+        $booking_date = new \DateTime($booking->booking_date);
+        $formatted_date = $booking_date->format(get_option('date_format') . ' ' . get_option('time_format'));
+        
+        // Prepare invoice date
+        $invoice_date = new \DateTime();
+        $formatted_invoice_date = $invoice_date->format(get_option('date_format'));
+        
+        // Base price
+        $base_price = $service ? floatval(get_post_meta($service->ID, '_vandel_service_base_price', true)) : 0;
+        
+        // Parse sub services
+        $sub_services = [];
+        $sub_services_total = 0;
+        
+        if (!empty($booking->sub_services)) {
+            $parsed_sub_services = is_string($booking->sub_services) 
+                ? json_decode($booking->sub_services, true) 
+                : (is_object($booking->sub_services) ? (array)$booking->sub_services : $booking->sub_services);
+            
+            if (is_array($parsed_sub_services)) {
+                foreach ($parsed_sub_services as $id => $value) {
+                    $sub_service = get_post($id);
+                    if (!$sub_service) continue;
+                    
+                    $price = floatval(get_post_meta($id, '_vandel_service_base_price', true));
+                    
+                    // Handle different sub service types
+                    $sub_service_type = get_post_meta($id, '_vandel_sub_service_type', true);
+                    
+                    if ($sub_service_type === 'number' && is_numeric($value)) {
+                        $item_price = $price * intval($value);
+                        $sub_services[] = [
+                            'name' => $sub_service->post_title,
+                            'value' => intval($value),
+                            'price' => $item_price
+                        ];
+                        $sub_services_total += $item_price;
+                    } else {
+                        $sub_services[] = [
+                            'name' => $sub_service->post_title,
+                            'value' => $value,
+                            'price' => $price
+                        ];
+                        $sub_services_total += $price;
+                    }
+                }
+            }
+        }
+        
+        // Calculate potential adjustments
+        $adjustments = floatval($booking->total_price) - ($base_price + $sub_services_total);
+        
+        // Start generating PDF
+        if (!class_exists('TCPDF')) {
+            // Fallback to HTML invoice
+            $this->generateHtmlInvoice($booking, $invoice_number, $formatted_invoice_date, 
+                $service_name, $formatted_date, $base_price, $sub_services, $sub_services_total, 
+                $adjustments, $business_name, $business_address, $business_phone, $business_email);
+            return;
+        }
+        
+        // Initialize PDF if TCPDF is available
+        $pdf = new \TCPDF(PDF_PAGE_ORIENTATION, PDF_UNIT, PDF_PAGE_FORMAT, true, 'UTF-8', false);
+        
+        // Set document information
+        $pdf->SetCreator(PDF_CREATOR);
+        $pdf->SetAuthor($business_name);
+        $pdf->SetTitle('Invoice #' . $invoice_number);
+        $pdf->SetSubject('Booking Invoice');
+        
+        // Set default header data
+        $pdf->SetHeaderData('', 0, $business_name, 'Invoice #' . $invoice_number);
+        
+        // Set margins
+        $pdf->SetMargins(15, 25, 15);
+        $pdf->SetHeaderMargin(5);
+        $pdf->SetFooterMargin(10);
+        
+        // Set auto page breaks
+        $pdf->SetAutoPageBreak(TRUE, 25);
+        
+        // Add a page
+        $pdf->AddPage();
+        
+        // Set font
+        $pdf->SetFont('helvetica', '', 10);
+        
+        // Create HTML content for PDF
+        $html = '<h1>INVOICE</h1>';
+        $html .= '<div style="margin-bottom: 20px;">';
+        $html .= '<div style="width: 50%; float: left;">';
+        $html .= '<h3>' . $business_name . '</h3>';
+        $html .= '<p>' . nl2br($business_address) . '</p>';
+        $html .= '<p>Phone: ' . $business_phone . '</p>';
+        $html .= '<p>Email: ' . $business_email . '</p>';
+        $html .= '</div>';
+        
+        $html .= '<div style="width: 50%; float: right; text-align: right;">';
+        $html .= '<h3>Invoice #' . $invoice_number . '</h3>';
+        $html .= '<p>Date: ' . $formatted_invoice_date . '</p>';
+        $html .= '<p>Booking ID: #' . $booking_id . '</p>';
+        $html .= '</div>';
+        $html .= '<div style="clear: both;"></div>';
+        $html .= '</div>';
+        
+        // Client information
+        $html .= '<div style="margin-bottom: 20px;">';
+        $html .= '<h3>Bill To:</h3>';
+        $html .= '<p>' . $booking->customer_name . '</p>';
+        $html .= '<p>Email: ' . $booking->customer_email . '</p>';
+        if (!empty($booking->phone)) {
+            $html .= '<p>Phone: ' . $booking->phone . '</p>';
+        }
+        $html .= '</div>';
+        
+        // Line items
+        $html .= '<table border="1" cellpadding="5" style="width: 100%;">';
+        $html .= '<tr style="background-color: #f5f5f5; font-weight: bold;">';
+        $html .= '<th width="10%" style="text-align: left;">#</th>';
+        $html .= '<th width="40%" style="text-align: left;">Description</th>';
+        $html .= '<th width="15%" style="text-align: right;">Quantity</th>';
+        $html .= '<th width="15%" style="text-align: right;">Unit Price</th>';
+        $html .= '<th width="20%" style="text-align: right;">Amount</th>';
+        $html .= '</tr>';
+        
+        // Base service
+        $html .= '<tr>';
+        $html .= '<td>1</td>';
+        $html .= '<td>' . $service_name . '<br>Date: ' . $formatted_date . '</td>';
+        $html .= '<td style="text-align: right;">1</td>';
+        $html .= '<td style="text-align: right;">' . Helpers::formatPrice($base_price) . '</td>';
+        $html .= '<td style="text-align: right;">' . Helpers::formatPrice($base_price) . '</td>';
+        $html .= '</tr>';
+        
+        // Sub services
+        $count = 2;
+        foreach ($sub_services as $sub_service) {
+            $html .= '<tr>';
+            $html .= '<td>' . $count . '</td>';
+            $html .= '<td>' . $sub_service['name'];
+            if (isset($sub_service['value']) && $sub_service['value'] !== 'yes') {
+                $html .= '<br>Option: ' . $sub_service['value'];
+            }
+            $html .= '</td>';
+            $html .= '<td style="text-align: right;">1</td>';
+            $html .= '<td style="text-align: right;">' . Helpers::formatPrice($sub_service['price']) . '</td>';
+            $html .= '<td style="text-align: right;">' . Helpers::formatPrice($sub_service['price']) . '</td>';
+            $html .= '</tr>';
+            $count++;
+        }
+        
+        // Adjustments if any
+        if ($adjustments != 0) {
+            $html .= '<tr>';
+            $html .= '<td>' . $count . '</td>';
+            $html .= '<td>Additional fees/discounts</td>';
+            $html .= '<td style="text-align: right;">1</td>';
+            $html .= '<td style="text-align: right;">' . Helpers::formatPrice($adjustments) . '</td>';
+            $html .= '<td style="text-align: right;">' . Helpers::formatPrice($adjustments) . '</td>';
+            $html .= '</tr>';
+        }
+        
+        // Totals
+        $html .= '<tr>';
+        $html .= '<td colspan="4" style="text-align: right; font-weight: bold;">Total</td>';
+        $html .= '<td style="text-align: right; font-weight: bold;">' . Helpers::formatPrice($booking->total_price) . '</td>';
+        $html .= '</tr>';
+        $html .= '</table>';
+        
+        // Payment information and notes
+        $html .= '<div style="margin-top: 30px;">';
+        $html .= '<h3>Payment Information</h3>';
+        $html .= '<p>Status: ' . ucfirst($booking->status) . '</p>';
+        $html .= '<p>Thank you for your business!</p>';
+        $html .= '</div>';
+        
+        // Output the PDF
+        $pdf->writeHTML($html, true, false, true, false, '');
+        
+        // Close and output PDF document
+        $pdf->Output('invoice_' . $invoice_number . '.pdf', 'D');
+        exit;
+    }
+    
+    /**
+     * Generate HTML invoice (fallback if TCPDF is not available)
+     */
+    private function generateHtmlInvoice($booking, $invoice_number, $invoice_date, $service_name, 
+                                        $booking_date, $base_price, $sub_services, $sub_services_total, 
+                                        $adjustments, $business_name, $business_address, $business_phone, $business_email) {
+        
+        // Start HTML document
+        header('Content-Type: text/html; charset=utf-8');
+        header('Content-Disposition: attachment; filename="invoice_' . $invoice_number . '.html"');
+        
+        echo '<!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="utf-8">
+            <title>Invoice #' . $invoice_number . '</title>
+            <style>
+                body { font-family: Arial, sans-serif; font-size: 14px; line-height: 1.5; color: #333; }
+                .container { width: 800px; margin: 0 auto; padding: 20px; }
+                .header { margin-bottom: 30px; }
+                .business-info { float: left; width: 60%; }
+                .invoice-info { float: right; width: 40%; text-align: right; }
+                .client-info { margin-bottom: 30px; }
+                table { width: 100%; border-collapse: collapse; margin-bottom: 30px; }
+                th, td { padding: 10px; text-align: left; border-bottom: 1px solid #ddd; }
+                th { background-color: #f5f5f5; font-weight: bold; }
+                .text-right { text-align: right; }
+                .total-row { font-weight: bold; }
+                .footer { margin-top: 50px; text-align: center; font-size: 12px; color: #777; }
+                .clearfix:after { content: ""; display: table; clear: both; }
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <div class="header clearfix">
+                    <div class="business-info">
+                        <h1>' . $business_name . '</h1>
+                        <p>' . nl2br($business_address) . '</p>
+                        <p>Phone: ' . $business_phone . '</p>
+                        <p>Email: ' . $business_email . '</p>
+                    </div>
+                    <div class="invoice-info">
+                        <h2>INVOICE</h2>
+                        <p><strong>Invoice #:</strong> ' . $invoice_number . '</p>
+                        <p><strong>Date:</strong> ' . $invoice_date . '</p>
+                        <p><strong>Booking ID:</strong> #' . $booking->id . '</p>
+                    </div>
+                </div>
+                
+                <div class="client-info">
+                    <h3>Bill To:</h3>
+                    <p>' . $booking->customer_name . '</p>
+                    <p>Email: ' . $booking->customer_email . '</p>';
+                    
+                    if (!empty($booking->phone)) {
+                        echo '<p>Phone: ' . $booking->phone . '</p>';
+                    }
+                    
+                echo '</div>
+                
+                <table>
+                    <tr>
+                        <th width="5%">#</th>
+                        <th width="45%">Description</th>
+                        <th width="15%" class="text-right">Quantity</th>
+                        <th width="15%" class="text-right">Unit Price</th>
+                        <th width="20%" class="text-right">Amount</th>
+                    </tr>
+                    
+                    <tr>
+                        <td>1</td>
+                        <td>' . $service_name . '<br>Date: ' . $booking_date . '</td>
+                        <td class="text-right">1</td>
+                        <td class="text-right">' . Helpers::formatPrice($base_price) . '</td>
+                        <td class="text-right">' . Helpers::formatPrice($base_price) . '</td>
+                    </tr>';
+                    
+                    // Sub services
+                    $count = 2;
+                    foreach ($sub_services as $sub_service) {
+                        echo '<tr>
+                            <td>' . $count . '</td>
+                            <td>' . $sub_service['name'];
+                            
+                            if (isset($sub_service['value']) && $sub_service['value'] !== 'yes') {
+                                echo '<br>Option: ' . $sub_service['value'];
+                            }
+                            
+                            echo '</td>
+                            <td class="text-right">1</td>
+                            <td class="text-right">' . Helpers::formatPrice($sub_service['price']) . '</td>
+                            <td class="text-right">' . Helpers::formatPrice($sub_service['price']) . '</td>
+                        </tr>';
+                        $count++;
+                    }
+                    
+                    // Adjustments if any
+                    if ($adjustments != 0) {
+                        echo '<tr>
+                            <td>' . $count . '</td>
+                            <td>Additional fees/discounts</td>
+                            <td class="text-right">1</td>
+                            <td class="text-right">' . Helpers::formatPrice($adjustments) . '</td>
+                            <td class="text-right">' . Helpers::formatPrice($adjustments) . '</td>
+                        </tr>';
+                    }
+                    
+                    // Total
+                    echo '<tr class="total-row">
+                        <td colspan="4" class="text-right">Total</td>
+                        <td class="text-right">' . Helpers::formatPrice($booking->total_price) . '</td>
+                    </tr>
+                </table>
+                
+                <div class="payment-info">
+                    <h3>Payment Information</h3>
+                    <p><strong>Status:</strong> ' . ucfirst($booking->status) . '</p>
+                    <p>Thank you for your business!</p>
+                </div>
+                
+                <div class="footer">
+                    <p>This is an electronically generated invoice and does not require a signature.</p>
+                </div>
+            </div>
+        </body>
+        </html>';
+        
+        exit;
     }
     
     /**
@@ -661,9 +1020,9 @@ private function get_sub_services_data($sub_services) {
                                 <span class="vandel-info-label"><?php _e('Last Updated', 'vandel-booking'); ?></span>
                                 <span class="vandel-info-value">
                                     <?php 
-                                            $updated_date = new \DateTime($booking->updated_at);
-                                            echo $updated_date->format(get_option('date_format') . ' ' . get_option('time_format')); 
-                                            ?>
+                                                    $updated_date = new \DateTime($booking->updated_at);
+                                                    echo $updated_date->format(get_option('date_format') . ' ' . get_option('time_format')); 
+                                                    ?>
                                 </span>
                             </div>
                             <?php endif; ?>
@@ -807,15 +1166,15 @@ private function get_sub_services_data($sub_services) {
                                     <td><?php echo esc_html($sub_service['name']); ?></td>
                                     <td><?php echo esc_html(ucfirst($sub_service['type'])); ?></td>
                                     <td><?php 
-                                                // Display value based on type
-                                                if ($sub_service['type'] === 'number') {
-                                                    echo intval($sub_service['value']);
-                                                } elseif ($sub_service['type'] === 'checkbox') {
-                                                    echo $sub_service['value'] === 'yes' ? 'Yes' : 'No';
-                                                } else {
-                                                    echo esc_html($sub_service['value']);
-                                                }
-                                            ?></td>
+                                                        // Display value based on type
+                                                        if ($sub_service['type'] === 'number') {
+                                                            echo intval($sub_service['value']);
+                                                        } elseif ($sub_service['type'] === 'checkbox') {
+                                                            echo $sub_service['value'] === 'yes' ? 'Yes' : 'No';
+                                                        } else {
+                                                            echo esc_html($sub_service['value']);
+                                                        }
+                                                    ?></td>
                                     <td><?php echo Helpers::formatPrice($sub_service['price']); ?></td>
                                 </tr>
                                 <?php endforeach; ?>
@@ -921,15 +1280,15 @@ private function get_sub_services_data($sub_services) {
                                 </td>
                                 <td>
                                     <span class="vandel-status-badge 
-                                                    <?php 
-                                                    $status_classes = [
-                                                        'pending' => 'vandel-status-badge-warning',
-                                                        'confirmed' => 'vandel-status-badge-success',
-                                                        'completed' => 'vandel-status-badge-info',
-                                                        'canceled' => 'vandel-status-badge-danger'
-                                                    ];
-                                                    echo isset($status_classes[$client_booking->status]) ? $status_classes[$client_booking->status] : '';
-                                                    ?>">
+                                                            <?php 
+                                                            $status_classes = [
+                                                                'pending' => 'vandel-status-badge-warning',
+                                                                'confirmed' => 'vandel-status-badge-success',
+                                                                'completed' => 'vandel-status-badge-info',
+                                                                'canceled' => 'vandel-status-badge-danger'
+                                                            ];
+                                                            echo isset($status_classes[$client_booking->status]) ? $status_classes[$client_booking->status] : '';
+                                                            ?>">
                                         <?php echo ucfirst($client_booking->status); ?>
                                     </span>
                                 </td>
@@ -986,12 +1345,6 @@ document.addEventListener('DOMContentLoaded', function() {
 .vandel-booking-details-container {
     max-width: 1200px;
     margin: 0 auto;
-}
-
-.vandel-booking-details-grid {
-    display: grid;
-    /* grid-template-columns: 2fr 1fr; */
-    gap: 20px;
 }
 
 .vandel-booking-notes-section {
@@ -1070,9 +1423,89 @@ document.addEventListener('DOMContentLoaded', function() {
 .vandel-input-prefix {
     margin-right: 10px;
 }
-</style>
 
-<?php {
+.vandel-card {
+    background: #fff;
+    border-radius: 5px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    margin-bottom: 20px;
+}
+
+.vandel-card-header {
+    padding: 15px;
+    border-bottom: 1px solid #e0e0e0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.vandel-card-body {
+    padding: 15px;
+}
+
+.vandel-info-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 15px;
+}
+
+.vandel-info-full {
+    grid-column: 1 / -1;
+}
+
+.vandel-info-label {
+    display: block;
+    font-weight: bold;
+    margin-bottom: 5px;
+    color: #555;
+}
+
+.vandel-info-value {
+    display: block;
+}
+
+.vandel-price-value {
+    font-weight: bold;
+    color: #0073aa;
+}
+
+.vandel-status-badge {
+    display: inline-block;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: bold;
+    text-transform: uppercase;
+    color: #fff;
+}
+
+.vandel-status-badge-success {
+    background-color: #46b450;
+}
+
+.vandel-status-badge-warning {
+    background-color: #ffba00;
+}
+
+.vandel-status-badge-info {
+    background-color: #00a0d2;
+}
+
+.vandel-status-badge-danger {
+    background-color: #dc3232;
+}
+
+/* Add this for responsive design */
+@media screen and (max-width: 1024px) {
+    .vandel-booking-details-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .vandel-booking-notes-section {
+        grid-template-columns: 1fr;
     }
 }
+</style>
+<?php
+    }
 }

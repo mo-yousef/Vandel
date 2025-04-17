@@ -1809,7 +1809,7 @@ input:checked+.vandel-toggle-slider:before {
 /* ============= BOOKING DETAILS ============= */
 .vandel-booking-details-grid {
   display: grid;
-  grid-template-columns: 2fr 1fr;
+  /* grid-template-columns: 2fr 1fr; */
   gap: 20px;
 }
 
