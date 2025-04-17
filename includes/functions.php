@@ -282,3 +282,54 @@ function vandel_enqueue_zip_code_admin_scripts($hook) {
     );
 }
 add_action('admin_enqueue_scripts', 'vandel_enqueue_zip_code_admin_scripts');
+
+
+
+
+/**
+ * Client Statistics AJAX Handler
+ * Add this to your functions.php file or includes/client/client-functions.php
+ */
+
+/**
+ * AJAX handler for recalculating client stats
+ */
+function vandel_ajax_recalculate_client_stats() {
+    // Verify nonce
+    if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'vandel_client_admin')) {
+        wp_send_json_error(['message' => __('Security verification failed', 'vandel-booking')]);
+        return;
+    }
+    
+    // Check for client ID
+    $client_id = isset($_POST['client_id']) ? intval($_POST['client_id']) : 0;
+    if ($client_id <= 0) {
+        wp_send_json_error(['message' => __('Invalid client ID', 'vandel-booking')]);
+        return;
+    }
+    
+    // Get ClientModel instance
+    if (!class_exists('\\VandelBooking\\Client\\ClientModel')) {
+        wp_send_json_error(['message' => __('Client model not found', 'vandel-booking')]);
+        return;
+    }
+    
+    $client_model = new \VandelBooking\Client\ClientModel();
+    
+    // Check if recalculateStats method exists
+    if (!method_exists($client_model, 'recalculateStats')) {
+        wp_send_json_error(['message' => __('Recalculate method not available', 'vandel-booking')]);
+        return;
+    }
+    
+    $result = $client_model->recalculateStats($client_id);
+    
+    if ($result) {
+        wp_send_json_success(['message' => __('Client statistics updated successfully', 'vandel-booking')]);
+    } else {
+        wp_send_json_error(['message' => __('Failed to update client statistics', 'vandel-booking')]);
+    }
+}
+
+// Register AJAX handler
+add_action('wp_ajax_vandel_recalculate_client_stats', 'vandel_ajax_recalculate_client_stats');

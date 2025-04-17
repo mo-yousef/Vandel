@@ -1016,3 +1016,147 @@
     });
   }
 })(jQuery);
+
+/**
+ * Vandel Client Manager JavaScript
+ * Handles client details page interactions and AJAX calls
+ */
+(function ($) {
+  "use strict";
+
+  $(document).ready(function () {
+    initClientDetailsPage();
+  });
+
+  /**
+   * Initialize client details page functionality
+   */
+  function initClientDetailsPage() {
+    // Handle client stats recalculation
+    $(".vandel-recalculate-stats").on("click", function (e) {
+      e.preventDefault();
+      recalculateClientStats($(this));
+    });
+
+    // Handle interactive dropdowns
+    initDropdowns();
+  }
+
+  /**
+   * Initialize interactive dropdowns
+   */
+  function initDropdowns() {
+    // Manually handle click events for dropdowns
+    $(".vandel-dropdown-trigger").on("click", function (e) {
+      e.preventDefault();
+      $(this).parent().find(".vandel-dropdown-content").toggle();
+    });
+
+    // Close dropdown when clicking outside
+    $(document).on("click", function (e) {
+      if (!$(e.target).closest(".vandel-dropdown").length) {
+        $(".vandel-dropdown-content").hide();
+      }
+    });
+  }
+
+  /**
+   * Handle client stats recalculation
+   */
+  function recalculateClientStats($button) {
+    const clientId = $button.data("client-id");
+    const originalText = $button.text();
+
+    // Update button state
+    $button.html(
+      '<span class="dashicons dashicons-update-alt vandel-spin"></span> ' +
+        vandelClientAdmin.strings.recalculating
+    );
+    $button.addClass("vandel-loading");
+
+    // Make AJAX request to recalculate stats
+    $.ajax({
+      url: vandelClientAdmin.ajaxUrl,
+      type: "POST",
+      data: {
+        action: "vandel_recalculate_client_stats",
+        client_id: clientId,
+        nonce: vandelClientAdmin.nonce,
+      },
+      success: function (response) {
+        if (response.success) {
+          // Show success message
+          showNotice(response.data.message, "success");
+
+          // Reload the page to show updated stats
+          setTimeout(function () {
+            window.location.reload();
+          }, 1000);
+        } else {
+          // Show error message
+          showNotice(
+            response.data.message || vandelClientAdmin.strings.recalculateError,
+            "error"
+          );
+
+          // Reset button state
+          $button.html(
+            '<span class="dashicons dashicons-update"></span> ' + originalText
+          );
+          $button.removeClass("vandel-loading");
+        }
+      },
+      error: function () {
+        // Show error message
+        showNotice(vandelClientAdmin.strings.recalculateError, "error");
+
+        // Reset button state
+        $button.html(
+          '<span class="dashicons dashicons-update"></span> ' + originalText
+        );
+        $button.removeClass("vandel-loading");
+      },
+    });
+  }
+
+  /**
+   * Show notification message
+   */
+  function showNotice(message, type) {
+    // Remove any existing notices
+    $(".vandel-ajax-notice").remove();
+
+    // Create new notice
+    const $notice = $(
+      '<div class="notice vandel-ajax-notice notice-' +
+        type +
+        ' is-dismissible"><p>' +
+        message +
+        "</p></div>"
+    );
+
+    // Add close button
+    const $closeButton = $(
+      '<button type="button" class="notice-dismiss"><span class="screen-reader-text">Dismiss this notice.</span></button>'
+    );
+    $closeButton.on("click", function () {
+      $notice.fadeOut(200, function () {
+        $(this).remove();
+      });
+    });
+
+    $notice.append($closeButton);
+
+    // Add notice to the page
+    $(".vandel-client-details").before($notice);
+
+    // Auto-dismiss after 5 seconds for success notices
+    if (type === "success") {
+      setTimeout(function () {
+        $notice.fadeOut(200, function () {
+          $(this).remove();
+        });
+      }, 5000);
+    }
+  }
+})(jQuery);
