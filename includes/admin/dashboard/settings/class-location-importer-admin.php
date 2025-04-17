@@ -63,30 +63,33 @@ class LocationImporterAdmin {
             isset($_GET['tab']) && $_GET['tab'] === 'settings' &&
             isset($_GET['section']) && $_GET['section'] === 'locations') {
             
+            // Enqueue the location admin script
             wp_enqueue_script(
-                'vandel-location-importer',
-                VANDEL_PLUGIN_URL . 'assets/js/admin/location-importer.js',
+                'vandel-location-admin',
+                VANDEL_PLUGIN_URL . 'assets/js/admin/location-admin.js',
                 ['jquery'],
                 VANDEL_VERSION,
                 true
             );
             
+            // IMPORTANT: Correctly localize the script with nonce
             wp_localize_script(
-                'vandel-location-importer',
-                'vandelLocationImporter',
+                'vandel-location-admin',
+                'vandelLocationAdmin',
                 [
                     'ajaxUrl' => admin_url('admin-ajax.php'),
-                    'nonce' => wp_create_nonce('vandel_location_importer_nonce'),
+                    'nonce' => wp_create_nonce('vandel_location_nonce'), // Make sure this matches what PHP expects
+                    'confirmDelete' => __('Are you sure you want to delete this location?', 'vandel-booking'),
                     'strings' => [
-                        'importing' => __('Importing...', 'vandel-booking'),
-                        'importSuccess' => __('Import successful!', 'vandel-booking'),
-                        'importError' => __('Import failed.', 'vandel-booking'),
-                        'confirmImport' => __('Are you sure you want to import this file? This may take some time for large files.', 'vandel-booking')
+                        'selectCity' => __('Select City', 'vandel-booking'),
+                        'loadingCities' => __('Loading cities...', 'vandel-booking'),
+                        'loadingAreas' => __('Loading areas...', 'vandel-booking')
                     ]
                 ]
             );
         }
     }
+
     
     /**
      * Process admin actions
@@ -264,236 +267,243 @@ class LocationImporterAdmin {
         $location_stats = $this->get_location_stats();
         
         ?>
-        <div class="vandel-settings-section">
-            <h2><?php _e('Location Data Management', 'vandel-booking'); ?></h2>
-            
-            <div class="vandel-settings-intro">
-                <p><?php _e('Import and manage location data from CSV files. This allows you to add postal codes, cities, and areas for different countries.', 'vandel-booking'); ?></p>
-            </div>
-            
+<div class="vandel-settings-section">
+    <h2><?php _e('Location Data Management', 'vandel-booking'); ?></h2>
+
+    <div class="vandel-settings-intro">
+        <p><?php _e('Import and manage location data from CSV files. This allows you to add postal codes, cities, and areas for different countries.', 'vandel-booking'); ?>
+        </p>
+    </div>
+
+    <div class="vandel-card">
+        <div class="vandel-card-header">
+            <h3><?php _e('Current Location Data', 'vandel-booking'); ?></h3>
+        </div>
+        <div class="vandel-card-body">
+            <?php if (empty($location_stats)): ?>
+            <p><?php _e('No location data available. Use the import tool below to add locations.', 'vandel-booking'); ?>
+            </p>
+            <?php else: ?>
+            <table class="wp-list-table widefat fixed striped">
+                <thead>
+                    <tr>
+                        <th><?php _e('Country', 'vandel-booking'); ?></th>
+                        <th><?php _e('Cities', 'vandel-booking'); ?></th>
+                        <th><?php _e('Locations', 'vandel-booking'); ?></th>
+                        <th><?php _e('Last Updated', 'vandel-booking'); ?></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach ($location_stats as $country => $stats): ?>
+                    <tr>
+                        <td><?php echo esc_html($stats['name']); ?></td>
+                        <td><?php echo esc_html($stats['cities']); ?></td>
+                        <td><?php echo esc_html($stats['locations']); ?></td>
+                        <td><?php echo esc_html($stats['last_updated']); ?></td>
+                    </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+            <?php endif; ?>
+        </div>
+    </div>
+
+    <div class="vandel-grid-row">
+        <div class="vandel-grid-col">
             <div class="vandel-card">
                 <div class="vandel-card-header">
-                    <h3><?php _e('Current Location Data', 'vandel-booking'); ?></h3>
+                    <h3><?php _e('Import Location Data', 'vandel-booking'); ?></h3>
                 </div>
                 <div class="vandel-card-body">
-                    <?php if (empty($location_stats)): ?>
-                        <p><?php _e('No location data available. Use the import tool below to add locations.', 'vandel-booking'); ?></p>
-                    <?php else: ?>
-                        <table class="wp-list-table widefat fixed striped">
-                            <thead>
-                                <tr>
-                                    <th><?php _e('Country', 'vandel-booking'); ?></th>
-                                    <th><?php _e('Cities', 'vandel-booking'); ?></th>
-                                    <th><?php _e('Locations', 'vandel-booking'); ?></th>
-                                    <th><?php _e('Last Updated', 'vandel-booking'); ?></th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <?php foreach ($location_stats as $country => $stats): ?>
-                                    <tr>
-                                        <td><?php echo esc_html($stats['name']); ?></td>
-                                        <td><?php echo esc_html($stats['cities']); ?></td>
-                                        <td><?php echo esc_html($stats['locations']); ?></td>
-                                        <td><?php echo esc_html($stats['last_updated']); ?></td>
-                                    </tr>
-                                <?php endforeach; ?>
-                            </tbody>
-                        </table>
+                    <form method="post" enctype="multipart/form-data">
+                        <?php wp_nonce_field('vandel_upload_location_csv', 'vandel_location_importer_nonce'); ?>
+
+                        <div class="vandel-form-row">
+                            <div class="vandel-col">
+                                <label for="country"><?php _e('Country', 'vandel-booking'); ?></label>
+                                <input type="text" id="country" name="country" required class="regular-text"
+                                    placeholder="<?php _e('Enter country name (e.g., Sweden)', 'vandel-booking'); ?>">
+                            </div>
+                        </div>
+
+                        <div class="vandel-form-row">
+                            <div class="vandel-col">
+                                <label for="location_csv_file"><?php _e('CSV File', 'vandel-booking'); ?></label>
+                                <input type="file" id="location_csv_file" name="location_csv_file" required
+                                    accept=".csv">
+                                <p class="description">
+                                    <?php _e('Upload a CSV file with location data. The file should contain postal codes, cities, and areas.', 'vandel-booking'); ?>
+                                </p>
+                            </div>
+                        </div>
+
+                        <div class="vandel-form-row">
+                            <div class="vandel-col">
+                                <label>
+                                    <input type="checkbox" name="has_header" value="1" checked>
+                                    <?php _e('File has header row', 'vandel-booking'); ?>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="vandel-form-row">
+                            <div class="vandel-col">
+                                <h4><?php _e('Column Mapping', 'vandel-booking'); ?></h4>
+                                <p class="description">
+                                    <?php _e('Specify which columns in your CSV file contain each piece of information. Column numbers start from 0.', 'vandel-booking'); ?>
+                                </p>
+                            </div>
+                        </div>
+
+                        <div class="vandel-form-row">
+                            <div class="vandel-col">
+                                <label
+                                    for="column_zip_code"><?php _e('Postal Code Column', 'vandel-booking'); ?></label>
+                                <input type="number" id="column_zip_code" name="column_zip_code" value="0" min="0"
+                                    max="20" required>
+                            </div>
+                            <div class="vandel-col">
+                                <label for="column_city"><?php _e('City Column', 'vandel-booking'); ?></label>
+                                <input type="number" id="column_city" name="column_city" value="1" min="0" max="20"
+                                    required>
+                            </div>
+                        </div>
+
+                        <div class="vandel-form-row">
+                            <div class="vandel-col">
+                                <label for="column_area"><?php _e('Area/District Column', 'vandel-booking'); ?></label>
+                                <input type="number" id="column_area" name="column_area" value="2" min="0" max="20">
+                            </div>
+                            <div class="vandel-col">
+                                <label
+                                    for="column_state"><?php _e('State/Province Column', 'vandel-booking'); ?></label>
+                                <input type="number" id="column_state" name="column_state" value="3" min="0" max="20">
+                            </div>
+                        </div>
+
+                        <button type="submit" name="vandel_upload_location_csv" class="button button-primary">
+                            <?php _e('Upload & Import', 'vandel-booking'); ?>
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="vandel-grid-col">
+            <div class="vandel-card">
+                <div class="vandel-card-header">
+                    <h3><?php _e('Sample Data', 'vandel-booking'); ?></h3>
+                </div>
+                <div class="vandel-card-body">
+                    <p><?php _e('Generate a sample CSV file that you can use as a template for your own data.', 'vandel-booking'); ?>
+                    </p>
+
+                    <form method="post">
+                        <?php wp_nonce_field('vandel_generate_sample_csv', 'vandel_location_importer_nonce'); ?>
+
+                        <div class="vandel-form-row">
+                            <div class="vandel-col">
+                                <label for="sample_country"><?php _e('Country', 'vandel-booking'); ?></label>
+                                <select id="sample_country" name="country">
+                                    <option value="SE"><?php _e('Sweden', 'vandel-booking'); ?></option>
+                                    <option value="GENERIC"><?php _e('Generic Sample', 'vandel-booking'); ?></option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <button type="submit" name="vandel_generate_sample_csv" class="button button-secondary">
+                            <?php _e('Generate Sample CSV', 'vandel-booking'); ?>
+                        </button>
+                    </form>
+
+                    <?php if (!empty($available_countries)): ?>
+                    <div class="vandel-available-files">
+                        <h4><?php _e('Available Country Files', 'vandel-booking'); ?></h4>
+                        <ul>
+                            <?php foreach ($available_countries as $code => $country): ?>
+                            <li>
+                                <?php echo esc_html($country['name']); ?>
+                                (<?php echo esc_html($country['count']); ?> <?php _e('locations', 'vandel-booking'); ?>)
+                                <button type="button" class="button button-small vandel-import-existing-file"
+                                    data-file="<?php echo esc_attr($country['file']); ?>"
+                                    data-country="<?php echo esc_attr($code); ?>">
+                                    <?php _e('Import', 'vandel-booking'); ?>
+                                </button>
+                            </li>
+                            <?php endforeach; ?>
+                        </ul>
+                    </div>
                     <?php endif; ?>
                 </div>
             </div>
-            
-            <div class="vandel-grid-row">
-                <div class="vandel-grid-col">
-                    <div class="vandel-card">
-                        <div class="vandel-card-header">
-                            <h3><?php _e('Import Location Data', 'vandel-booking'); ?></h3>
-                        </div>
-                        <div class="vandel-card-body">
-                            <form method="post" enctype="multipart/form-data">
-                                <?php wp_nonce_field('vandel_upload_location_csv', 'vandel_location_importer_nonce'); ?>
-                                
-                                <div class="vandel-form-row">
-                                    <div class="vandel-col">
-                                        <label for="country"><?php _e('Country', 'vandel-booking'); ?></label>
-                                        <input type="text" id="country" name="country" required class="regular-text" 
-                                               placeholder="<?php _e('Enter country name (e.g., Sweden)', 'vandel-booking'); ?>">
-                                    </div>
-                                </div>
-                                
-                                <div class="vandel-form-row">
-                                    <div class="vandel-col">
-                                        <label for="location_csv_file"><?php _e('CSV File', 'vandel-booking'); ?></label>
-                                        <input type="file" id="location_csv_file" name="location_csv_file" required 
-                                               accept=".csv">
-                                        <p class="description">
-                                            <?php _e('Upload a CSV file with location data. The file should contain postal codes, cities, and areas.', 'vandel-booking'); ?>
-                                        </p>
-                                    </div>
-                                </div>
-                                
-                                <div class="vandel-form-row">
-                                    <div class="vandel-col">
-                                        <label>
-                                            <input type="checkbox" name="has_header" value="1" checked>
-                                            <?php _e('File has header row', 'vandel-booking'); ?>
-                                        </label>
-                                    </div>
-                                </div>
-                                
-                                <div class="vandel-form-row">
-                                    <div class="vandel-col">
-                                        <h4><?php _e('Column Mapping', 'vandel-booking'); ?></h4>
-                                        <p class="description">
-                                            <?php _e('Specify which columns in your CSV file contain each piece of information. Column numbers start from 0.', 'vandel-booking'); ?>
-                                        </p>
-                                    </div>
-                                </div>
-                                
-                                <div class="vandel-form-row">
-                                    <div class="vandel-col">
-                                        <label for="column_zip_code"><?php _e('Postal Code Column', 'vandel-booking'); ?></label>
-                                        <input type="number" id="column_zip_code" name="column_zip_code" value="0" min="0" max="20" required>
-                                    </div>
-                                    <div class="vandel-col">
-                                        <label for="column_city"><?php _e('City Column', 'vandel-booking'); ?></label>
-                                        <input type="number" id="column_city" name="column_city" value="1" min="0" max="20" required>
-                                    </div>
-                                </div>
-                                
-                                <div class="vandel-form-row">
-                                    <div class="vandel-col">
-                                        <label for="column_area"><?php _e('Area/District Column', 'vandel-booking'); ?></label>
-                                        <input type="number" id="column_area" name="column_area" value="2" min="0" max="20">
-                                    </div>
-                                    <div class="vandel-col">
-                                        <label for="column_state"><?php _e('State/Province Column', 'vandel-booking'); ?></label>
-                                        <input type="number" id="column_state" name="column_state" value="3" min="0" max="20">
-                                    </div>
-                                </div>
-                                
-                                <button type="submit" name="vandel_upload_location_csv" class="button button-primary">
-                                    <?php _e('Upload & Import', 'vandel-booking'); ?>
-                                </button>
-                            </form>
-                        </div>
-                    </div>
+
+            <div class="vandel-card">
+                <div class="vandel-card-header">
+                    <h3><?php _e('CSV Format Requirements', 'vandel-booking'); ?></h3>
                 </div>
-                
-                <div class="vandel-grid-col">
-                    <div class="vandel-card">
-                        <div class="vandel-card-header">
-                            <h3><?php _e('Sample Data', 'vandel-booking'); ?></h3>
-                        </div>
-                        <div class="vandel-card-body">
-                            <p><?php _e('Generate a sample CSV file that you can use as a template for your own data.', 'vandel-booking'); ?></p>
-                            
-                            <form method="post">
-                                <?php wp_nonce_field('vandel_generate_sample_csv', 'vandel_location_importer_nonce'); ?>
-                                
-                                <div class="vandel-form-row">
-                                    <div class="vandel-col">
-                                        <label for="sample_country"><?php _e('Country', 'vandel-booking'); ?></label>
-                                        <select id="sample_country" name="country">
-                                            <option value="SE"><?php _e('Sweden', 'vandel-booking'); ?></option>
-                                            <option value="GENERIC"><?php _e('Generic Sample', 'vandel-booking'); ?></option>
-                                        </select>
-                                    </div>
-                                </div>
-                                
-                                <button type="submit" name="vandel_generate_sample_csv" class="button button-secondary">
-                                    <?php _e('Generate Sample CSV', 'vandel-booking'); ?>
-                                </button>
-                            </form>
-                            
-                            <?php if (!empty($available_countries)): ?>
-                                <div class="vandel-available-files">
-                                    <h4><?php _e('Available Country Files', 'vandel-booking'); ?></h4>
-                                    <ul>
-                                        <?php foreach ($available_countries as $code => $country): ?>
-                                            <li>
-                                                <?php echo esc_html($country['name']); ?> 
-                                                (<?php echo esc_html($country['count']); ?> <?php _e('locations', 'vandel-booking'); ?>)
-                                                <button type="button" class="button button-small vandel-import-existing-file"
-                                                        data-file="<?php echo esc_attr($country['file']); ?>"
-                                                        data-country="<?php echo esc_attr($code); ?>">
-                                                    <?php _e('Import', 'vandel-booking'); ?>
-                                                </button>
-                                            </li>
-                                        <?php endforeach; ?>
-                                    </ul>
-                                </div>
-                            <?php endif; ?>
-                        </div>
-                    </div>
-                    
-                    <div class="vandel-card">
-                        <div class="vandel-card-header">
-                            <h3><?php _e('CSV Format Requirements', 'vandel-booking'); ?></h3>
-                        </div>
-                        <div class="vandel-card-body">
-                            <p><?php _e('Your CSV file should follow these guidelines:', 'vandel-booking'); ?></p>
-                            
-                            <ul class="vandel-csv-requirements">
-                                <li><?php _e('File should be in CSV format (comma-separated values)', 'vandel-booking'); ?></li>
-                                <li><?php _e('Include a header row (recommended)', 'vandel-booking'); ?></li>
-                                <li><?php _e('Required columns: Postal Code, City', 'vandel-booking'); ?></li>
-                                <li><?php _e('Optional columns: Area/District, State/Province', 'vandel-booking'); ?></li>
-                                <li><?php _e('If area is not provided, city name will be used', 'vandel-booking'); ?></li>
-                            </ul>
-                            
-                            <h4><?php _e('Example CSV Structure:', 'vandel-booking'); ?></h4>
-                            
-                            <div class="vandel-csv-example">
-                                <pre>postal_code,city,area,state
+                <div class="vandel-card-body">
+                    <p><?php _e('Your CSV file should follow these guidelines:', 'vandel-booking'); ?></p>
+
+                    <ul class="vandel-csv-requirements">
+                        <li><?php _e('File should be in CSV format (comma-separated values)', 'vandel-booking'); ?></li>
+                        <li><?php _e('Include a header row (recommended)', 'vandel-booking'); ?></li>
+                        <li><?php _e('Required columns: Postal Code, City', 'vandel-booking'); ?></li>
+                        <li><?php _e('Optional columns: Area/District, State/Province', 'vandel-booking'); ?></li>
+                        <li><?php _e('If area is not provided, city name will be used', 'vandel-booking'); ?></li>
+                    </ul>
+
+                    <h4><?php _e('Example CSV Structure:', 'vandel-booking'); ?></h4>
+
+                    <div class="vandel-csv-example">
+                        <pre>postal_code,city,area,state
 11152,Stockholm,Norrmalm,Stockholm County
 11346,Stockholm,Östermalm,Stockholm County
 11553,Stockholm,Södermalm,Stockholm County
 41115,Göteborg,Centrum,Västra Götaland County
 75236,Uppsala,Centrum,Uppsala County</pre>
-                            </div>
-                        </div>
                     </div>
                 </div>
             </div>
         </div>
-        
-        <style>
-        .vandel-csv-example {
-            background: #f5f5f5;
-            padding: 10px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            overflow-x: auto;
-            margin-top: 10px;
-        }
-        
-        .vandel-csv-requirements {
-            margin-left: 20px;
-        }
-        
-        .vandel-available-files {
-            margin-top: 20px;
-            border-top: 1px solid #eee;
-            padding-top: 15px;
-        }
-        
-        .vandel-import-existing-file {
-            margin-left: 5px;
-        }
-        </style>
-        
-        <!-- Progress modal for large imports -->
-        <div id="vandel-import-progress-modal" class="vandel-modal" style="display:none;">
-            <div class="vandel-modal-content">
-                <h3><?php _e('Importing Location Data', 'vandel-booking'); ?></h3>
-                <div class="vandel-progress-bar-container">
-                    <div class="vandel-progress-bar"></div>
-                </div>
-                <p class="vandel-progress-status"><?php _e('Processing...', 'vandel-booking'); ?></p>
-            </div>
+    </div>
+</div>
+
+<style>
+.vandel-csv-example {
+    background: #f5f5f5;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    overflow-x: auto;
+    margin-top: 10px;
+}
+
+.vandel-csv-requirements {
+    margin-left: 20px;
+}
+
+.vandel-available-files {
+    margin-top: 20px;
+    border-top: 1px solid #eee;
+    padding-top: 15px;
+}
+
+.vandel-import-existing-file {
+    margin-left: 5px;
+}
+</style>
+
+<!-- Progress modal for large imports -->
+<div id="vandel-import-progress-modal" class="vandel-modal" style="display:none;">
+    <div class="vandel-modal-content">
+        <h3><?php _e('Importing Location Data', 'vandel-booking'); ?></h3>
+        <div class="vandel-progress-bar-container">
+            <div class="vandel-progress-bar"></div>
         </div>
-        <?php
+        <p class="vandel-progress-status"><?php _e('Processing...', 'vandel-booking'); ?></p>
+    </div>
+</div>
+<?php
     }
     
     /**

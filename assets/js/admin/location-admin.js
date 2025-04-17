@@ -124,6 +124,12 @@
             "</option>"
         );
 
+      // Enhanced debugging
+      console.log("Fetching cities for country:", country);
+      console.log("AJAX URL:", window.vandelLocationAdmin?.ajaxUrl || ajaxurl);
+      console.log("Nonce:", window.vandelLocationAdmin?.nonce || "not set");
+
+      // Add additional error handling and debugging
       $.ajax({
         url: window.vandelLocationAdmin?.ajaxUrl || ajaxurl,
         type: "POST",
@@ -133,6 +139,8 @@
           nonce: window.vandelLocationAdmin?.nonce || "",
         },
         success: function (response) {
+          console.log("AJAX response:", response);
+
           if (response.success) {
             const cities = response.data;
 
@@ -144,6 +152,7 @@
                     "Select city") +
                   "</option>"
               );
+
             $.each(cities, function (index, cityName) {
               $citySelect.append(
                 '<option value="' + cityName + '">' + cityName + "</option>"
@@ -152,7 +161,29 @@
 
             // Set selected city
             $citySelect.val(city);
+          } else {
+            $citySelect
+              .empty()
+              .append(
+                '<option value="">' +
+                  (response.data?.message || "Error loading cities") +
+                  "</option>"
+              );
+            console.error("Error loading cities:", response);
           }
+        },
+        error: function (xhr, status, error) {
+          console.error("AJAX error:", status, error);
+          console.log("Response text:", xhr.responseText);
+
+          $citySelect
+            .empty()
+            .append(
+              '<option value="">Error: ' + status + " - " + error + "</option>"
+            );
+        },
+        complete: function () {
+          console.log("AJAX request completed");
         },
       });
 

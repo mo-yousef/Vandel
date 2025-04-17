@@ -274,7 +274,9 @@ function vandel_init_zip_code_ajax_handler() {
 }
 add_action('init', 'vandel_init_zip_code_ajax_handler');
 
-// Initialize LocationAjaxHandler
+/**
+ * Initialize Location AJAX Handler
+ */
 function vandel_init_location_ajax_handler() {
     if (file_exists(VANDEL_PLUGIN_DIR . 'includes/admin/class-location-ajax-handler.php')) {
         require_once VANDEL_PLUGIN_DIR . 'includes/admin/class-location-ajax-handler.php';
@@ -283,7 +285,8 @@ function vandel_init_location_ajax_handler() {
         }
     }
 }
-add_action('init', 'vandel_init_location_ajax_handler');
+// Make sure this runs early enough
+add_action('init', 'vandel_init_location_ajax_handler', 5);
 
 
 
@@ -676,3 +679,177 @@ wp_enqueue_script(
     VANDEL_VERSION,
     true
 );
+
+
+
+// Add these fixes to the vandel-cleaning-booking.php file
+
+/**
+ * Ensure required database tables exist
+ */
+function vandel_ensure_tables_exist() {
+    if (class_exists('\\VandelBooking\\Database\\Installer')) {
+        $installer = new \VandelBooking\Database\Installer();
+        
+        // Check if location table is in the list of tables to create
+        if (property_exists($installer, 'tables')) {
+            $reflection = new \ReflectionClass($installer);
+            $property = $reflection->getProperty('tables');
+            $property->setAccessible(true);
+            $tables = $property->getValue($installer);
+            
+            if (!in_array('locations', $tables)) {
+                $tables[] = 'locations';
+                $property->setValue($installer, $tables);
+            }
+        }
+        
+        // Install or update tables
+        $installer->install();
+    }
+}
+
+/**
+ * Initialize locations table with sample data
+ */
+function vandel_init_locations() {
+    // Only run this once
+    if (get_option('vandel_locations_initialized') === 'yes') {
+        return;
+    }
+    
+    if (class_exists('\\VandelBooking\\Location\\LocationModel')) {
+        $location_model = new \VandelBooking\Location\LocationModel();
+        
+        // Check if the model has the initializeSweden method
+        if (method_exists($location_model, 'initializeSweden')) {
+            $result = $location_model->initializeSweden();
+            
+            if ($result) {
+                update_option('vandel_locations_initialized', 'yes');
+                error_log('Sweden locations initialized successfully');
+            } else {
+                error_log('Failed to initialize Sweden locations or they already exist');
+            }
+        }
+    }
+}
+
+// Run these functions during plugin activation
+register_activation_hook(__FILE__, 'vandel_ensure_tables_exist');
+register_activation_hook(__FILE__, 'vandel_init_locations');
+
+// Also run them on admin init, but only once
+add_action('admin_init', function() {
+    // Only run if tables don't exist or if the option is not set
+    if (get_option('vandel_tables_checked') !== 'yes') {
+        vandel_ensure_tables_exist();
+        update_option('vandel_tables_checked', 'yes');
+    }
+    
+    // Initialize locations if needed
+    vandel_init_locations();
+});
+
+/**
+ * Make sure the AJAX handlers are properly registered
+ */
+function vandel_init_all_ajax_handlers() {
+    // Initialize ZIP code AJAX handler
+    if (file_exists(VANDEL_PLUGIN_DIR . 'includes/admin/class-zip-code-ajax-handler.php')) {
+        require_once VANDEL_PLUGIN_DIR . 'includes/admin/class-zip-code-ajax-handler.php';
+        if (class_exists('VandelBooking\\Admin\\ZipCodeAjaxHandler')) {
+            new VandelBooking\Admin\ZipCodeAjaxHandler();
+        }
+    }
+    
+    // Initialize Location AJAX handler
+    if (file_exists(VANDEL_PLUGIN_DIR . 'includes/admin/class-location-ajax-handler.php')) {
+        require_once VANDEL_PLUGIN_DIR . 'includes/admin/class-location-ajax-handler.php';
+        if (class_exists('VandelBooking\\Admin\\LocationAjaxHandler')) {
+            new VandelBooking\Admin\LocationAjaxHandler();
+        }
+    }
+    
+    // Initialize booking AJAX handler
+    if (file_exists(VANDEL_PLUGIN_DIR . 'includes/ajax/class-ajax-handler.php')) {
+        require_once VANDEL_PLUGIN_DIR . 'includes/ajax/class-ajax-handler.php';
+        if (class_exists('VandelBooking\\Ajax\\AjaxHandler')) {
+            new VandelBooking\Ajax\AjaxHandler();
+        }
+    }
+}
+// Register the AJAX handlers early
+add_action('init', 'vandel_init_all_ajax_handlers', 5);
+
+/**
+ * Fix for JS and CSS loading
+ */
+function vandel_enqueue_admin_scripts($hook) {
+    // Only load on our plugin pages
+    if ($hook !== 'toplevel_page_vandel-dashboard' && strpos($hook, 'page_vandel-dashboard') === false) {
+        return;
+    }
+    
+    // Always load the admin dashboard styles
+    wp_enqueue_style(
+        'vandel-admin-dashboard',
+        VANDEL_PLUGIN_URL . 'assets/css/admin-dashboard.css',
+        [],
+        VANDEL_VERSION
+    );
+    
+    // Get current tab and section
+    $tab = isset($_GET['tab']) ? sanitize_key($_GET['tab']) : 'overview';
+    $section = isset($_GET['section']) ? sanitize_key($_GET['section']) : '';
+    
+    // Load location admin script for settings > locations
+    if ($tab === 'settings' && $section === 'locations') {
+        wp_enqueue_script(
+            'vandel-location-admin',
+            VANDEL_PLUGIN_URL . 'assets/js/admin/location-admin.js',
+            ['jquery'],
+            VANDEL_VERSION,
+            true
+        );
+        
+        // Localize with the correct AJAX URL and nonce
+        wp_localize_script(
+            'vandel-location-admin',
+            'vandelLocationAdmin',
+            [
+                'ajaxUrl' => admin_url('admin-ajax.php'),
+                'nonce' => wp_create_nonce('vandel_location_nonce'),
+                'confirmDelete' => __('Are you sure you want to delete this location?', 'vandel-booking'),
+                'strings' => [
+                    'selectCity' => __('Select City', 'vandel-booking'),
+                    'loadingCities' => __('Loading cities...', 'vandel-booking'),
+                    'selectArea' => __('Select Area', 'vandel-booking'),
+                    'loadingAreas' => __('Loading areas...', 'vandel-booking')
+                ]
+            ]
+        );
+    }
+    
+    // Load ZIP code admin script for settings > zip-codes
+    if ($tab === 'settings' && $section === 'zip-codes') {
+        wp_enqueue_script(
+            'vandel-zip-code-admin',
+            VANDEL_PLUGIN_URL . 'assets/js/admin/zip-code-admin.js',
+            ['jquery'],
+            VANDEL_VERSION,
+            true
+        );
+        
+        wp_localize_script(
+            'vandel-zip-code-admin',
+            'vandelZipCodeAdmin',
+            [
+                'ajaxUrl' => admin_url('admin-ajax.php'),
+                'nonce' => wp_create_nonce('vandel_zip_code_nonce'),
+                'confirmDelete' => __('Are you sure you want to delete this ZIP code?', 'vandel-booking')
+            ]
+        );
+    }
+}
+add_action('admin_enqueue_scripts', 'vandel_enqueue_admin_scripts');
