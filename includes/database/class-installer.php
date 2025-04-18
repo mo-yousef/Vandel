@@ -22,7 +22,9 @@ class Installer {
         'clients',
         'booking_notes',
         'zip_codes',
-        'locations'
+        'locations',
+        'areas',               // Add this
+        'location_spots'       // Add this
     ];
 
     /**
@@ -261,6 +263,77 @@ private function create_locations_table() {
     return $wpdb->get_var("SHOW TABLES LIKE '$table_name'") === $table_name;
 }
 
+
+/**
+ * Create areas table
+ * 
+ * @return bool Whether table was created successfully
+ */
+private function create_areas_table() {
+    global $wpdb;
+    $table_name = $wpdb->prefix . 'vandel_areas';
+    
+    // Check if table already exists
+    $table_exists = $wpdb->get_var("SHOW TABLES LIKE '$table_name'") === $table_name;
+    
+    // Get WordPress dbDelta function
+    require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
+    
+    $charset_collate = $wpdb->get_charset_collate();
+    
+    $sql = "CREATE TABLE $table_name (
+        id MEDIUMINT(9) NOT NULL AUTO_INCREMENT,
+        name VARCHAR(100) NOT NULL,
+        country VARCHAR(100) NOT NULL,
+        admin_area VARCHAR(100) NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (id),
+        KEY name (name),
+        KEY country (country)
+    ) $charset_collate;";
+    
+    dbDelta($sql);
+    
+    // Check if table exists after creation attempt
+    return $wpdb->get_var("SHOW TABLES LIKE '$table_name'") === $table_name;
+}
+
+
+/**
+ * Create location spots table
+ * 
+ * @return bool Whether table was created successfully
+ */
+private function create_location_spots_table() {
+    global $wpdb;
+    $table_name = $wpdb->prefix . 'vandel_location_spots';
+    
+    // Check if table already exists
+    $table_exists = $wpdb->get_var("SHOW TABLES LIKE '$table_name'") === $table_name;
+    
+    // Get WordPress dbDelta function
+    require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
+    
+    $charset_collate = $wpdb->get_charset_collate();
+    
+    $sql = "CREATE TABLE $table_name (
+        id MEDIUMINT(9) NOT NULL AUTO_INCREMENT,
+        name VARCHAR(100) NOT NULL,
+        area_id MEDIUMINT(9) NOT NULL,
+        price_adjustment DECIMAL(10, 2) DEFAULT 0,
+        service_fee DECIMAL(10, 2) DEFAULT 0,
+        is_active ENUM('yes', 'no') DEFAULT 'yes',
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (id),
+        KEY area_id (area_id),
+        KEY name (name)
+    ) $charset_collate;";
+    
+    dbDelta($sql);
+    
+    // Check if table exists after creation attempt
+    return $wpdb->get_var("SHOW TABLES LIKE '$table_name'") === $table_name;
+}
 
  /**
      * Update tables if needed

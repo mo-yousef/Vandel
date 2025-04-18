@@ -1,707 +1,723 @@
 <?php
-namespace VandelBooking\Admin\Dashboard\Settings;
+/**
+ * Location Management Settings Tab Integration
+ * 
+ * This file integrates location management directly into the settings tab
+ * of the Vandel Booking plugin dashboard.
+ */
 
-use VandelBooking\Location\LocationModel;
-use VandelBooking\Helpers;
+namespace VandelBooking\Admin;
 
 /**
- * Location Settings
- * Handles the location management in settings
+ * Location Settings Tab Handler
  */
-class Location_Settings {
+class LocationSettingsTab {
     /**
-     * @var LocationModel Location Model instance
+     * @var \VandelBooking\Location\LocationModel
      */
     private $location_model;
-
+    
     /**
      * Constructor
      */
     public function __construct() {
+        // Initialize location model
         if (class_exists('\\VandelBooking\\Location\\LocationModel')) {
-            $this->location_model = new LocationModel();
+            $this->location_model = new \VandelBooking\Location\LocationModel();
         }
-
-        // Hook to admin_enqueue_scripts
-        add_action('admin_enqueue_scripts', [$this, 'enqueue_assets']);
+        
+        // Register settings tab section
+        add_filter('vandel_settings_sections', [$this, 'addSettingsSection']);
+        
+        // Register AJAX handlers for area and location management
+        add_action('wp_ajax_vandel_save_area', [$this, 'ajaxSaveArea']);
+        add_action('wp_ajax_vandel_delete_area', [$this, 'ajaxDeleteArea']);
+        add_action('wp_ajax_vandel_save_location', [$this, 'ajaxSaveLocation']);
+        add_action('wp_ajax_vandel_delete_location', [$this, 'ajaxDeleteLocation']);
+        add_action('wp_ajax_vandel_get_area_locations', [$this, 'ajaxGetAreaLocations']);
+        
+        // Enqueue admin scripts
+        add_action('admin_enqueue_scripts', [$this, 'enqueueScripts']);
     }
-
+    
     /**
-     * Process actions for locations
+     * Add settings section for locations
+     * 
+     * @param array $sections Existing sections
+     * @return array Modified sections
      */
-    public function process_actions() {
-        // Check if we're on the correct page and have necessary permissions
-        if (!current_user_can('manage_options')) {
+    public function addSettingsSection($sections) {
+        $sections['locations'] = __('Locations', 'vandel-booking');
+        return $sections;
+    }
+    
+    /**
+     * Enqueue scripts for the settings page
+     * 
+     * @param string $hook Current admin page hook
+     */
+    public function enqueueScripts($hook) {
+        // Only load on our plugin pages
+        if ($hook !== 'toplevel_page_vandel-dashboard' && strpos($hook, 'page_vandel-dashboard') === false) {
             return;
         }
-
-        // Debug log
-        error_log('Location settings process_actions called. POST data: ' . print_r($_POST, true));
-
-        // Check for Location add action
-        if (isset($_POST['vandel_add_location']) && 
-            isset($_POST['vandel_location_nonce']) && 
-            wp_verify_nonce($_POST['vandel_location_nonce'], 'vandel_add_location')) {
-            
-            // Log the form submission
-            error_log('Processing location form submission with nonce verification passed');
-            
-            $this->add_location($_POST);
-        }
-
-        // Check for Location delete action
-        if (isset($_GET['action']) && $_GET['action'] === 'delete_location' && 
-            isset($_GET['location_id']) && isset($_GET['_wpnonce'])) {
-            
-            $location_id = intval($_GET['location_id']);
-            if (wp_verify_nonce($_GET['_wpnonce'], 'delete_location_' . $location_id)) {
-                $this->delete_location($location_id);
-            }
-        }
-
-        // Check for Location update action
-        if (isset($_POST['vandel_update_location']) && 
-            isset($_POST['vandel_location_update_nonce']) && 
-            wp_verify_nonce($_POST['vandel_location_update_nonce'], 'vandel_update_location')) {
-            
-            $this->update_location($_POST);
-        }
-
-        // Check for Initialize Sweden action
-        if (isset($_POST['vandel_initialize_sweden']) && 
-            isset($_POST['vandel_initialize_sweden_nonce']) && 
-            wp_verify_nonce($_POST['vandel_initialize_sweden_nonce'], 'vandel_initialize_sweden')) {
-            
-            $this->initialize_sweden();
-        }
-    }
-
-    /**
-     * Enqueue Location admin scripts and styles
-     */
-    public function enqueue_assets() {
-        // Only load on the Location settings page
-        if (!is_admin() || 
-            !isset($_GET['page']) || $_GET['page'] !== 'vandel-dashboard' || 
-            !isset($_GET['tab']) || $_GET['tab'] !== 'settings' ||
+        
+        // Only load on the settings tab with locations section
+        if (!isset($_GET['tab']) || $_GET['tab'] !== 'settings' || 
             !isset($_GET['section']) || $_GET['section'] !== 'locations') {
             return;
         }
         
-        // Enqueue the Location admin script
+        wp_enqueue_style(
+            'vandel-location-settings',
+            VANDEL_PLUGIN_URL . 'assets/css/location-settings.css',
+            [],
+            VANDEL_VERSION
+        );
+        
         wp_enqueue_script(
-            'vandel-location-admin',
-            VANDEL_PLUGIN_URL . 'assets/js/admin/location-admin.js',
+            'vandel-location-settings',
+            VANDEL_PLUGIN_URL . 'assets/js/admin/location-settings.js',
             ['jquery'],
             VANDEL_VERSION,
             true
         );
         
-        // Localize the script with necessary data
         wp_localize_script(
-            'vandel-location-admin',
-            'vandelLocationAdmin',
+            'vandel-location-settings',
+            'vandelLocations',
             [
                 'ajaxUrl' => admin_url('admin-ajax.php'),
-                'nonce' => wp_create_nonce('vandel_location_nonce'),
-                'confirmDelete' => __('Are you sure you want to delete this location?', 'vandel-booking'),
+                'nonce' => wp_create_nonce('vandel_location_settings'),
                 'strings' => [
-                    'importSuccess' => __('Locations imported successfully.', 'vandel-booking'),
-                    'importError' => __('Error importing locations.', 'vandel-booking'),
-                    'selectFile' => __('Please select a file to import.', 'vandel-booking'),
-                    'selectCountry' => __('Please select a country', 'vandel-booking'),
-                    'selectCity' => __('Please select a city', 'vandel-booking'),
-                    'loadingAreas' => __('Loading areas...', 'vandel-booking')
+                    'confirmDeleteArea' => __('Are you sure you want to delete this area? All associated locations will also be removed.', 'vandel-booking'),
+                    'confirmDeleteLocation' => __('Are you sure you want to remove this location?', 'vandel-booking'),
+                    'saved' => __('Successfully saved!', 'vandel-booking'),
+                    'deleted' => __('Successfully deleted!', 'vandel-booking'),
+                    'error' => __('An error occurred. Please try again.', 'vandel-booking'),
+                    'addLocation' => __('Add location', 'vandel-booking'),
+                    'removeLocation' => __('Remove', 'vandel-booking'),
+                    'backToSettings' => __('Back to settings', 'vandel-booking'),
+                    'save' => __('Save', 'vandel-booking')
                 ]
             ]
         );
     }
-
+    
     /**
-     * Add new Location
-     * 
-     * @param array $data Form data
+     * Render settings section content
      */
-    private function add_location($data) {
+    public function renderSettingsSection() {
+        // Check if location model is available
         if (!$this->location_model) {
-            add_settings_error(
-                'vandel_location_messages', 
-                'vandel_location_model_missing', 
-                __('Location functionality is not available.', 'vandel-booking'), 
-                'error'
-            );
-            return;
-        }
-
-        $location_data = [
-            'country' => sanitize_text_field($data['country']),
-            'city' => sanitize_text_field($data['city']),
-            'area_name' => sanitize_text_field($data['area_name']),
-            'zip_code' => sanitize_text_field($data['zip_code']),
-            'price_adjustment' => isset($data['price_adjustment']) ? floatval($data['price_adjustment']) : 0,
-            'service_fee' => isset($data['service_fee']) ? floatval($data['service_fee']) : 0,
-            'is_active' => isset($data['is_active']) ? 'yes' : 'no'
-        ];
-
-        $result = $this->location_model->add($location_data);
-
-        if ($result) {
-            add_settings_error(
-                'vandel_location_messages', 
-                'vandel_location_added', 
-                __('Location added successfully.', 'vandel-booking'), 
-                'success'
-            );
-        } else {
-            add_settings_error(
-                'vandel_location_messages', 
-                'vandel_location_error', 
-                __('Failed to add location. It may already exist.', 'vandel-booking'), 
-                'error'
-            );
-        }
-    }
-
-    /**
-     * Delete Location
-     * 
-     * @param int $location_id Location ID to delete
-     */
-    private function delete_location($location_id) {
-        if (!$this->location_model) {
-            add_settings_error(
-                'vandel_location_messages', 
-                'vandel_location_model_missing', 
-                __('Location functionality is not available.', 'vandel-booking'), 
-                'error'
-            );
-            return;
-        }
-
-        $result = $this->location_model->delete($location_id);
-
-        if ($result) {
-            add_settings_error(
-                'vandel_location_messages', 
-                'vandel_location_deleted', 
-                __('Location deleted successfully.', 'vandel-booking'), 
-                'success'
-            );
-        } else {
-            add_settings_error(
-                'vandel_location_messages', 
-                'vandel_location_delete_error', 
-                __('Failed to delete location.', 'vandel-booking'), 
-                'error'
-            );
-        }
-    }
-
-    /**
-     * Update existing Location
-     * 
-     * @param array $data Location data
-     */
-    private function update_location($data) {
-        if (!$this->location_model) {
-            add_settings_error(
-                'vandel_location_messages', 
-                'vandel_location_model_missing', 
-                __('Location functionality is not available.', 'vandel-booking'), 
-                'error'
-            );
+            echo '<div class="notice notice-error"><p>' . __('Location model not available', 'vandel-booking') . '</p></div>';
             return;
         }
         
-        $location_id = intval($data['location_id']);
-        $location_data = [
-            'country' => sanitize_text_field($data['country']),
-            'city' => sanitize_text_field($data['city']),
-            'area_name' => sanitize_text_field($data['area_name']),
-            'zip_code' => sanitize_text_field($data['zip_code']),
-            'price_adjustment' => isset($data['price_adjustment']) ? floatval($data['price_adjustment']) : 0,
-            'service_fee' => isset($data['service_fee']) ? floatval($data['service_fee']) : 0,
-            'is_active' => isset($data['is_active']) ? 'yes' : 'no'
-        ];
-        
-        $result = $this->location_model->update($location_id, $location_data);
-        
-        if ($result) {
-            add_settings_error(
-                'vandel_location_messages', 
-                'vandel_location_updated', 
-                __('Location updated successfully.', 'vandel-booking'), 
-                'success'
-            );
-        } else {
-            add_settings_error(
-                'vandel_location_messages', 
-                'vandel_location_error', 
-                __('Failed to update location.', 'vandel-booking'), 
-                'error'
-            );
-        }
-    }
-
-    /**
-     * Initialize Sweden locations
-     */
-    private function initialize_sweden() {
-        if (!$this->location_model) {
-            add_settings_error(
-                'vandel_location_messages', 
-                'vandel_location_model_missing', 
-                __('Location functionality is not available.', 'vandel-booking'), 
-                'error'
-            );
+        // Check if an area is being edited
+        if (isset($_GET['edit_area'])) {
+            $this->renderAreaEditPage(sanitize_text_field($_GET['edit_area']));
             return;
         }
-
-        $result = $this->location_model->initializeSweden();
-
-        if ($result) {
-            add_settings_error(
-                'vandel_location_messages', 
-                'vandel_sweden_initialized', 
-                __('Sweden locations initialized successfully.', 'vandel-booking'), 
-                'success'
-            );
-        } else {
-            add_settings_error(
-                'vandel_location_messages', 
-                'vandel_sweden_init_error', 
-                __('Failed to initialize Sweden locations or they already exist.', 'vandel-booking'), 
-                'error'
-            );
-        }
-    }
-
-    /**
-     * Render settings page
-     */
-    public function render() {
-        // Display settings errors
-        settings_errors('vandel_location_messages');
         
-        // Get current page
-        $page = isset($_GET['paged']) ? intval($_GET['paged']) : 1;
-        $per_page = 15;
-        $offset = ($page - 1) * $per_page;
-        
-        // Get countries for dropdown
-        $countries = ['Sweden' => 'Sweden']; // For now, just Sweden
-        $cities = [];
-        
-        // Get existing records for the table
-        global $wpdb;
-        $table_name = $wpdb->prefix . 'vandel_locations';
-        $table_exists = $wpdb->get_var("SHOW TABLES LIKE '$table_name'") === $table_name;
-        
-        $locations = [];
-        $total_locations = 0;
-        $total_pages = 1;
-        
-        if ($table_exists) {
-            $locations = $wpdb->get_results($wpdb->prepare(
-                "SELECT * FROM $table_name ORDER BY country, city, area_name ASC LIMIT %d OFFSET %d",
-                $per_page, $offset
-            ));
-            
-            $total_locations = $wpdb->get_var("SELECT COUNT(*) FROM $table_name");
-            $total_pages = ceil($total_locations / $per_page);
-            
-            // Get cities for selected country (assuming Sweden for now)
-            if ($this->location_model) {
-                $cities_array = $this->location_model->getCities('Sweden');
-                foreach ($cities_array as $city) {
-                    $cities[$city] = $city;
-                }
-            }
-        }
-        
+        // Get all areas
+        $areas = $this->location_model->getAreas();
         ?>
-
-<div class="vandel-settings-section">
-    <h2><?php _e('Location Management', 'vandel-booking'); ?></h2>
-
-    <div class="vandel-settings-intro">
-        <p><?php _e('Manage your service locations with area-based pricing. Set up countries, cities, and specific areas with ZIP codes.', 'vandel-booking'); ?>
-        </p>
-    </div>
-
-    <div class="vandel-grid-row">
-        <div class="vandel-grid-col">
-            <div class="vandel-card">
-                <div class="vandel-card-header">
-                    <h3><?php _e('Add New Location', 'vandel-booking'); ?></h3>
-                </div>
-                <div class="vandel-card-body">
-                    <form method="post" action="">
-                        <?php wp_nonce_field('vandel_add_location', 'vandel_location_nonce'); ?>
-                        <div class="vandel-form-row">
-                            <div class="vandel-col">
-                                <label for="country"><?php _e('Country', 'vandel-booking'); ?> <span
-                                        class="required">*</span></label>
-                                <select name="country" id="country" required class="widefat">
-                                    <?php _e('Select Country', 'vandel-booking'); ?></option>
-                                    <?php foreach ($countries as $code => $name): ?>
-                                    <option value="<?php echo esc_attr($code); ?>"><?php echo esc_html($name); ?>
-                                    </option>
-                                    <?php endforeach; ?>
-                                </select>
-                            </div>
-                            <div class="vandel-col">
-                                <label for="city"><?php _e('City', 'vandel-booking'); ?> <span
-                                        class="required">*</span></label>
-                                <select name="city" id="city" required class="widefat">
-                                    <option value=""><?php _e('Select City', 'vandel-booking'); ?></option>
-                                    <?php foreach ($cities as $code => $name): ?>
-                                    <option value="<?php echo esc_attr($code); ?>"><?php echo esc_html($name); ?>
-                                    </option>
-                                    <?php endforeach; ?>
-                                </select>
-                            </div>
+        <div class="vandel-settings-section locations-section">
+            <h2 class="vandel-settings-title"><?php _e('Service Areas', 'vandel-booking'); ?></h2>
+            <p class="vandel-settings-description"><?php _e('Manage service areas and locations for your booking system.', 'vandel-booking'); ?></p>
+            
+            <div class="vandel-add-area">
+                <h3><?php _e('Add New Area', 'vandel-booking'); ?></h3>
+                <form id="add-area-form" class="vandel-inline-form">
+                    <div class="vandel-form-row">
+                        <div class="vandel-form-group">
+                            <label for="area-name"><?php _e('Area Name', 'vandel-booking'); ?></label>
+                            <input type="text" id="area-name" name="area_name" required>
                         </div>
-                        <div class="vandel-form-row">
-                            <div class="vandel-col">
-                                <label for="area_name"><?php _e('Area Name', 'vandel-booking'); ?> <span
-                                        class="required">*</span></label>
-                                <input type="text" name="area_name" id="area_name" required class="widefat">
-                            </div>
-                            <div class="vandel-col">
-                                <label for="zip_code"><?php _e('ZIP Code', 'vandel-booking'); ?> <span
-                                        class="required">*</span></label>
-                                <input type="text" name="zip_code" id="zip_code" required class="widefat">
-                            </div>
+                        <div class="vandel-form-group">
+                            <label for="area-country"><?php _e('Country', 'vandel-booking'); ?></label>
+                            <input type="text" id="area-country" name="country" value="Sweden" required>
                         </div>
-                        <div class="vandel-form-row">
-                            <div class="vandel-col">
-                                <label for="price_adjustment"><?php _e('Price Adjustment', 'vandel-booking'); ?></label>
-                                <div class="vandel-input-group">
-                                    <span
-                                        class="vandel-input-prefix"><?php echo \VandelBooking\Helpers::getCurrencySymbol(); ?></span>
-                                    <input type="number" name="price_adjustment" id="price_adjustment" step="0.01"
-                                        min="-100" max="100" class="widefat" value="0">
-                                </div>
-                                <p class="description">
-                                    <?php _e('Amount to add or subtract from base price for this area', 'vandel-booking'); ?>
-                                </p>
-                            </div>
-                            <div class="vandel-col">
-                                <label for="service_fee"><?php _e('Service Fee', 'vandel-booking'); ?></label>
-                                <div class="vandel-input-group">
-                                    <span
-                                        class="vandel-input-prefix"><?php echo \VandelBooking\Helpers::getCurrencySymbol(); ?></span>
-                                    <input type="number" name="service_fee" id="service_fee" step="0.01" min="0"
-                                        class="widefat" value="0">
-                                </div>
-                                <p class="description">
-                                    <?php _e('Additional fee for servicing this area', 'vandel-booking'); ?></p>
-                            </div>
+                        <div class="vandel-form-submit">
+                            <button type="submit" class="button button-primary"><?php _e('Add Area', 'vandel-booking'); ?></button>
                         </div>
-                        <div class="vandel-toggle-controls">
-                            <div class="vandel-toggle-field">
-                                <label class="vandel-toggle">
-                                    <input type="checkbox" name="is_active" value="yes" checked>
-                                    <span class="vandel-toggle-slider"></span>
-                                </label>
-                                <span class="vandel-toggle-label"><?php _e('Active Area', 'vandel-booking'); ?></span>
-                            </div>
-                        </div>
-                        <button type="submit" name="vandel_add_location" class="button button-primary">
-                            <?php _e('Add Location', 'vandel-booking'); ?>
-                        </button>
-                    </form>
-                </div>
-            </div>
-        </div>
-
-        <!-- Quick Initialize Section -->
-        <div class="vandel-grid-col">
-            <div class="vandel-card">
-                <div class="vandel-card-header">
-                    <h3><?php _e('Quick Initialize', 'vandel-booking'); ?></h3>
-                </div>
-                <div class="vandel-card-body">
-                    <p><?php _e('Initialize the database with predefined locations for Sweden.', 'vandel-booking'); ?>
-                    </p>
-
-                    <form method="post" action="">
-                        <?php wp_nonce_field('vandel_initialize_sweden', 'vandel_initialize_sweden_nonce'); ?>
-                        <button type="submit" name="vandel_initialize_sweden" class="button button-secondary">
-                            <span class="dashicons dashicons-database-add"></span>
-                            <?php _e('Initialize Sweden Locations', 'vandel-booking'); ?>
-                        </button>
-                    </form>
-
-                    <div class="vandel-divider"></div>
-
-                    <div class="vandel-import-section">
-                        <h4><?php _e('Import Locations', 'vandel-booking'); ?></h4>
-                        <p><?php _e('Upload a CSV file with location data to bulk import.', 'vandel-booking'); ?></p>
-                        <form method="post" enctype="multipart/form-data">
-                            <div class="vandel-form-row">
-                                <div class="vandel-col">
-                                    <input type="file" name="locations_file" id="vandel-locations-file"
-                                        accept=".csv,.xlsx,.xls">
-                                </div>
-                                <div class="vandel-col">
-                                    <button type="button" id="vandel-import-locations" class="button button-secondary">
-                                        <span class="dashicons dashicons-upload"></span>
-                                        <?php _e('Import', 'vandel-booking'); ?>
-                                    </button>
-                                </div>
-                            </div>
-                        </form>
-                        <p class="description">
-                            <?php _e('CSV format: Country, City, Area Name, ZIP Code, Price Adjustment, Service Fee, Active (yes/no)', 'vandel-booking'); ?>
-                        </p>
                     </div>
-
-                    <div class="vandel-export-section">
-                        <h4><?php _e('Export Locations', 'vandel-booking'); ?></h4>
-                        <p><?php _e('Download all your locations as a CSV file.', 'vandel-booking'); ?></p>
-                        <button type="button" id="vandel-export-locations" class="button button-secondary">
-                            <span class="dashicons dashicons-download"></span>
-                            <?php _e('Export CSV', 'vandel-booking'); ?>
-                        </button>
+                </form>
+            </div>
+            
+            <div class="vandel-areas-list">
+                <h3><?php _e('Existing Areas', 'vandel-booking'); ?></h3>
+                
+                <?php if (empty($areas)): ?>
+                    <p class="vandel-empty-state"><?php _e('No areas have been created yet.', 'vandel-booking'); ?></p>
+                <?php else: ?>
+                    <div class="vandel-areas-table-container">
+                        <table class="wp-list-table widefat fixed striped vandel-areas-table">
+                            <thead>
+                                <tr>
+                                    <th scope="col"><?php _e('Area Name', 'vandel-booking'); ?></th>
+                                    <th scope="col"><?php _e('Country', 'vandel-booking'); ?></th>
+                                    <th scope="col"><?php _e('Locations', 'vandel-booking'); ?></th>
+                                    <th scope="col"><?php _e('Actions', 'vandel-booking'); ?></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php foreach ($areas as $area): ?>
+                                    <?php 
+                                        $location_count = $this->location_model->countLocationsByArea($area->id);
+                                    ?>
+                                    <tr>
+                                        <td><?php echo esc_html($area->name); ?></td>
+                                        <td><?php echo esc_html($area->country); ?></td>
+                                        <td><?php echo esc_html($location_count); ?></td>
+                                        <td class="actions">
+                                            <a href="<?php echo esc_url(add_query_arg(['edit_area' => $area->id])); ?>" class="button button-small">
+                                                <span class="dashicons dashicons-edit"></span> <?php _e('Edit', 'vandel-booking'); ?>
+                                            </a>
+                                            <a href="#" class="button button-small button-link-delete delete-area" data-id="<?php echo esc_attr($area->id); ?>">
+                                                <span class="dashicons dashicons-trash"></span> <?php _e('Delete', 'vandel-booking'); ?>
+                                            </a>
+                                        </td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
                     </div>
-                </div>
+                <?php endif; ?>
             </div>
         </div>
-    </div>
-
-    <div class="vandel-card">
-        <div class="vandel-card-header vandel-flex-header">
-            <h3><?php _e('Your Locations', 'vandel-booking'); ?></h3>
-            <div class="vandel-filter-controls">
-                <input type="text" id="vandel-location-search"
-                    placeholder="<?php _e('Search locations...', 'vandel-booking'); ?>" class="regular-text">
-            </div>
-        </div>
-        <div class="vandel-card-body">
-            <table class="wp-list-table widefat fixed striped vandel-data-table">
-                <thead>
-                    <tr>
-                        <th><?php _e('Country', 'vandel-booking'); ?></th>
-                        <th><?php _e('City', 'vandel-booking'); ?></th>
-                        <th><?php _e('Area Name', 'vandel-booking'); ?></th>
-                        <th><?php _e('ZIP Code', 'vandel-booking'); ?></th>
-                        <th><?php _e('Price Adjustment', 'vandel-booking'); ?></th>
-                        <th><?php _e('Service Fee', 'vandel-booking'); ?></th>
-                        <th><?php _e('Status', 'vandel-booking'); ?></th>
-                        <th><?php _e('Actions', 'vandel-booking'); ?></th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php if (empty($locations)): ?>
-                    <tr>
-                        <td colspan="8" class="text-center">
-                            <?php _e('No locations found. Add your first location above or use Quick Initialize.', 'vandel-booking'); ?>
-                        </td>
-                    </tr>
-                    <?php else: ?>
-                    <?php foreach ($locations as $location): ?>
-                    <tr>
-                        <td><?php echo esc_html($location->country); ?></td>
-                        <td><?php echo esc_html($location->city); ?></td>
-                        <td><?php echo esc_html($location->area_name); ?></td>
-                        <td><?php echo esc_html($location->zip_code); ?></td>
-                        <td>
-                            <?php 
-                                            $price_adj = floatval($location->price_adjustment);
-                                            echo $price_adj > 0 ? '+' : '';
-                                            echo Helpers::formatPrice($price_adj);
-                                            ?>
-                        </td>
-                        <td><?php echo Helpers::formatPrice($location->service_fee); ?></td>
-                        <td>
-                            <?php if ($location->is_active === 'yes'): ?>
-                            <span
-                                class="vandel-badge vandel-badge-success"><?php _e('Active', 'vandel-booking'); ?></span>
-                            <?php else: ?>
-                            <span
-                                class="vandel-badge vandel-badge-danger"><?php _e('Inactive', 'vandel-booking'); ?></span>
-                            <?php endif; ?>
-                        </td>
-                        <td>
-                            <div class="vandel-row-actions">
-                                <a href="#" class="vandel-edit-location"
-                                    data-id="<?php echo esc_attr($location->id); ?>"
-                                    data-country="<?php echo esc_attr($location->country); ?>"
-                                    data-city="<?php echo esc_attr($location->city); ?>"
-                                    data-area-name="<?php echo esc_attr($location->area_name); ?>"
-                                    data-zip-code="<?php echo esc_attr($location->zip_code); ?>"
-                                    data-price-adjustment="<?php echo esc_attr($location->price_adjustment); ?>"
-                                    data-service-fee="<?php echo esc_attr($location->service_fee); ?>"
-                                    data-is-active="<?php echo esc_attr($location->is_active); ?>">
-                                    <?php _e('Edit', 'vandel-booking'); ?>
-                                </a>
-                                <a href="<?php echo wp_nonce_url(
-                                                    admin_url('admin.php?page=vandel-dashboard&tab=settings&section=locations&action=delete_location&location_id=' . urlencode($location->id)),
-                                                    'delete_location_' . $location->id
-                                                ); ?>" class="vandel-delete-location">
-                                    <?php _e('Delete', 'vandel-booking'); ?>
-                                </a>
-                            </div>
-                        </td>
-                    </tr>
-                    <?php endforeach; ?>
-                    <?php endif; ?>
-                </tbody>
-            </table>
-
-            <!-- Pagination -->
-            <?php if ($total_pages > 1): ?>
-            <div class="tablenav">
-                <div class="tablenav-pages">
-                    <?php
-                                $page_links = paginate_links([
-                                    'base' => add_query_arg('paged', '%#%'),
-                                    'format' => '',
-                                    'prev_text' => __('&laquo;', 'vandel-booking'),
-                                    'next_text' => __('&raquo;', 'vandel-booking'),
-                                    'total' => $total_pages,
-                                    'current' => $page,
-                                    'type' => 'array'
-                                ]);
-
-                                if ($page_links) {
-                                    echo '<span class="pagination-links">';
-                                    echo implode(' ', $page_links);
-                                    echo '</span>';
+        
+        <script>
+            jQuery(document).ready(function($) {
+                // Add new area form submission
+                $('#add-area-form').on('submit', function(e) {
+                    e.preventDefault();
+                    
+                    const areaName = $('#area-name').val();
+                    const country = $('#area-country').val();
+                    
+                    if (!areaName || !country) {
+                        alert('<?php echo esc_js(__('Please fill in all required fields', 'vandel-booking')); ?>');
+                        return;
+                    }
+                    
+                    $.ajax({
+                        url: vandelLocations.ajaxUrl,
+                        type: 'POST',
+                        data: {
+                            action: 'vandel_save_area',
+                            nonce: vandelLocations.nonce,
+                            area_name: areaName,
+                            country: country
+                        },
+                        success: function(response) {
+                            if (response.success) {
+                                location.reload();
+                            } else {
+                                alert(response.data.message || vandelLocations.strings.error);
+                            }
+                        },
+                        error: function() {
+                            alert(vandelLocations.strings.error);
+                        }
+                    });
+                });
+                
+                // Delete area
+                $('.delete-area').on('click', function(e) {
+                    e.preventDefault();
+                    
+                    const areaId = $(this).data('id');
+                    
+                    if (confirm(vandelLocations.strings.confirmDeleteArea)) {
+                        $.ajax({
+                            url: vandelLocations.ajaxUrl,
+                            type: 'POST',
+                            data: {
+                                action: 'vandel_delete_area',
+                                nonce: vandelLocations.nonce,
+                                area_id: areaId
+                            },
+                            success: function(response) {
+                                if (response.success) {
+                                    location.reload();
+                                } else {
+                                    alert(response.data.message || vandelLocations.strings.error);
                                 }
-                                ?>
-                </div>
+                            },
+                            error: function() {
+                                alert(vandelLocations.strings.error);
+                            }
+                        });
+                    }
+                });
+            });
+        </script>
+        <?php
+    }
+    
+    /**
+     * Render area edit page
+     * 
+     * @param int $area_id Area ID
+     */
+    private function renderAreaEditPage($area_id) {
+        // Get area data
+        $area = $this->location_model->getAreaById($area_id);
+        
+        if (!$area) {
+            echo '<div class="notice notice-error"><p>' . __('Area not found', 'vandel-booking') . '</p></div>';
+            return;
+        }
+        
+        // Get locations for this area
+        $locations = $this->location_model->getLocationsByArea($area_id);
+        ?>
+        <div class="vandel-area-edit-page">
+            <h2><?php printf(__('Edit area - %s', 'vandel-booking'), esc_html($area->name)); ?></h2>
+            
+            <div class="vandel-area-edit-form">
+                <form id="edit-area-form">
+                    <input type="hidden" id="area-id" value="<?php echo esc_attr($area_id); ?>">
+                    
+                    <div class="vandel-form-row">
+                        <div class="vandel-form-group">
+                            <label for="edit-area-name"><?php _e('Name', 'vandel-booking'); ?></label>
+                            <input type="text" id="edit-area-name" name="area_name" value="<?php echo esc_attr($area->name); ?>" required>
+                        </div>
+                    </div>
+                    
+                    <div class="vandel-form-row">
+                        <div class="vandel-form-group">
+                            <label for="edit-area-admin-area"><?php _e('Area', 'vandel-booking'); ?> <span class="description"><?php _e('(If you want to add locations from another admin area, create your new area and select the relevant admin area.)', 'vandel-booking'); ?></span></label>
+                            <input type="text" id="edit-area-admin-area" name="admin_area" value="<?php echo esc_attr($area->name); ?>" required>
+                        </div>
+                    </div>
+                    
+                    <h3><?php _e('Locations', 'vandel-booking'); ?></h3>
+                    <div class="vandel-locations-container" id="locations-container">
+                        <?php if (empty($locations)): ?>
+                            <p class="vandel-empty-state"><?php _e('No locations have been added to this area.', 'vandel-booking'); ?></p>
+                        <?php else: ?>
+                            <div class="vandel-locations-list">
+                                <?php foreach ($locations as $location): ?>
+                                    <span class="vandel-location-badge">
+                                        <?php echo esc_html($location->name); ?>
+                                        <button type="button" class="vandel-remove-location" data-id="<?php echo esc_attr($location->id); ?>">×</button>
+                                    </span>
+                                <?php endforeach; ?>
+                            </div>
+                        <?php endif; ?>
+                    </div>
+                    
+                    <div class="vandel-add-location-form">
+                        <div class="vandel-form-row">
+                            <div class="vandel-form-group">
+                                <input type="text" id="new-location-name" placeholder="<?php esc_attr_e('Add new location...', 'vandel-booking'); ?>">
+                                <button type="button" id="add-location-btn" class="button"><?php _e('Add', 'vandel-booking'); ?></button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="vandel-form-actions">
+                        <a href="<?php echo esc_url(remove_query_arg('edit_area')); ?>" class="button button-secondary"><?php _e('Back to provider settings', 'vandel-booking'); ?></a>
+                        <button type="submit" id="save-area-btn" class="button button-primary"><?php _e('Save', 'vandel-booking'); ?></button>
+                    </div>
+                </form>
             </div>
-            <?php endif; ?>
         </div>
-    </div>
-
-    <!-- Edit Location Modal -->
-    <div id="vandel-edit-location-modal" class="vandel-modal" style="display:none;">
-        <div class="vandel-modal-content">
-            <span class="vandel-modal-close">&times;</span>
-            <h3><?php _e('Edit Location', 'vandel-booking'); ?></h3>
-            <form method="post" action="">
-                <?php wp_nonce_field('vandel_update_location', 'vandel_location_update_nonce'); ?>
-                <input type="hidden" name="location_id" id="edit-location-id">
-
-                <div class="vandel-form-row">
-                    <div class="vandel-col">
-                        <label for="edit-country"><?php _e('Country', 'vandel-booking'); ?></label>
-                        <select name="country" id="edit-country" required class="widefat">
-                            <?php foreach ($countries as $code => $name): ?>
-                            <option value="<?php echo esc_attr($code); ?>"><?php echo esc_html($name); ?></option>
-                            <?php endforeach; ?>
-                        </select>
-                    </div>
-                    <div class="vandel-col">
-                        <label for="edit-city"><?php _e('City', 'vandel-booking'); ?></label>
-                        <select name="city" id="edit-city" required class="widefat">
-                            <?php foreach ($cities as $code => $name): ?>
-                            <option value="<?php echo esc_attr($code); ?>"><?php echo esc_html($name); ?></option>
-                            <?php endforeach; ?>
-                        </select>
-                    </div>
-                </div>
-
-                <div class="vandel-form-row">
-                    <div class="vandel-col">
-                        <label for="edit-area-name"><?php _e('Area Name', 'vandel-booking'); ?></label>
-                        <input type="text" name="area_name" id="edit-area-name" required class="widefat">
-                    </div>
-                    <div class="vandel-col">
-                        <label for="edit-zip-code"><?php _e('ZIP Code', 'vandel-booking'); ?></label>
-                        <input type="text" name="zip_code" id="edit-zip-code" required class="widefat">
-                    </div>
-                </div>
-
-                <div class="vandel-form-row">
-                    <div class="vandel-col">
-                        <label for="edit-price-adjustment"><?php _e('Price Adjustment', 'vandel-booking'); ?></label>
-                        <div class="vandel-input-group">
-                            <span
-                                class="vandel-input-prefix"><?php echo \VandelBooking\Helpers::getCurrencySymbol(); ?></span>
-                            <input type="number" name="price_adjustment" id="edit-price-adjustment" step="0.01"
-                                min="-100" max="100" class="widefat">
-                        </div>
-                    </div>
-                    <div class="vandel-col">
-                        <label for="edit-service-fee"><?php _e('Service Fee', 'vandel-booking'); ?></label>
-                        <div class="vandel-input-group">
-                            <span
-                                class="vandel-input-prefix"><?php echo \VandelBooking\Helpers::getCurrencySymbol(); ?></span>
-                            <input type="number" name="service_fee" id="edit-service-fee" step="0.01" min="0"
-                                class="widefat">
-                        </div>
-                    </div>
-                </div>
-
-                <div class="vandel-toggle-controls">
-                    <div class="vandel-toggle-field">
-                        <label class="vandel-toggle">
-                            <input type="checkbox" name="is_active" id="edit-is-active" value="yes">
-                            <span class="vandel-toggle-slider"></span>
-                        </label>
-                        <span class="vandel-toggle-label"><?php _e('Active Area', 'vandel-booking'); ?></span>
-                    </div>
-                </div>
-
-                <button type="submit" name="vandel_update_location" class="button button-primary">
-                    <?php _e('Update Location', 'vandel-booking'); ?>
-                </button>
-            </form>
-        </div>
-    </div>
-
-    <style>
-    .vandel-modal {
-        display: none;
-        position: fixed;
-        z-index: 1000;
-        left: 0;
-        top: 0;
-        width: 100%;
-        height: 100%;
-        overflow: auto;
-        background-color: rgba(0, 0, 0, 0.4);
+        
+        <script>
+            jQuery(document).ready(function($) {
+                // Initialize locations
+                let locations = <?php echo json_encode($locations); ?>;
+                
+                // Add new location
+                $('#add-location-btn').on('click', function() {
+                    const locationName = $('#new-location-name').val().trim();
+                    
+                    if (!locationName) {
+                        return;
+                    }
+                    
+                    // Add location to UI first
+                    const tempId = 'new_' + Date.now();
+                    addLocationToUI({
+                        id: tempId,
+                        name: locationName,
+                        area_id: $('#area-id').val(),
+                        is_new: true
+                    });
+                    
+                    // Clear input
+                    $('#new-location-name').val('').focus();
+                });
+                
+                // Enter key in location input
+                $('#new-location-name').on('keypress', function(e) {
+                    if (e.which === 13) {
+                        e.preventDefault();
+                        $('#add-location-btn').click();
+                    }
+                });
+                
+                // Remove location
+                $(document).on('click', '.vandel-remove-location', function() {
+                    const $badge = $(this).closest('.vandel-location-badge');
+                    const locationId = $(this).data('id');
+                    
+                    // If this is a new location that hasn't been saved yet
+                    if (locationId.toString().startsWith('new_')) {
+                        $badge.remove();
+                        return;
+                    }
+                    
+                    if (confirm(vandelLocations.strings.confirmDeleteLocation)) {
+                        $.ajax({
+                            url: vandelLocations.ajaxUrl,
+                            type: 'POST',
+                            data: {
+                                action: 'vandel_delete_location',
+                                nonce: vandelLocations.nonce,
+                                location_id: locationId
+                            },
+                            success: function(response) {
+                                if (response.success) {
+                                    $badge.remove();
+                                } else {
+                                    alert(response.data.message || vandelLocations.strings.error);
+                                }
+                            },
+                            error: function() {
+                                alert(vandelLocations.strings.error);
+                            }
+                        });
+                    }
+                });
+                
+                // Save area and locations
+                $('#edit-area-form').on('submit', function(e) {
+                    e.preventDefault();
+                    
+                    const areaId = $('#area-id').val();
+                    const areaName = $('#edit-area-name').val();
+                    const adminArea = $('#edit-area-admin-area').val();
+                    
+                    if (!areaName || !adminArea) {
+                        alert('<?php echo esc_js(__('Please fill in all required fields', 'vandel-booking')); ?>');
+                        return;
+                    }
+                    
+                    // Save area first
+                    $.ajax({
+                        url: vandelLocations.ajaxUrl,
+                        type: 'POST',
+                        data: {
+                            action: 'vandel_save_area',
+                            nonce: vandelLocations.nonce,
+                            area_id: areaId,
+                            area_name: areaName,
+                            admin_area: adminArea
+                        },
+                        success: function(response) {
+                            if (response.success) {
+                                // Now save any new locations
+                                saveNewLocations(areaId, function() {
+                                    // Redirect back to locations list
+                                    window.location.href = '<?php echo esc_url(remove_query_arg('edit_area')); ?>';
+                                });
+                            } else {
+                                alert(response.data.message || vandelLocations.strings.error);
+                            }
+                        },
+                        error: function() {
+                            alert(vandelLocations.strings.error);
+                        }
+                    });
+                });
+                
+                // Helper function to add location to UI
+                function addLocationToUI(location) {
+                    const $container = $('#locations-container');
+                    let $locationsList = $container.find('.vandel-locations-list');
+                    
+                    // Create locations list if it doesn't exist
+                    if ($locationsList.length === 0) {
+                        $container.empty();
+                        $locationsList = $('<div class="vandel-locations-list"></div>').appendTo($container);
+                    }
+                    
+                    // Add new location badge
+                    const $badge = $(`
+                        <span class="vandel-location-badge">
+                            ${location.name}
+                            <button type="button" class="vandel-remove-location" data-id="${location.id}">×</button>
+                        </span>
+                    `);
+                    
+                    $locationsList.append($badge);
+                    
+                    // Store new location
+                    if (location.is_new) {
+                        locations.push(location);
+                    }
+                }
+                
+                // Helper function to save new locations
+                function saveNewLocations(areaId, callback) {
+                    const newLocations = locations.filter(loc => loc.is_new);
+                    
+                    if (newLocations.length === 0) {
+                        if (typeof callback === 'function') {
+                            callback();
+                        }
+                        return;
+                    }
+                    
+                    let savedCount = 0;
+                    
+                    newLocations.forEach(function(location) {
+                        $.ajax({
+                            url: vandelLocations.ajaxUrl,
+                            type: 'POST',
+                            data: {
+                                action: 'vandel_save_location',
+                                nonce: vandelLocations.nonce,
+                                location_name: location.name,
+                                area_id: areaId
+                            },
+                            success: function() {
+                                savedCount++;
+                                if (savedCount === newLocations.length && typeof callback === 'function') {
+                                    callback();
+                                }
+                            },
+                            error: function() {
+                                savedCount++;
+                                if (savedCount === newLocations.length && typeof callback === 'function') {
+                                    callback();
+                                }
+                            }
+                        });
+                    });
+                }
+            });
+        </script>
+        <?php
     }
-
-    .vandel-modal-content {
-        background-color: #fefefe;
-        margin: 5% auto;
-        padding: 20px;
-        border: 1px solid #888;
-        width: 60%;
-        max-width: 800px;
-        position: relative;
-        border-radius: 4px;
+    
+    /**
+     * AJAX handler for saving area
+     */
+    public function ajaxSaveArea() {
+        // Check nonce
+        if (!check_ajax_referer('vandel_location_settings', 'nonce', false)) {
+            wp_send_json_error(['message' => __('Security check failed', 'vandel-booking')]);
+            return;
+        }
+        
+        // Check if location model is available
+        if (!$this->location_model) {
+            wp_send_json_error(['message' => __('Location model not available', 'vandel-booking')]);
+            return;
+        }
+        
+        // Get form data
+        $area_id = isset($_POST['area_id']) ? intval($_POST['area_id']) : 0;
+        $area_name = isset($_POST['area_name']) ? sanitize_text_field($_POST['area_name']) : '';
+        $country = isset($_POST['country']) ? sanitize_text_field($_POST['country']) : '';
+        $admin_area = isset($_POST['admin_area']) ? sanitize_text_field($_POST['admin_area']) : '';
+        
+        // Make sure admin_area is set to area_name if not provided
+        if (empty($admin_area) && !empty($area_name)) {
+            $admin_area = $area_name;
+        }
+        
+        // For update, we need at least area_id and area_name
+        if ($area_id > 0 && empty($area_name)) {
+            wp_send_json_error(['message' => __('Area name is required', 'vandel-booking')]);
+            return;
+        }
+        
+        // For new area, we need area_name and country
+        if ($area_id === 0 && (empty($area_name) || empty($country))) {
+            wp_send_json_error(['message' => __('Area name and country are required', 'vandel-booking')]);
+            return;
+        }
+        
+        // Update or add area
+        if ($area_id > 0) {
+            $result = $this->location_model->updateArea($area_id, [
+                'name' => $area_name,
+                'admin_area' => $admin_area
+            ]);
+            $message = __('Area updated successfully', 'vandel-booking');
+        } else {
+            $result = $this->location_model->addArea([
+                'name' => $area_name,
+                'country' => $country,
+                'admin_area' => $admin_area ?: $area_name
+            ]);
+            $message = __('Area added successfully', 'vandel-booking');
+        }
+        
+        if ($result) {
+            wp_send_json_success(['message' => $message]);
+        } else {
+            wp_send_json_error(['message' => __('Failed to save area', 'vandel-booking')]);
+        }
     }
-
-    .vandel-modal-close {
-        color: #aaa;
-        float: right;
-        font-size: 28px;
-        font-weight: bold;
-        cursor: pointer;
-        position: absolute;
-        right: 15px;
-        top: 10px;
+    
+    /**
+     * AJAX handler for deleting area
+     */
+    public function ajaxDeleteArea() {
+        // Check nonce
+        if (!check_ajax_referer('vandel_location_settings', 'nonce', false)) {
+            wp_send_json_error(['message' => __('Security check failed', 'vandel-booking')]);
+            return;
+        }
+        
+        // Check if location model is available
+        if (!$this->location_model) {
+            wp_send_json_error(['message' => __('Location model not available', 'vandel-booking')]);
+            return;
+        }
+        
+        // Get area ID
+        $area_id = isset($_POST['area_id']) ? intval($_POST['area_id']) : 0;
+        
+        if ($area_id <= 0) {
+            wp_send_json_error(['message' => __('Invalid area ID', 'vandel-booking')]);
+            return;
+        }
+        
+        // Delete area and all associated locations
+        $result = $this->location_model->deleteArea($area_id);
+        
+        if ($result) {
+            wp_send_json_success(['message' => __('Area and associated locations deleted successfully', 'vandel-booking')]);
+        } else {
+            wp_send_json_error(['message' => __('Failed to delete area', 'vandel-booking')]);
+        }
     }
-
-    .vandel-modal-close:hover,
-    .vandel-modal-close:focus {
-        color: black;
-        text-decoration: none;
+    
+    /**
+     * AJAX handler for saving location
+     */
+    public function ajaxSaveLocation() {
+        // Check nonce
+        if (!check_ajax_referer('vandel_location_settings', 'nonce', false)) {
+            wp_send_json_error(['message' => __('Security check failed', 'vandel-booking')]);
+            return;
+        }
+        
+        // Check if location model is available
+        if (!$this->location_model) {
+            wp_send_json_error(['message' => __('Location model not available', 'vandel-booking')]);
+            return;
+        }
+        
+        // Get form data
+        $location_id = isset($_POST['location_id']) ? intval($_POST['location_id']) : 0;
+        $location_name = isset($_POST['location_name']) ? sanitize_text_field($_POST['location_name']) : '';
+        $area_id = isset($_POST['area_id']) ? intval($_POST['area_id']) : 0;
+        
+        // Validate required fields
+        if (empty($location_name) || $area_id <= 0) {
+            wp_send_json_error(['message' => __('Location name and area ID are required', 'vandel-booking')]);
+            return;
+        }
+        
+        // Update or add location
+        if ($location_id > 0) {
+            $result = $this->location_model->updateLocation($location_id, [
+                'name' => $location_name,
+                'area_id' => $area_id
+            ]);
+            $message = __('Location updated successfully', 'vandel-booking');
+        } else {
+            $result = $this->location_model->addLocation([
+                'name' => $location_name,
+                'area_id' => $area_id
+            ]);
+            $message = __('Location added successfully', 'vandel-booking');
+        }
+        
+        if ($result) {
+            wp_send_json_success(['message' => $message]);
+        } else {
+            wp_send_json_error(['message' => __('Failed to save location', 'vandel-booking')]);
+        }
     }
-
-    .vandel-divider {
-        margin: 20px 0;
-        border-top: 1px solid #ddd;
+    
+    /**
+     * AJAX handler for deleting location
+     */
+    public function ajaxDeleteLocation() {
+        // Check nonce
+        if (!check_ajax_referer('vandel_location_settings', 'nonce', false)) {
+            wp_send_json_error(['message' => __('Security check failed', 'vandel-booking')]);
+            return;
+        }
+        
+        // Check if location model is available
+        if (!$this->location_model) {
+            wp_send_json_error(['message' => __('Location model not available', 'vandel-booking')]);
+            return;
+        }
+        
+        // Get location ID
+        $location_id = isset($_POST['location_id']) ? intval($_POST['location_id']) : 0;
+        
+        if ($location_id <= 0) {
+            wp_send_json_error(['message' => __('Invalid location ID', 'vandel-booking')]);
+            return;
+        }
+        
+        // Delete location
+        $result = $this->location_model->deleteLocation($location_id);
+        
+        if ($result) {
+            wp_send_json_success(['message' => __('Location deleted successfully', 'vandel-booking')]);
+        } else {
+            wp_send_json_error(['message' => __('Failed to delete location', 'vandel-booking')]);
+        }
     }
-    </style>
-</div>
-<?php
+    
+    /**
+     * AJAX handler for getting locations by area
+     */
+    public function ajaxGetAreaLocations() {
+        // Check nonce
+        if (!check_ajax_referer('vandel_location_settings', 'nonce', false)) {
+            wp_send_json_error(['message' => __('Security check failed', 'vandel-booking')]);
+            return;
+        }
+        
+        // Check if location model is available
+        if (!$this->location_model) {
+            wp_send_json_error(['message' => __('Location model not available', 'vandel-booking')]);
+            return;
+        }
+        
+        // Get area ID
+        $area_id = isset($_POST['area_id']) ? intval($_POST['area_id']) : 0;
+        
+        if ($area_id <= 0) {
+            wp_send_json_error(['message' => __('Invalid area ID', 'vandel-booking')]);
+            return;
+        }
+        
+        // Get locations for this area
+        $locations = $this->location_model->getLocationsByArea($area_id);
+        
+        wp_send_json_success(['locations' => $locations]);
     }
 }
+
+// Initialize the class
+add_action('plugins_loaded', function() {
+    new LocationSettingsTab();
+});

@@ -3,141 +3,106 @@ namespace VandelBooking\Admin\Dashboard;
 
 /**
  * Settings Tab
- * Handles the settings management tab
+ * Handles the settings tab functionality in the dashboard
  */
 class Settings_Tab implements Tab_Interface {
     /**
-     * Section classes
-     *
+     * Settings sections
      * @var array
      */
-    private $section_classes = [];
+    private $sections = [];
+    
+    /**
+     * Constructor
+     */
+    public function __construct() {
+        $this->sections = $this->get_sections();
+    }
     
     /**
      * Register hooks specific to this tab
      */
     public function register_hooks() {
-        // No specific hooks for settings tab
-register_setting('vandel_advanced_settings', 'vandel_enable_debug');
-register_setting('vandel_advanced_settings', 'vandel_enable_cache');
-register_setting('vandel_advanced_settings', 'vandel_cache_expiration', 'intval');
-register_setting('vandel_advanced_settings', 'vandel_auto_cleanup');
-register_setting('vandel_advanced_settings', 'vandel_cleanup_days', 'intval');
-register_setting('vandel_advanced_settings', 'vandel_custom_css');
-register_setting('vandel_advanced_settings', 'vandel_custom_js');
+        add_action('admin_init', [$this, 'register_settings']);
     }
     
     /**
      * Process any actions for this tab
      */
     public function process_actions() {
-        // Process section-specific actions
-        $this->initialize_section_classes();
-        
-        $active_section = isset($_GET['section']) ? sanitize_key($_GET['section']) : 'general';
-        
-        if (isset($this->section_classes[$active_section]) && method_exists($this->section_classes[$active_section], 'process_actions')) {
-            $this->section_classes[$active_section]->process_actions();
+        // Process settings form submission
+        if (isset($_POST['vandel_save_settings']) && isset($_POST['vandel_settings_nonce'])) {
+            $this->save_settings();
         }
     }
     
-    /**
-     * Initialize section classes
-     */
-    private function initialize_section_classes() {
-        // Check if sections already initialized
-        if (!empty($this->section_classes)) {
-            return;
-        }
-        
-        // // Load section files
-        // $section_files = [
-        //     'class-general-settings.php',
-        //     'class-booking-settings.php',
-        //     'class-notification-settings.php',
-        //     'class-integration-settings.php',
-        //     'class-zip-code-settings.php',
-        // ];
-        
-        // Load section files
-        $section_files = [
-            'class-general-settings.php',
-            'class-booking-settings.php',
-            'class-notification-settings.php',
-            'class-integration-settings.php',
-            'class-location-settings.php',
-            'class-zip-code-settings.php',
-        ];
-
-        foreach ($section_files as $file) {
-            $file_path = VANDEL_PLUGIN_DIR . 'includes/admin/dashboard/settings/' . $file;
-            if (file_exists($file_path)) {
-                require_once $file_path;
-            }
-        }
-
-        
-        // Initialize section classes if they exist
-        $this->section_classes = [
-            'general' => class_exists('\\VandelBooking\\Admin\\Dashboard\\Settings\\General_Settings') ? 
-                new \VandelBooking\Admin\Dashboard\Settings\General_Settings() : null,
-                
-            'booking' => class_exists('\\VandelBooking\\Admin\\Dashboard\\Settings\\Booking_Settings') ? 
-                new \VandelBooking\Admin\Dashboard\Settings\Booking_Settings() : null,
-                
-            'notifications' => class_exists('\\VandelBooking\\Admin\\Dashboard\\Settings\\Notification_Settings') ? 
-                new \VandelBooking\Admin\Dashboard\Settings\Notification_Settings() : null,
-                
-            'integrations' => class_exists('\\VandelBooking\\Admin\\Dashboard\\Settings\\Integration_Settings') ? 
-                new \VandelBooking\Admin\Dashboard\Settings\Integration_Settings() : null,
-                
-            'locations' => class_exists('\\VandelBooking\\Admin\\Dashboard\\Settings\\Location_Settings') ? 
-                new \VandelBooking\Admin\Dashboard\Settings\Location_Settings() : null,
-                
-            'zip-codes' => class_exists('\\VandelBooking\\Admin\\Dashboard\\Settings\\ZipCode_Settings') ? 
-                new \VandelBooking\Admin\Dashboard\Settings\ZipCode_Settings() : null,
-        ];
-
-    }
-    
-  
     /**
      * Render tab content
      */
     public function render() {
-        // Get current section
         $current_section = isset($_GET['section']) ? sanitize_key($_GET['section']) : 'general';
         
-        // Define sections
+        if (!array_key_exists($current_section, $this->sections)) {
+            $current_section = 'general';
+        }
+        ?>
+        <div class="wrap vandel-settings-wrap">
+            <h1 class="wp-heading-inline"><?php _e('Settings', 'vandel-booking'); ?></h1>
+            
+            <div class="vandel-settings-container">
+                <div class="vandel-settings-sidebar">
+                    <ul class="vandel-settings-nav">
+                        <?php foreach ($this->sections as $section_id => $section_name): ?>
+                            <li class="<?php echo $current_section === $section_id ? 'active' : ''; ?>">
+                                <a href="<?php echo esc_url(add_query_arg(['section' => $section_id])); ?>">
+                                    <?php echo esc_html($section_name); ?>
+                                </a>
+                            </li>
+                        <?php endforeach; ?>
+                    </ul>
+                </div>
+                
+                <div class="vandel-settings-content">
+                    <?php
+                    // Display settings saved message if applicable
+                    if (isset($_GET['settings-updated']) && $_GET['settings-updated'] === 'true') {
+                        echo '<div class="notice notice-success is-dismissible"><p>' . __('Settings saved.', 'vandel-booking') . '</p></div>';
+                    }
+                    
+                    // Render current section
+                    $this->render_section($current_section);
+                    ?>
+                </div>
+            </div>
+        </div>
+        <?php
+    }
+    
+    /**
+     * Get available settings sections
+     * 
+     * @return array Section ID => Name mapping
+     */
+    public function get_sections() {
         $sections = [
             'general' => __('General', 'vandel-booking'),
             'booking' => __('Booking', 'vandel-booking'),
-            'notifications' => __('Notifications', 'vandel-booking'),
-            'locations' => __('Locations', 'vandel-booking'), // Add locations section
-            'integrations' => __('Integrations', 'vandel-booking'),
-            'advanced' => __('Advanced', 'vandel-booking')
+            'notification' => __('Notifications', 'vandel-booking'),
+            'integration' => __('Integrations', 'vandel-booking'),
+            'zip-codes' => __('ZIP Codes', 'vandel-booking'),
+            'locations' => __('Locations', 'vandel-booking')
         ];
         
-        // Output sections navigation
-        echo '<div class="vandel-settings-wrapper">';
-        echo '<div class="vandel-settings-nav">';
-        echo '<ul>';
-        
-        foreach ($sections as $id => $label) {
-            $active = $current_section === $id ? 'active' : '';
-            $url = add_query_arg(['page' => 'vandel-dashboard', 'tab' => 'settings', 'section' => $id], admin_url('admin.php'));
-            
-            echo '<li class="' . $active . '"><a href="' . esc_url($url) . '">' . esc_html($label) . '</a></li>';
-        }
-        
-        echo '</ul>';
-        echo '</div>';
-        
-        // Output settings content
-        echo '<div class="vandel-settings-content">';
-        
-        // Render section content
-        switch ($current_section) {
+        return apply_filters('vandel_settings_sections', $sections);
+    }
+    
+    /**
+     * Render settings section content
+     * 
+     * @param string $section Current section
+     */
+    public function render_section($section) {
+        switch ($section) {
             case 'general':
                 $this->render_general_settings();
                 break;
@@ -146,451 +111,515 @@ register_setting('vandel_advanced_settings', 'vandel_custom_js');
                 $this->render_booking_settings();
                 break;
                 
-            case 'notifications':
+            case 'notification':
                 $this->render_notification_settings();
                 break;
                 
-            case 'locations':
-                $this->render_location_settings();
-                break;
-                
-            case 'integrations':
+            case 'integration':
                 $this->render_integration_settings();
                 break;
                 
-            case 'advanced':
-                $this->render_advanced_settings();
+            case 'zip-codes':
+                $this->render_zip_code_settings();
                 break;
-                                    case 'zip-codes':
-                                        $this->render_zip_code_settings();
-                                        break;
-
+                
+            case 'locations':
+                // Check if our location settings class exists, then use it to render the UI
+                if (class_exists('\\VandelBooking\\Admin\\LocationSettingsTab')) {
+                    $location_settings = new \VandelBooking\Admin\LocationSettingsTab();
+                    $location_settings->renderSettingsSection();
+                } else {
+                    echo '<div class="notice notice-warning"><p>' . __('Location management is not available.', 'vandel-booking') . '</p></div>';
+                }
+                break;
+                
+            default:
+                $this->render_general_settings();
+                break;
+        }
+    }
+    
+    /**
+     * Register plugin settings
+     */
+    public function register_settings() {
+        // General Settings
+        register_setting('vandel_general_settings', 'vandel_business_name');
+        register_setting('vandel_general_settings', 'vandel_primary_color');
+        register_setting('vandel_general_settings', 'vandel_default_timezone');
+        register_setting('vandel_general_settings', 'vandel_date_format');
+        register_setting('vandel_general_settings', 'vandel_time_format');
+        register_setting('vandel_general_settings', 'vandel_currency');
+        register_setting('vandel_general_settings', 'vandel_language');
+        
+        // Booking Settings
+        register_setting('vandel_booking_settings', 'vandel_min_advance_booking');
+        register_setting('vandel_booking_settings', 'vandel_max_advance_booking');
+        register_setting('vandel_booking_settings', 'vandel_booking_cancellation_window');
+        register_setting('vandel_booking_settings', 'vandel_default_booking_status');
+        register_setting('vandel_booking_settings', 'vandel_enable_multiple_bookings');
+        register_setting('vandel_booking_settings', 'vandel_booking_slots_interval');
+        
+        // Notification Settings
+        register_setting('vandel_notification_settings', 'vandel_enable_email_notifications');
+        register_setting('vandel_notification_settings', 'vandel_email_sender_name');
+        register_setting('vandel_notification_settings', 'vandel_email_sender_address');
+        register_setting('vandel_notification_settings', 'vandel_notification_email');
+        register_setting('vandel_notification_settings', 'vandel_email_subject');
+        register_setting('vandel_notification_settings', 'vandel_email_message');
+        
+        // Integration Settings
+        register_setting('vandel_integration_settings', 'vandel_enable_paypal');
+        register_setting('vandel_integration_settings', 'vandel_enable_stripe');
+        register_setting('vandel_integration_settings', 'vandel_enable_gcal');
+        register_setting('vandel_integration_settings', 'vandel_enable_zip_code_feature');
+        
+        // Apply filters for additional settings
+        do_action('vandel_register_settings');
+    }
+    
+    /**
+     * Save settings
+     */
+    private function save_settings() {
+        // Verify nonce
+        if (!wp_verify_nonce($_POST['vandel_settings_nonce'], 'save_vandel_settings')) {
+            add_settings_error(
+                'vandel_settings',
+                'nonce_error',
+                __('Security check failed.', 'vandel-booking'),
+                'error'
+            );
+            return;
         }
         
-        echo '</div>'; // .vandel-settings-content
-        echo '</div>'; // .vandel-settings-wrapper
+        // Get current section
+        $current_section = isset($_GET['section']) ? sanitize_key($_GET['section']) : 'general';
+        
+        // Save settings based on section
+        switch ($current_section) {
+            case 'general':
+                $this->save_general_settings();
+                break;
+                
+            case 'booking':
+                $this->save_booking_settings();
+                break;
+                
+            case 'notification':
+                $this->save_notification_settings();
+                break;
+                
+            case 'integration':
+                $this->save_integration_settings();
+                break;
+                
+            default:
+                // Allow other sections to save their settings
+                do_action('vandel_save_settings_' . $current_section);
+                break;
+        }
+        
+        // Redirect to show success message
+        wp_redirect(add_query_arg(['settings-updated' => 'true']));
+        exit;
     }
     
-
-            //     <!-- Settings Content -->
-            //     <div class="vandel-settings-content">
-            //         <?php
-            //                 // Initialize section classes if not already done
-            //                 $this->initialize_section_classes();
-                            
-            //                 // Render the active section
-            //                 if (isset($this->section_classes[$active_section]) && $this->section_classes[$active_section]) {
-            //                     $this->section_classes[$active_section]->render();
-            //                 } else {
-            //                     // Fallback to built-in section renderers
-            //                     switch ($active_section) {
-            //                         case 'general':
-            //                             $this->render_general_settings();
-            //                             break;
-            //                         case 'booking':
-            //                             $this->render_booking_settings();
-            //                             break;
-            //                         case 'notifications':
-            //                             $this->render_notification_settings();
-            //                             break;
-            //                         case 'integrations':
-            //                             $this->render_integration_settings();
-            //                             break;
-            //                         case 'zip-codes':
-            //                             $this->render_zip_code_settings();
-            //                             break;
-            //                         default:
-            //                             $this->render_general_settings();
-            //                     }
-            //                 }
-            //                 
-
     /**
-     * Render settings navigation
+     * Save general settings
      */
-    private function render_settings_navigation($active_section) {
-        ?>
-        <div class="vandel-settings-nav">
-            <ul>
-                <li <?php echo $active_section === 'general' ? 'class="active"' : ''; ?>>
-                    <a href="<?php echo esc_url(admin_url('admin.php?page=vandel-dashboard&tab=settings&section=general')); ?>">
-                        <span class="dashicons dashicons-admin-generic"></span>
-                        <?php _e('General', 'vandel-booking'); ?>
-                    </a>
-                </li>
-                <li <?php echo $active_section === 'booking' ? 'class="active"' : ''; ?>>
-                    <a href="<?php echo esc_url(admin_url('admin.php?page=vandel-dashboard&tab=settings&section=booking')); ?>">
-                        <span class="dashicons dashicons-calendar-alt"></span>
-                        <?php _e('Booking', 'vandel-booking'); ?>
-                    </a>
-                </li>
-                <li <?php echo $active_section === 'notifications' ? 'class="active"' : ''; ?>>
-                    <a
-                        href="<?php echo esc_url(admin_url('admin.php?page=vandel-dashboard&tab=settings&section=notifications')); ?>">
-                        <span class="dashicons dashicons-email-alt"></span>
-                        <?php _e('Notifications', 'vandel-booking'); ?>
-                    </a>
-                </li>
-                <li <?php echo $active_section === 'integrations' ? 'class="active"' : ''; ?>>
-                    <a
-                        href="<?php echo esc_url(admin_url('admin.php?page=vandel-dashboard&tab=settings&section=integrations')); ?>">
-                        <span class="dashicons dashicons-randomize"></span>
-                        <?php _e('Integrations', 'vandel-booking'); ?>
-                    </a>
-                </li>
-                <li <?php echo $active_section === 'locations' ? 'class="active"' : ''; ?>>
-                    <a
-                        href="<?php echo esc_url(admin_url('admin.php?page=vandel-dashboard&tab=settings&section=locations')); ?>">
-                        <span class="dashicons dashicons-location-alt"></span>
-                        <?php _e('Locations', 'vandel-booking'); ?>
-                    </a>
-                </li>
-                <li <?php echo $active_section === 'zip-codes' ? 'class="active"' : ''; ?>>
-                    <a
-                        href="<?php echo esc_url(admin_url('admin.php?page=vandel-dashboard&tab=settings&section=zip-codes')); ?>">
-                        <span class="dashicons dashicons-admin-site-alt"></span>
-                        <?php _e('ZIP Codes (Legacy)', 'vandel-booking'); ?>
-                    </a>
-                </li>
-
-            </ul>
-        </div>
-        <?php
+    private function save_general_settings() {
+        $fields = [
+            'vandel_business_name',
+            'vandel_primary_color',
+            'vandel_default_timezone',
+            'vandel_date_format',
+            'vandel_time_format',
+            'vandel_currency',
+            'vandel_language'
+        ];
+        
+        foreach ($fields as $field) {
+            if (isset($_POST[$field])) {
+                update_option($field, sanitize_text_field($_POST[$field]));
+            }
+        }
     }
     
     /**
-     * Render General Settings
+     * Save booking settings
+     */
+    private function save_booking_settings() {
+        // Numeric fields
+        $numeric_fields = [
+            'vandel_min_advance_booking',
+            'vandel_max_advance_booking',
+            'vandel_booking_cancellation_window',
+            'vandel_booking_slots_interval'
+        ];
+        
+        foreach ($numeric_fields as $field) {
+            if (isset($_POST[$field])) {
+                update_option($field, intval($_POST[$field]));
+            }
+        }
+        
+        // Select fields
+        $select_fields = [
+            'vandel_default_booking_status'
+        ];
+        
+        foreach ($select_fields as $field) {
+            if (isset($_POST[$field])) {
+                update_option($field, sanitize_key($_POST[$field]));
+            }
+        }
+        
+        // Checkbox fields
+        $checkbox_fields = [
+            'vandel_enable_multiple_bookings'
+        ];
+        
+        foreach ($checkbox_fields as $field) {
+            update_option($field, isset($_POST[$field]) ? 'yes' : 'no');
+        }
+    }
+    
+    /**
+     * Save notification settings
+     */
+    private function save_notification_settings() {
+        // Text fields
+        $text_fields = [
+            'vandel_email_sender_name',
+            'vandel_email_sender_address',
+            'vandel_notification_email',
+            'vandel_email_subject'
+        ];
+        
+        foreach ($text_fields as $field) {
+            if (isset($_POST[$field])) {
+                update_option($field, sanitize_text_field($_POST[$field]));
+            }
+        }
+        
+        // Textarea fields
+        $textarea_fields = [
+            'vandel_email_message'
+        ];
+        
+        foreach ($textarea_fields as $field) {
+            if (isset($_POST[$field])) {
+                update_option($field, wp_kses_post($_POST[$field]));
+            }
+        }
+        
+        // Checkbox fields
+        $checkbox_fields = [
+            'vandel_enable_email_notifications'
+        ];
+        
+        foreach ($checkbox_fields as $field) {
+            update_option($field, isset($_POST[$field]) ? 'yes' : 'no');
+        }
+    }
+    
+    /**
+     * Save integration settings
+     */
+    private function save_integration_settings() {
+        // Checkbox fields
+        $checkbox_fields = [
+            'vandel_enable_paypal',
+            'vandel_enable_stripe',
+            'vandel_enable_gcal',
+            'vandel_enable_zip_code_feature'
+        ];
+        
+        foreach ($checkbox_fields as $field) {
+            update_option($field, isset($_POST[$field]) ? 'yes' : 'no');
+        }
+        
+        // API Keys and other fields can be added here
+    }
+    
+    /**
+     * Render general settings form
      */
     private function render_general_settings() {
         ?>
-        <div class="vandel-settings-section">
-            <h2><?php _e('General Settings', 'vandel-booking'); ?></h2>
-
-            <div class="vandel-settings-intro">
-                <p><?php _e('Configure the basic settings for your booking system including business information, operating hours, and appearance.', 'vandel-booking'); ?>
+        <form method="post" action="">
+            <?php wp_nonce_field('save_vandel_settings', 'vandel_settings_nonce'); ?>
+            
+            <div class="vandel-settings-section">
+                <h2 class="vandel-settings-title"><?php _e('General Settings', 'vandel-booking'); ?></h2>
+                <p class="vandel-settings-description"><?php _e('Basic settings for your booking system.', 'vandel-booking'); ?></p>
+                
+                <table class="form-table">
+                    <tr>
+                        <th scope="row">
+                            <label for="vandel_business_name"><?php _e('Business Name', 'vandel-booking'); ?></label>
+                        </th>
+                        <td>
+                            <input type="text" name="vandel_business_name" id="vandel_business_name" 
+                                   value="<?php echo esc_attr(get_option('vandel_business_name', get_bloginfo('name'))); ?>" 
+                                   class="regular-text">
+                            <p class="description"><?php _e('The name of your business that will appear in emails and the booking form.', 'vandel-booking'); ?></p>
+                        </td>
+                    </tr>
+                    
+                    <tr>
+                        <th scope="row">
+                            <label for="vandel_primary_color"><?php _e('Primary Color', 'vandel-booking'); ?></label>
+                        </th>
+                        <td>
+                            <input type="color" name="vandel_primary_color" id="vandel_primary_color" 
+                                   value="<?php echo esc_attr(get_option('vandel_primary_color', '#3182ce')); ?>">
+                            <p class="description"><?php _e('The primary color used in the booking form and emails.', 'vandel-booking'); ?></p>
+                        </td>
+                    </tr>
+                    
+                    <tr>
+                        <th scope="row">
+                            <label for="vandel_default_timezone"><?php _e('Default Timezone', 'vandel-booking'); ?></label>
+                        </th>
+                        <td>
+                            <select name="vandel_default_timezone" id="vandel_default_timezone" class="regular-text">
+                                <?php
+                                $current_timezone = get_option('vandel_default_timezone', wp_timezone_string());
+                                $timezone_identifiers = DateTimeZone::listIdentifiers();
+                                
+                                foreach ($timezone_identifiers as $timezone) {
+                                    echo '<option value="' . esc_attr($timezone) . '" ' . selected($current_timezone, $timezone, false) . '>' . esc_html($timezone) . '</option>';
+                                }
+                                ?>
+                            </select>
+                            <p class="description"><?php _e('The default timezone for the booking system.', 'vandel-booking'); ?></p>
+                        </td>
+                    </tr>
+                    
+                    <tr>
+                        <th scope="row">
+                            <label for="vandel_date_format"><?php _e('Date Format', 'vandel-booking'); ?></label>
+                        </th>
+                        <td>
+                            <select name="vandel_date_format" id="vandel_date_format">
+                                <?php
+                                $date_formats = [
+                                    'F j, Y' => date_i18n('F j, Y'),
+                                    'Y-m-d' => date_i18n('Y-m-d'),
+                                    'm/d/Y' => date_i18n('m/d/Y'),
+                                    'd/m/Y' => date_i18n('d/m/Y')
+                                ];
+                                
+                                $current_format = get_option('vandel_date_format', get_option('date_format'));
+                                
+                                foreach ($date_formats as $format => $display) {
+                                    echo '<option value="' . esc_attr($format) . '" ' . selected($current_format, $format, false) . '>' . esc_html($display) . '</option>';
+                                }
+                                ?>
+                            </select>
+                            <p class="description"><?php _e('The format to display dates.', 'vandel-booking'); ?></p>
+                        </td>
+                    </tr>
+                    
+                    <tr>
+                        <th scope="row">
+                            <label for="vandel_time_format"><?php _e('Time Format', 'vandel-booking'); ?></label>
+                        </th>
+                        <td>
+                            <select name="vandel_time_format" id="vandel_time_format">
+                                <?php
+                                $time_formats = [
+                                    'g:i a' => date_i18n('g:i a'),
+                                    'g:i A' => date_i18n('g:i A'),
+                                    'H:i' => date_i18n('H:i')
+                                ];
+                                
+                                $current_format = get_option('vandel_time_format', get_option('time_format'));
+                                
+                                foreach ($time_formats as $format => $display) {
+                                    echo '<option value="' . esc_attr($format) . '" ' . selected($current_format, $format, false) . '>' . esc_html($display) . '</option>';
+                                }
+                                ?>
+                            </select>
+                            <p class="description"><?php _e('The format to display times.', 'vandel-booking'); ?></p>
+                        </td>
+                    </tr>
+                    
+                    <tr>
+                        <th scope="row">
+                            <label for="vandel_currency"><?php _e('Currency', 'vandel-booking'); ?></label>
+                        </th>
+                        <td>
+                            <select name="vandel_currency" id="vandel_currency">
+                                <?php
+                                $currencies = [
+                                    'USD' => __('US Dollar ($)', 'vandel-booking'),
+                                    'EUR' => __('Euro (€)', 'vandel-booking'),
+                                    'GBP' => __('British Pound (£)', 'vandel-booking'),
+                                    'SEK' => __('Swedish Krona (kr)', 'vandel-booking'),
+                                    'CAD' => __('Canadian Dollar (C$)', 'vandel-booking'),
+                                    'AUD' => __('Australian Dollar (A$)', 'vandel-booking')
+                                ];
+                                
+                                $current_currency = get_option('vandel_currency', 'USD');
+                                
+                                foreach ($currencies as $code => $name) {
+                                    echo '<option value="' . esc_attr($code) . '" ' . selected($current_currency, $code, false) . '>' . esc_html($name) . '</option>';
+                                }
+                                ?>
+                            </select>
+                            <p class="description"><?php _e('The currency used for prices and payments.', 'vandel-booking'); ?></p>
+                        </td>
+                    </tr>
+                    
+                    <tr>
+                        <th scope="row">
+                            <label for="vandel_language"><?php _e('Language', 'vandel-booking'); ?></label>
+                        </th>
+                        <td>
+                            <select name="vandel_language" id="vandel_language">
+                                <?php
+                                $languages = [
+                                    'en_US' => __('English (United States)', 'vandel-booking'),
+                                    'sv_SE' => __('Swedish', 'vandel-booking'),
+                                    'fr_FR' => __('French', 'vandel-booking'),
+                                    'de_DE' => __('German', 'vandel-booking'),
+                                    'es_ES' => __('Spanish', 'vandel-booking')
+                                ];
+                                
+                                $current_language = get_option('vandel_language', get_locale());
+                                
+                                foreach ($languages as $code => $name) {
+                                    echo '<option value="' . esc_attr($code) . '" ' . selected($current_language, $code, false) . '>' . esc_html($name) . '</option>';
+                                }
+                                ?>
+                            </select>
+                            <p class="description"><?php _e('The language for the booking form and emails.', 'vandel-booking'); ?></p>
+                        </td>
+                    </tr>
+                </table>
+                
+                <p class="submit">
+                    <input type="submit" name="vandel_save_settings" class="button-primary" value="<?php esc_attr_e('Save Settings', 'vandel-booking'); ?>">
                 </p>
             </div>
-
-            <!-- Use WP Settings API -->
-            <form method="post" action="options.php">
-                <?php 
-                            // This loads hidden fields + nonce for "vandel_general_settings"
-                            settings_fields('vandel_general_settings'); 
-                        ?>
-
-                <div class="vandel-card">
-                    <div class="vandel-card-header">
-                        <h3><?php _e('Brand Settings', 'vandel-booking'); ?></h3>
-                    </div>
-                    <div class="vandel-card-body">
-                        <div class="vandel-setting-row">
-                            <label for="vandel_business_name"><?php _e('Business Name', 'vandel-booking'); ?></label>
-                            <input type="text" id="vandel_business_name" name="vandel_business_name"
-                                value="<?php echo esc_attr(get_option('vandel_business_name', get_bloginfo('name'))); ?>"
-                                class="regular-text">
-                            <p class="description"><?php _e('Your business name for receipts and emails', 'vandel-booking'); ?>
-                            </p>
-                        </div>
-
-                        <div class="vandel-setting-row">
-                            <label for="vandel_primary_color"><?php _e('Brand Color', 'vandel-booking'); ?></label>
-                            <input type="color" id="vandel_primary_color" name="vandel_primary_color"
-                                value="<?php echo esc_attr(get_option('vandel_primary_color', '#286cd6')); ?>">
-                            <p class="description">
-                                <?php _e('Main color for buttons and accents on the booking form', 'vandel-booking'); ?></p>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="vandel-card">
-                    <div class="vandel-card-header">
-                        <h3><?php _e('Regional Settings', 'vandel-booking'); ?></h3>
-                    </div>
-                    <div class="vandel-card-body">
-                        <div class="vandel-setting-row">
-                            <label for="vandel_currency"><?php _e('Currency', 'vandel-booking'); ?></label>
-                            <select id="vandel_currency" name="vandel_currency" class="regular-text">
-                                <?php 
-                                        $currencies = [
-                                            'USD' => __('US Dollar ($)', 'vandel-booking'),
-                                            'EUR' => __('Euro (€)', 'vandel-booking'),
-                                            'GBP' => __('British Pound (£)', 'vandel-booking'),
-                                            'CAD' => __('Canadian Dollar (C$)', 'vandel-booking'),
-                                            'AUD' => __('Australian Dollar (A$)', 'vandel-booking'),
-                                            'SEK' => __('Swedish Krona (kr)', 'vandel-booking')
-                                        ];
-                                        $current_currency = get_option('vandel_currency', 'USD');
-                                        
-                                        foreach ($currencies as $code => $name) {
-                                            echo '<option value="' . esc_attr($code) . '" ' . 
-                                                selected($current_currency, $code, false) . '>' . 
-                                                esc_html($name) . '</option>';
-                                        }
-                                        ?>
-                            </select>
-                            <p class="description"><?php _e('Currency for prices and payments', 'vandel-booking'); ?></p>
-                        </div>
-
-                        <div class="vandel-setting-row">
-                            <label for="vandel_default_timezone"><?php _e('Timezone', 'vandel-booking'); ?></label>
-                            <select id="vandel_default_timezone" name="vandel_default_timezone" class="regular-text">
-                                <?php 
-                                        $current_timezone = get_option('vandel_default_timezone', wp_timezone_string());
-                                        $common_timezones = [
-                                            'America/New_York' => 'Eastern Time (US & Canada)',
-                                            'America/Chicago' => 'Central Time (US & Canada)',
-                                            'America/Denver' => 'Mountain Time (US & Canada)',
-                                            'America/Los_Angeles' => 'Pacific Time (US & Canada)',
-                                            'America/Anchorage' => 'Alaska',
-                                            'America/Honolulu' => 'Hawaii',
-                                            'Europe/London' => 'London',
-                                            'Europe/Paris' => 'Paris, Berlin, Rome, Madrid',
-                                            'Asia/Tokyo' => 'Tokyo',
-                                            'Australia/Sydney' => 'Sydney'
-                                        ];
-                                        
-                                        // First show common timezones
-                                        echo '<optgroup label="' . __('Common Timezones', 'vandel-booking') . '">';
-                                        foreach ($common_timezones as $zone => $label) {
-                                            echo '<option value="' . esc_attr($zone) . '" ' . 
-                                                selected($current_timezone, $zone, false) . '>' . 
-                                                esc_html($label) . '</option>';
-                                        }
-                                        echo '</optgroup>';
-                                        
-                                        // Then show all timezones
-                                        echo '<optgroup label="' . __('All Timezones', 'vandel-booking') . '">';
-                                        $timezones = timezone_identifiers_list();
-                                        foreach ($timezones as $timezone) {
-                                            if (!isset($common_timezones[$timezone])) {
-                                                echo '<option value="' . esc_attr($timezone) . '" ' . 
-                                                    selected($current_timezone, $timezone, false) . '>' . 
-                                                    esc_html($timezone) . '</option>';
-                                            }
-                                        }
-                                        echo '</optgroup>';
-                                        ?>
-                            </select>
-                            <p class="description"><?php _e('Timezone for booking calculations', 'vandel-booking'); ?></p>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="vandel-card">
-                    <div class="vandel-card-header">
-                        <h3><?php _e('Business Hours', 'vandel-booking'); ?></h3>
-                    </div>
-                    <div class="vandel-card-body">
-                        <div class="vandel-setting-row">
-                            <label><?php _e('Operating Hours', 'vandel-booking'); ?></label>
-                            <div class="vandel-business-hours">
-                                <div class="vandel-time-input">
-                                    <label><?php _e('Start Time', 'vandel-booking'); ?></label>
-                                    <input type="time" name="vandel_business_hours_start"
-                                        value="<?php echo esc_attr(get_option('vandel_business_hours_start', '09:00')); ?>"
-                                        class="regular-text">
-                                </div>
-                                <div class="vandel-time-input">
-                                    <label><?php _e('End Time', 'vandel-booking'); ?></label>
-                                    <input type="time" name="vandel_business_hours_end"
-                                        value="<?php echo esc_attr(get_option('vandel_business_hours_end', '17:00')); ?>"
-                                        class="regular-text">
-                                </div>
-                            </div>
-                            <p class="description"><?php _e('Default operating hours for bookings', 'vandel-booking'); ?></p>
-                        </div>
-
-                        <div class="vandel-setting-row">
-                            <label for="vandel_base_price"><?php _e('Base Service Price', 'vandel-booking'); ?></label>
-                            <div class="vandel-input-group">
-                                <span
-                                    class="vandel-input-prefix"><?php echo \VandelBooking\Helpers::getCurrencySymbol(); ?></span>
-                                <input type="number" id="vandel_base_price" name="vandel_base_price"
-                                    value="<?php echo esc_attr(get_option('vandel_base_price', 0)); ?>" step="0.01" min="0"
-                                    class="regular-text">
-                            </div>
-                            <p class="description">
-                                <?php _e('Default base price for services when not specified', 'vandel-booking'); ?></p>
-                        </div>
-                    </div>
-                </div>
-
-                <?php submit_button(__('Save General Settings', 'vandel-booking')); ?>
-            </form>
-        </div>
+        </form>
         <?php
     }
-
+    
     /**
-     * Render Booking Settings
+     * Render booking settings form
      */
     private function render_booking_settings() {
         ?>
-        <div class="vandel-settings-section">
-            <h2><?php _e('Booking Settings', 'vandel-booking'); ?></h2>
-
-            <div class="vandel-settings-intro">
-                <p><?php _e('Configure how your booking system works, including time slots, advance booking rules, and cancellation policies.', 'vandel-booking'); ?>
+        <form method="post" action="">
+            <?php wp_nonce_field('save_vandel_settings', 'vandel_settings_nonce'); ?>
+            
+            <div class="vandel-settings-section">
+                <h2 class="vandel-settings-title"><?php _e('Booking Settings', 'vandel-booking'); ?></h2>
+                <p class="vandel-settings-description"><?php _e('Configure the behavior of the booking system.', 'vandel-booking'); ?></p>
+                
+                <table class="form-table">
+                    <tr>
+                        <th scope="row">
+                            <label for="vandel_min_advance_booking"><?php _e('Minimum Advance Booking', 'vandel-booking'); ?></label>
+                        </th>
+                        <td>
+                            <input type="number" name="vandel_min_advance_booking" id="vandel_min_advance_booking" 
+                                   value="<?php echo esc_attr(get_option('vandel_min_advance_booking', 1)); ?>" 
+                                   class="small-text" min="0">
+                            <span class="description"><?php _e('hours', 'vandel-booking'); ?></span>
+                            <p class="description"><?php _e('Minimum time before a booking can be made (in hours). Set to 0 for no minimum.', 'vandel-booking'); ?></p>
+                        </td>
+                    </tr>
+                    
+                    <tr>
+                        <th scope="row">
+                            <label for="vandel_max_advance_booking"><?php _e('Maximum Advance Booking', 'vandel-booking'); ?></label>
+                        </th>
+                        <td>
+                            <input type="number" name="vandel_max_advance_booking" id="vandel_max_advance_booking" 
+                                   value="<?php echo esc_attr(get_option('vandel_max_advance_booking', 90)); ?>" 
+                                   class="small-text" min="1">
+                            <span class="description"><?php _e('days', 'vandel-booking'); ?></span>
+                            <p class="description"><?php _e('Maximum time in advance a booking can be made (in days).', 'vandel-booking'); ?></p>
+                        </td>
+                    </tr>
+                    
+                    <tr>
+                        <th scope="row">
+                            <label for="vandel_booking_cancellation_window"><?php _e('Cancellation Window', 'vandel-booking'); ?></label>
+                        </th>
+                        <td>
+                            <input type="number" name="vandel_booking_cancellation_window" id="vandel_booking_cancellation_window" 
+                                   value="<?php echo esc_attr(get_option('vandel_booking_cancellation_window', 24)); ?>" 
+                                   class="small-text" min="0">
+                            <span class="description"><?php _e('hours', 'vandel-booking'); ?></span>
+                            <p class="description"><?php _e('Time before a booking when it can no longer be canceled (in hours). Set to 0 to allow cancellations anytime.', 'vandel-booking'); ?></p>
+                        </td>
+                    </tr>
+                    
+                    <tr>
+                        <th scope="row">
+                            <label for="vandel_default_booking_status"><?php _e('Default Booking Status', 'vandel-booking'); ?></label>
+                        </th>
+                        <td>
+                            <select name="vandel_default_booking_status" id="vandel_default_booking_status">
+                                <?php
+                                $statuses = [
+                                    'pending' => __('Pending', 'vandel-booking'),
+                                    'confirmed' => __('Confirmed', 'vandel-booking')
+                                ];
+                                
+                                $current_status = get_option('vandel_default_booking_status', 'pending');
+                                
+                                foreach ($statuses as $status => $name) {
+                                    echo '<option value="' . esc_attr($status) . '" ' . selected($current_status, $status, false) . '>' . esc_html($name) . '</option>';
+                                }
+                                ?>
+                            </select>
+                            <p class="description"><?php _e('The default status for new bookings.', 'vandel-booking'); ?></p>
+                        </td>
+                    </tr>
+                    
+                    <tr>
+                        <th scope="row">
+                            <label for="vandel_enable_multiple_bookings"><?php _e('Allow Multiple Bookings', 'vandel-booking'); ?></label>
+                        </th>
+                        <td>
+                            <label for="vandel_enable_multiple_bookings">
+                                <input type="checkbox" name="vandel_enable_multiple_bookings" id="vandel_enable_multiple_bookings" 
+                                       value="yes" <?php checked(get_option('vandel_enable_multiple_bookings', 'no'), 'yes'); ?>>
+                                <?php _e('Allow multiple bookings for the same time slot', 'vandel-booking'); ?>
+                            </label>
+                            <p class="description"><?php _e('If enabled, multiple bookings can be made for the same time slot.', 'vandel-booking'); ?></p>
+                        </td>
+                    </tr>
+                    
+                    <tr>
+                        <th scope="row">
+                            <label for="vandel_booking_slots_interval"><?php _e('Time Slot Interval', 'vandel-booking'); ?></label>
+                        </th>
+                        <td>
+                            <input type="number" name="vandel_booking_slots_interval" id="vandel_booking_slots_interval" 
+                                   value="<?php echo esc_attr(get_option('vandel_booking_slots_interval', 30)); ?>" 
+                                   class="small-text" min="5" step="5">
+                            <span class="description"><?php _e('minutes', 'vandel-booking'); ?></span>
+                            <p class="description"><?php _e('The interval between available time slots (in minutes).', 'vandel-booking'); ?></p>
+                        </td>
+                    </tr>
+                </table>
+                
+                <p class="submit">
+                    <input type="submit" name="vandel_save_settings" class="button-primary" value="<?php esc_attr_e('Save Settings', 'vandel-booking'); ?>">
                 </p>
             </div>
-
-            <form method="post" action="options.php">
-                <?php 
-                            // This loads hidden fields + nonce for "vandel_booking_settings"
-                            settings_fields('vandel_booking_settings'); 
-                        ?>
-
-                <div class="vandel-card">
-                    <div class="vandel-card-header">
-                        <h3><?php _e('Booking Rules', 'vandel-booking'); ?></h3>
-                    </div>
-                    <div class="vandel-card-body">
-                        <div class="vandel-setting-row">
-                            <label
-                                for="vandel_min_advance_booking"><?php _e('Minimum Advance Booking', 'vandel-booking'); ?></label>
-                            <div class="vandel-input-with-suffix">
-                                <input type="number" id="vandel_min_advance_booking" name="vandel_min_advance_booking"
-                                    value="<?php echo esc_attr(get_option('vandel_min_advance_booking', 1)); ?>" min="0"
-                                    class="small-text">
-                                <span class="vandel-input-suffix"><?php _e('hours', 'vandel-booking'); ?></span>
-                            </div>
-                            <p class="description">
-                                <?php _e('Minimum hours in advance required for booking (e.g., 1 = customers must book at least 1 hour before service time)', 'vandel-booking'); ?>
-                            </p>
-                        </div>
-
-                        <div class="vandel-setting-row">
-                            <label
-                                for="vandel_max_advance_booking"><?php _e('Maximum Advance Booking', 'vandel-booking'); ?></label>
-                            <div class="vandel-input-with-suffix">
-                                <input type="number" id="vandel_max_advance_booking" name="vandel_max_advance_booking"
-                                    value="<?php echo esc_attr(get_option('vandel_max_advance_booking', 90)); ?>" min="1"
-                                    class="small-text">
-                                <span class="vandel-input-suffix"><?php _e('days', 'vandel-booking'); ?></span>
-                            </div>
-                            <p class="description">
-                                <?php _e('Maximum days in advance customers can book (e.g., 90 = booking allowed up to 3 months ahead)', 'vandel-booking'); ?>
-                            </p>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="vandel-card">
-                    <div class="vandel-card-header">
-                        <h3><?php _e('Time Slots & Scheduling', 'vandel-booking'); ?></h3>
-                    </div>
-                    <div class="vandel-card-body">
-                        <div class="vandel-setting-row">
-                            <label
-                                for="vandel_booking_slots_interval"><?php _e('Time Slot Interval', 'vandel-booking'); ?></label>
-                            <div class="vandel-input-with-suffix">
-                                <select id="vandel_booking_slots_interval" name="vandel_booking_slots_interval"
-                                    class="regular-text">
-                                    <?php 
-                                            $intervals = [
-                                                15 => __('15 minutes', 'vandel-booking'),
-                                                30 => __('30 minutes', 'vandel-booking'),
-                                                60 => __('1 hour', 'vandel-booking'),
-                                                120 => __('2 hours', 'vandel-booking')
-                                            ];
-                                            $current_interval = get_option('vandel_booking_slots_interval', 30);
-                                            
-                                            foreach ($intervals as $minutes => $label) {
-                                                echo '<option value="' . esc_attr($minutes) . '" ' . 
-                                                    selected($current_interval, $minutes, false) . '>' . 
-                                                    esc_html($label) . '</option>';
-                                            }
-                                            ?>
-                                </select>
-                            </div>
-                            <p class="description">
-                                <?php _e('Time interval between available booking slots', 'vandel-booking'); ?></p>
-                        </div>
-
-                        <div class="vandel-setting-row">
-                            <label>
-                                <input type="checkbox" name="vandel_enable_multiple_bookings" value="yes"
-                                    <?php checked(get_option('vandel_enable_multiple_bookings', 'no'), 'yes'); ?>>
-                                <?php _e('Allow Multiple Bookings per Time Slot', 'vandel-booking'); ?>
-                            </label>
-                            <p class="description">
-                                <?php _e('If enabled, multiple customers can book the same time slot (for businesses with multiple staff)', 'vandel-booking'); ?>
-                            </p>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="vandel-card">
-                    <div class="vandel-card-header">
-                        <h3><?php _e('Cancellation Policy', 'vandel-booking'); ?></h3>
-                    </div>
-                    <div class="vandel-card-body">
-                        <div class="vandel-setting-row">
-                            <label
-                                for="vandel_booking_cancellation_window"><?php _e('Cancellation Window', 'vandel-booking'); ?></label>
-                            <div class="vandel-input-with-suffix">
-                                <input type="number" id="vandel_booking_cancellation_window"
-                                    name="vandel_booking_cancellation_window"
-                                    value="<?php echo esc_attr(get_option('vandel_booking_cancellation_window', 24)); ?>"
-                                    min="0" class="small-text">
-                                <span
-                                    class="vandel-input-suffix"><?php _e('hours before appointment', 'vandel-booking'); ?></span>
-                            </div>
-                            <p class="description">
-                                <?php _e('How many hours before the appointment customers can cancel without penalty', 'vandel-booking'); ?>
-                            </p>
-                        </div>
-
-                        <div class="vandel-setting-row">
-                            <label for="vandel_booking_cancellation_policy">
-                                <?php _e('Cancellation Policy Text', 'vandel-booking'); ?>
-                            </label>
-                            <textarea id="vandel_booking_cancellation_policy" name="vandel_booking_cancellation_policy" rows="4"
-                                class="widefat"><?php echo esc_textarea(get_option('vandel_booking_cancellation_policy', __('Cancellations must be made at least 24 hours before your scheduled appointment time. Late cancellations may be subject to a cancellation fee.', 'vandel-booking'))); ?></textarea>
-                            <p class="description">
-                                <?php _e('Your booking cancellation policy (displayed to customers during booking)', 'vandel-booking'); ?>
-                            </p>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="vandel-card">
-                    <div class="vandel-card-header">
-                        <h3><?php _e('Booking Status', 'vandel-booking'); ?></h3>
-                    </div>
-                    <div class="vandel-card-body">
-                        <div class="vandel-setting-row">
-                            <label for="vandel_default_booking_status">
-                                <?php _e('Default Status for New Bookings', 'vandel-booking'); ?>
-                            </label>
-                            <select id="vandel_default_booking_status" name="vandel_default_booking_status"
-                                class="regular-text">
-                                <?php 
-                                        $statuses = [
-                                            'pending'   => __('Pending (requires confirmation)', 'vandel-booking'),
-                                            'confirmed' => __('Confirmed (automatically approved)', 'vandel-booking')
-                                        ];
-                                        $current_status = get_option('vandel_default_booking_status', 'pending');
-                                        
-                                        foreach ($statuses as $value => $label) {
-                                            echo '<option value="' . esc_attr($value) . '" ' . 
-                                                selected($current_status, $value, false) . '>' . 
-                                                esc_html($label) . '</option>';
-                                        }
-                                        ?>
-                            </select>
-                            <p class="description">
-                                <?php _e('Status assigned to new bookings when they are created', 'vandel-booking'); ?>
-                            </p>
-                        </div>
-                    </div>
-                </div>
-
-                <?php submit_button(__('Save Booking Settings', 'vandel-booking')); ?>
-            </form>
-        </div>
+        </form>
         <?php
     }
+
 
     /**
      * Render Notification Settings

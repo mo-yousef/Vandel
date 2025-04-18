@@ -2165,3 +2165,183 @@ grid {
   border-radius: 3px;
   margin-bottom: 10px;
 }
+
+/* ====== locations settings tab style ====== */
+
+/**
+ * Location Settings CSS
+ * Styles for the location management interface in settings
+ */
+
+/* General Settings */
+.vandel-settings-section {
+  margin-bottom: 30px;
+}
+
+.vandel-settings-title {
+  margin-top: 0;
+  margin-bottom: 10px;
+  font-size: 24px;
+}
+
+.vandel-settings-description {
+  margin-bottom: 20px;
+  color: #555;
+}
+
+/* Form Styles */
+.vandel-form-row {
+  margin-bottom: 15px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 15px;
+}
+
+.vandel-form-group {
+  flex: 1;
+  min-width: 200px;
+}
+
+.vandel-form-group label {
+  display: block;
+  margin-bottom: 5px;
+  font-weight: 500;
+}
+
+.vandel-form-group .description {
+  color: #666;
+  font-style: italic;
+  font-weight: normal;
+}
+
+.vandel-form-group input[type="text"],
+.vandel-form-group select {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+.vandel-form-actions {
+  margin-top: 20px;
+  display: flex;
+  justify-content: space-between;
+}
+
+.vandel-form-submit {
+  display: flex;
+  align-items: flex-end;
+  margin-left: auto;
+}
+
+.vandel-inline-form {
+  background: #f7f7f7;
+  padding: 15px;
+  border-radius: 5px;
+  margin-bottom: 20px;
+}
+
+/* Areas Table */
+.vandel-areas-table-container {
+  margin-top: 15px;
+}
+
+.vandel-areas-table th {
+  font-weight: 600;
+}
+
+.vandel-areas-table td.actions {
+  width: 150px;
+}
+
+.vandel-areas-table td.actions .button {
+  margin-right: 5px;
+}
+
+/* Area Edit Page */
+.vandel-area-edit-page {
+  background: #fff;
+  padding: 20px;
+  border-radius: 5px;
+  border: 1px solid #e5e5e5;
+}
+
+.vandel-area-edit-page h2 {
+  margin-top: 0;
+  margin-bottom: 20px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #eee;
+}
+
+.vandel-area-edit-page h3 {
+  margin-top: 25px;
+  margin-bottom: 15px;
+}
+
+/* Locations */
+.vandel-locations-container {
+  background: #f9f9f9;
+  padding: 15px;
+  border-radius: 5px;
+  margin-bottom: 20px;
+  min-height: 50px;
+}
+
+.vandel-locations-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.vandel-location-badge {
+  display: inline-flex;
+  align-items: center;
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 20px;
+  padding: 5px 12px;
+  font-size: 13px;
+}
+
+.vandel-remove-location {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: 6px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #eee;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  color: #666;
+}
+
+.vandel-remove-location:hover {
+  background: #e5534b;
+  color: #fff;
+}
+
+.vandel-add-location-form {
+  margin-top: 15px;
+}
+
+.vandel-add-location-form .vandel-form-group {
+  display: flex;
+  gap: 10px;
+}
+
+.vandel-add-location-form input {
+  flex: 1;
+}
+
+/* Empty States */
+.vandel-empty-state {
+  padding: 20px;
+  text-align: center;
+  color: #666;
+  background: #f9f9f9;
+  border-radius: 5px;
+}

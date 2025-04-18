@@ -3,72 +3,292 @@ namespace VandelBooking\Location;
 
 /**
  * Location Model
- * Handles hierarchical location data (country -> city -> area)
+ * Handles database operations for areas and locations
  */
 class LocationModel {
     /**
-     * @var string Table name
+     * @var string Areas table name
      */
-    private $table;
+    private $areas_table;
+    
+    /**
+     * @var string Locations table name
+     */
+    private $locations_table;
     
     /**
      * Constructor
      */
     public function __construct() {
         global $wpdb;
-        $this->table = $wpdb->prefix . 'vandel_locations';
+        $this->areas_table = $wpdb->prefix . 'vandel_areas';
+        $this->locations_table = $wpdb->prefix . 'vandel_locations';
+        
+        // Ensure tables exist
+        $this->createTables();
     }
     
     /**
-     * Add a new location
-     * 
-     * @param array $data Location data
-     * @return int|false Location ID or false if failed
+     * Create required tables if they don't exist
      */
-    public function add($data) {
+    private function createTables() {
         global $wpdb;
         
-        // Required fields validation
-        if (empty($data['country']) || empty($data['city']) || empty($data['area_name']) || empty($data['zip_code'])) {
+        // Get WordPress dbDelta function
+        require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
+        
+        $charset_collate = $wpdb->get_charset_collate();
+        
+        // Create areas table if it doesn't exist
+        $areas_table_exists = $wpdb->get_var("SHOW TABLES LIKE '{$this->areas_table}'") === $this->areas_table;
+        
+        if (!$areas_table_exists) {
+            $sql = "CREATE TABLE {$this->areas_table} (
+                id MEDIUMINT(9) NOT NULL AUTO_INCREMENT,
+                name VARCHAR(100) NOT NULL,
+                country VARCHAR(100) NOT NULL,
+                admin_area VARCHAR(100) NOT NULL,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (id),
+                KEY name (name),
+                KEY country (country)
+            ) $charset_collate;";
+            
+            dbDelta($sql);
+        }
+        
+        // Create locations table if it doesn't exist
+        $locations_table_exists = $wpdb->get_var("SHOW TABLES LIKE '{$this->locations_table}'") === $this->locations_table;
+        
+        if (!$locations_table_exists) {
+            $sql = "CREATE TABLE {$this->locations_table} (
+                id MEDIUMINT(9) NOT NULL AUTO_INCREMENT,
+                name VARCHAR(100) NOT NULL,
+                area_id MEDIUMINT(9) NOT NULL,
+                price_adjustment DECIMAL(10, 2) DEFAULT 0,
+                service_fee DECIMAL(10, 2) DEFAULT 0,
+                is_active ENUM('yes', 'no') DEFAULT 'yes',
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (id),
+                KEY area_id (area_id),
+                KEY name (name)
+            ) $charset_collate;";
+            
+            dbDelta($sql);
+        }
+    }
+    
+    /**
+     * Get all areas
+     * 
+     * @return array List of area objects
+     */
+    public function getAreas() {
+        global $wpdb;
+        
+        return $wpdb->get_results("SELECT * FROM {$this->areas_table} ORDER BY name ASC");
+    }
+    
+    /**
+     * Get area by ID
+     * 
+     * @param int $area_id Area ID
+     * @return object|null Area object or null if not found
+     */
+    public function getAreaById($area_id) {
+        global $wpdb;
+        
+        return $wpdb->get_row($wpdb->prepare(
+            "SELECT * FROM {$this->areas_table} WHERE id = %d",
+            $area_id
+        ));
+    }
+    
+    /**
+     * Get area by name
+     * 
+     * @param string $name Area name
+     * @return object|null Area object or null if not found
+     */
+    public function getAreaByName($name) {
+        global $wpdb;
+        
+        return $wpdb->get_row($wpdb->prepare(
+            "SELECT * FROM {$this->areas_table} WHERE name = %s",
+            $name
+        ));
+    }
+    
+    /**
+     * Add new area
+     * 
+     * @param array $data Area data (name, country, admin_area)
+     * @return int|false Area ID or false on failure
+     */
+    public function addArea($data) {
+        global $wpdb;
+        
+        // Check if area with this name already exists
+        $existing = $this->getAreaByName($data['name']);
+        if ($existing) {
             return false;
         }
         
-        // Check if location already exists
-        $existing = $wpdb->get_var($wpdb->prepare(
-            "SELECT id FROM {$this->table} 
-             WHERE country = %s AND city = %s AND area_name = %s AND zip_code = %s",
-            $data['country'], $data['city'], $data['area_name'], $data['zip_code']
-        ));
-        
-        if ($existing) {
-            return $this->update($existing, $data);
-        }
-        
-        // Set defaults
-        $data = wp_parse_args($data, [
-            'price_adjustment' => 0,
-            'service_fee' => 0,
-            'is_active' => 'yes',
-            'created_at' => current_time('mysql')
-        ]);
-        
-        // Insert location
         $result = $wpdb->insert(
-            $this->table,
+            $this->areas_table,
             [
+                'name' => $data['name'],
                 'country' => $data['country'],
-                'city' => $data['city'],
-                'area_name' => $data['area_name'],
-                'zip_code' => $data['zip_code'],
-                'price_adjustment' => floatval($data['price_adjustment']),
-                'service_fee' => floatval($data['service_fee']),
-                'is_active' => $data['is_active'],
-                'created_at' => $data['created_at']
+                'admin_area' => $data['admin_area'] ?? $data['name'],
+                'created_at' => current_time('mysql')
             ],
-            ['%s', '%s', '%s', '%s', '%f', '%f', '%s', '%s']
+            ['%s', '%s', '%s', '%s']
         );
         
-        if ($result === false) {
+        if (!$result) {
+            return false;
+        }
+        
+        return $wpdb->insert_id;
+    }
+    
+    /**
+     * Update area
+     * 
+     * @param int $area_id Area ID
+     * @param array $data Area data to update
+     * @return bool Success status
+     */
+    public function updateArea($area_id, $data) {
+        global $wpdb;
+        
+        $update_data = [];
+        $formats = [];
+        
+        if (isset($data['name'])) {
+            $update_data['name'] = $data['name'];
+            $formats[] = '%s';
+        }
+        
+        if (isset($data['country'])) {
+            $update_data['country'] = $data['country'];
+            $formats[] = '%s';
+        }
+        
+        if (isset($data['admin_area'])) {
+            $update_data['admin_area'] = $data['admin_area'];
+            $formats[] = '%s';
+        }
+        
+        if (empty($update_data)) {
+            return false;
+        }
+        
+        $result = $wpdb->update(
+            $this->areas_table,
+            $update_data,
+            ['id' => $area_id],
+            $formats,
+            ['%d']
+        );
+        
+        return $result !== false;
+    }
+    
+    /**
+     * Delete area and all associated locations
+     * 
+     * @param int $area_id Area ID
+     * @return bool Success status
+     */
+    public function deleteArea($area_id) {
+        global $wpdb;
+        
+        // First delete all locations in this area
+        $wpdb->delete(
+            $this->locations_table,
+            ['area_id' => $area_id],
+            ['%d']
+        );
+        
+        // Then delete the area
+        $result = $wpdb->delete(
+            $this->areas_table,
+            ['id' => $area_id],
+            ['%d']
+        );
+        
+        return $result !== false;
+    }
+    
+    /**
+     * Get locations by area
+     * 
+     * @param int $area_id Area ID
+     * @return array List of location objects
+     */
+    public function getLocationsByArea($area_id) {
+        global $wpdb;
+        
+        return $wpdb->get_results($wpdb->prepare(
+            "SELECT * FROM {$this->locations_table} WHERE area_id = %d ORDER BY name ASC",
+            $area_id
+        ));
+    }
+    
+    /**
+     * Count locations in an area
+     * 
+     * @param int $area_id Area ID
+     * @return int Number of locations
+     */
+    public function countLocationsByArea($area_id) {
+        global $wpdb;
+        
+        return (int) $wpdb->get_var($wpdb->prepare(
+            "SELECT COUNT(*) FROM {$this->locations_table} WHERE area_id = %d",
+            $area_id
+        ));
+    }
+    
+    /**
+     * Get location by ID
+     * 
+     * @param int $location_id Location ID
+     * @return object|null Location object or null if not found
+     */
+    public function getLocationById($location_id) {
+        global $wpdb;
+        
+        return $wpdb->get_row($wpdb->prepare(
+            "SELECT * FROM {$this->locations_table} WHERE id = %d",
+            $location_id
+        ));
+    }
+    
+    /**
+     * Add new location
+     * 
+     * @param array $data Location data (name, area_id, price_adjustment, service_fee, is_active)
+     * @return int|false Location ID or false on failure
+     */
+    public function addLocation($data) {
+        global $wpdb;
+        
+        $result = $wpdb->insert(
+            $this->locations_table,
+            [
+                'name' => $data['name'],
+                'area_id' => $data['area_id'],
+                'price_adjustment' => $data['price_adjustment'] ?? 0,
+                'service_fee' => $data['service_fee'] ?? 0,
+                'is_active' => $data['is_active'] ?? 'yes',
+                'created_at' => current_time('mysql')
+            ],
+            ['%s', '%d', '%f', '%f', '%s', '%s']
+        );
+        
+        if (!$result) {
             return false;
         }
         
@@ -78,43 +298,33 @@ class LocationModel {
     /**
      * Update location
      * 
-     * @param int $id Location ID
-     * @param array $data Updated data
-     * @return bool Success
+     * @param int $location_id Location ID
+     * @param array $data Location data to update
+     * @return bool Success status
      */
-    public function update($id, $data) {
+    public function updateLocation($location_id, $data) {
         global $wpdb;
         
         $update_data = [];
         $formats = [];
         
-        if (isset($data['country'])) {
-            $update_data['country'] = $data['country'];
+        if (isset($data['name'])) {
+            $update_data['name'] = $data['name'];
             $formats[] = '%s';
         }
         
-        if (isset($data['city'])) {
-            $update_data['city'] = $data['city'];
-            $formats[] = '%s';
-        }
-        
-        if (isset($data['area_name'])) {
-            $update_data['area_name'] = $data['area_name'];
-            $formats[] = '%s';
-        }
-        
-        if (isset($data['zip_code'])) {
-            $update_data['zip_code'] = $data['zip_code'];
-            $formats[] = '%s';
+        if (isset($data['area_id'])) {
+            $update_data['area_id'] = $data['area_id'];
+            $formats[] = '%d';
         }
         
         if (isset($data['price_adjustment'])) {
-            $update_data['price_adjustment'] = floatval($data['price_adjustment']);
+            $update_data['price_adjustment'] = $data['price_adjustment'];
             $formats[] = '%f';
         }
         
         if (isset($data['service_fee'])) {
-            $update_data['service_fee'] = floatval($data['service_fee']);
+            $update_data['service_fee'] = $data['service_fee'];
             $formats[] = '%f';
         }
         
@@ -128,9 +338,9 @@ class LocationModel {
         }
         
         $result = $wpdb->update(
-            $this->table,
+            $this->locations_table,
             $update_data,
-            ['id' => $id],
+            ['id' => $location_id],
             $formats,
             ['%d']
         );
@@ -141,15 +351,15 @@ class LocationModel {
     /**
      * Delete location
      * 
-     * @param int $id Location ID
-     * @return bool Success
+     * @param int $location_id Location ID
+     * @return bool Success status
      */
-    public function delete($id) {
+    public function deleteLocation($location_id) {
         global $wpdb;
         
         $result = $wpdb->delete(
-            $this->table,
-            ['id' => $id],
+            $this->locations_table,
+            ['id' => $location_id],
             ['%d']
         );
         
@@ -157,250 +367,63 @@ class LocationModel {
     }
     
     /**
-     * Get location by ID
+     * Initialize Sweden areas and locations
      * 
-     * @param int $id Location ID
-     * @return object|false Location data or false if not found
-     */
-    public function get($id) {
-        global $wpdb;
-        
-        return $wpdb->get_row($wpdb->prepare(
-            "SELECT * FROM {$this->table} WHERE id = %d",
-            $id
-        ));
-    }
-    
-    /**
-     * Get location by ZIP code
-     * 
-     * @param string $zip_code ZIP code
-     * @param string $country Optional country filter
-     * @param string $city Optional city filter
-     * @return object|false Location data or false if not found
-     */
-    public function getByZipCode($zip_code, $country = null, $city = null) {
-        global $wpdb;
-        
-        $query = "SELECT * FROM {$this->table} WHERE zip_code = %s";
-        $params = [$zip_code];
-        
-        if ($country) {
-            $query .= " AND country = %s";
-            $params[] = $country;
-        }
-        
-        if ($city) {
-            $query .= " AND city = %s";
-            $params[] = $city;
-        }
-        
-        return $wpdb->get_row($wpdb->prepare($query, $params));
-    }
-    
-    /**
-     * Get all countries
-     * 
-     * @return array List of countries
-     */
-    public function getCountries() {
-        global $wpdb;
-        
-        return $wpdb->get_col(
-            "SELECT DISTINCT country FROM {$this->table} ORDER BY country ASC"
-        );
-    }
-    
-    /**
-     * Get cities for a country
-     * 
-     * @param string $country Country name
-     * @return array List of cities
-     */
-    public function getCities($country) {
-        global $wpdb;
-        
-        return $wpdb->get_col($wpdb->prepare(
-            "SELECT DISTINCT city FROM {$this->table} WHERE country = %s ORDER BY city ASC",
-            $country
-        ));
-    }
-    
-    /**
-     * Get areas for a city
-     * 
-     * @param string $country Country name
-     * @param string $city City name
-     * @return array List of areas with their IDs
-     */
-    public function getAreas($country, $city) {
-        global $wpdb;
-        
-        return $wpdb->get_results($wpdb->prepare(
-            "SELECT id, area_name, zip_code, price_adjustment, service_fee, is_active 
-             FROM {$this->table} 
-             WHERE country = %s AND city = %s 
-             ORDER BY area_name ASC",
-            $country, $city
-        ));
-    }
-    
-    /**
-     * Get all locations with optional filtering
-     * 
-     * @param array $args Filter arguments
-     * @return array Locations
-     */
-    public function getAll($args = []) {
-        global $wpdb;
-        
-        $defaults = [
-            'country' => '',
-            'city' => '',
-            'is_active' => '',
-            'search' => '',
-            'orderby' => 'country',
-            'order' => 'ASC',
-            'limit' => 0,
-            'offset' => 0
-        ];
-        
-        $args = wp_parse_args($args, $defaults);
-        
-        // Build WHERE clause
-        $where = '1=1';
-        $values = [];
-        
-        if (!empty($args['country'])) {
-            $where .= ' AND country = %s';
-            $values[] = $args['country'];
-        }
-        
-        if (!empty($args['city'])) {
-            $where .= ' AND city = %s';
-            $values[] = $args['city'];
-        }
-        
-        if ($args['is_active'] === 'yes' || $args['is_active'] === 'no') {
-            $where .= ' AND is_active = %s';
-            $values[] = $args['is_active'];
-        }
-        
-        if (!empty($args['search'])) {
-            $search = '%' . $wpdb->esc_like($args['search']) . '%';
-            $where .= ' AND (country LIKE %s OR city LIKE %s OR area_name LIKE %s OR zip_code LIKE %s)';
-            $values[] = $search;
-            $values[] = $search;
-            $values[] = $search;
-            $values[] = $search;
-        }
-        
-        // Build query
-        $query = "SELECT * FROM {$this->table} WHERE {$where}";
-        
-        // Add ORDER BY
-        $allowed_columns = ['id', 'country', 'city', 'area_name', 'zip_code', 'created_at'];
-        if (!in_array($args['orderby'], $allowed_columns)) {
-            $args['orderby'] = 'country';
-        }
-        
-        $query .= " ORDER BY {$args['orderby']} " . ($args['order'] === 'DESC' ? 'DESC' : 'ASC');
-        
-        // Add LIMIT
-        if (!empty($args['limit'])) {
-            $query .= $wpdb->prepare(' LIMIT %d', $args['limit']);
-            
-            if (!empty($args['offset'])) {
-                $query .= $wpdb->prepare(' OFFSET %d', $args['offset']);
-            }
-        }
-        
-        // Prepare query
-        if (!empty($values)) {
-            $query = $wpdb->prepare($query, $values);
-        }
-        
-        return $wpdb->get_results($query);
-    }
-    
-    /**
-     * Bulk import locations
-     * 
-     * @param array $locations Array of location data
-     * @return array Import stats
-     */
-    public function bulkImport($locations) {
-        $stats = [
-            'total' => count($locations),
-            'imported' => 0,
-            'updated' => 0,
-            'failed' => 0
-        ];
-        
-        foreach ($locations as $location) {
-            // Check if location already exists
-            global $wpdb;
-            $existing_id = $wpdb->get_var($wpdb->prepare(
-                "SELECT id FROM {$this->table} 
-                 WHERE country = %s AND city = %s AND area_name = %s AND zip_code = %s",
-                $location['country'], $location['city'], $location['area_name'], $location['zip_code']
-            ));
-            
-            if ($existing_id) {
-                // Update existing location
-                $result = $this->update($existing_id, $location);
-                if ($result) {
-                    $stats['updated']++;
-                } else {
-                    $stats['failed']++;
-                }
-            } else {
-                // Add new location
-                $result = $this->add($location);
-                if ($result) {
-                    $stats['imported']++;
-                } else {
-                    $stats['failed']++;
-                }
-            }
-        }
-        
-        return $stats;
-    }
-    
-    /**
-     * Initialize with sample Sweden locations
-     * 
-     * @return bool Success
+     * @return bool Success status
      */
     public function initializeSweden() {
-        // Check if there are already locations in the database
-        global $wpdb;
-        $count = $wpdb->get_var("SELECT COUNT(*) FROM {$this->table}");
-        
-        if ($count > 0) {
-            return false; // Already initialized
+        // Check if we already have areas
+        $existing_areas = $this->getAreas();
+        if (!empty($existing_areas)) {
+            return false;
         }
         
-        // Sample Sweden locations
-        $locations = [
-            // Stockholm
-            ['country' => 'Sweden', 'city' => 'Stockholm', 'area_name' => 'Södermalm', 'zip_code' => '11853', 'price_adjustment' => 0, 'service_fee' => 0],
-            ['country' => 'Sweden', 'city' => 'Stockholm', 'area_name' => 'Norrmalm', 'zip_code' => '11121', 'price_adjustment' => 0, 'service_fee' => 0],
-            ['country' => 'Sweden', 'city' => 'Stockholm', 'area_name' => 'Östermalm', 'zip_code' => '11431', 'price_adjustment' => 10, 'service_fee' => 5],
-            ['country' => 'Sweden', 'city' => 'Stockholm', 'area_name' => 'Kungsholmen', 'zip_code' => '11227', 'price_adjustment' => 5, 'service_fee' => 0],
-            
-            // Gothenburg
-            ['country' => 'Sweden', 'city' => 'Gothenburg', 'area_name' => 'Centrum', 'zip_code' => '41108', 'price_adjustment' => 0, 'service_fee' => 0],
-            ['country' => 'Sweden', 'city' => 'Gothenburg', 'area_name' => 'Majorna-Linné', 'zip_code' => '41453', 'price_adjustment' => 0, 'service_fee' => 0],
-            ['country' => 'Sweden', 'city' => 'Gothenburg', 'area_name' => 'Örgryte-Härlanda', 'zip_code' => '41676', 'price_adjustment' => 5, 'service_fee' => 0],
-            
-            // Malmö
-            ['country' => 'Sweden', 'city' => 'Malmö', 'area_name' => 'Centrum', 'zip_code' => '21119', 'price_adjustment' => 0, 'service_fee' => 0],
-            ['country' => 'Sweden', 'city' => 'Malmö', 'area_name' => 'Limhamn-Bunkeflo', 'zip_code' => '21612', 'price_adjustment' => 10, 'service_fee' => 0],
-            ['country' => 'Sweden', 'city' => 'Malmö', 'area_name' => 'Västra Innerstaden', 'zip_code' => '21450', 'price_adjustment' => 5, 'service_fee' => 0],
+        // Sample Sweden areas
+        $areas = [
+            [
+                'name' => 'Stockholm',
+                'country' => 'Sweden',
+                'locations' => ['Södermalm', 'Östermalm', 'Vasastan', 'Kungsholmen', 'Gamla Stan']
+            ],
+            [
+                'name' => 'Uppsala',
+                'country' => 'Sweden',
+                'locations' => ['Uppsala', 'Almunge', 'Björklinge', 'Vattholma', 'Storvreta']
+            ],
+            [
+                'name' => 'Gothenburg',
+                'country' => 'Sweden',
+                'locations' => ['Majorna', 'Lindholmen', 'Hisingen', 'Askim', 'Frölunda']
+            ]
         ];
         
-        return $this->bulkImport($locations);
+        $success = true;
+        
+        foreach ($areas as $area_data) {
+            $area_id = $this->addArea([
+                'name' => $area_data['name'],
+                'country' => $area_data['country'],
+                'admin_area' => $area_data['name']
+            ]);
+            
+            if (!$area_id) {
+                $success = false;
+                continue;
+            }
+            
+            // Add locations for this area
+            foreach ($area_data['locations'] as $location_name) {
+                $location_added = $this->addLocation([
+                    'name' => $location_name,
+                    'area_id' => $area_id
+                ]);
+                
+                if (!$location_added) {
+                    $success = false;
+                }
+            }
+        }
+        
+        return $success;
     }
 }
