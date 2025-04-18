@@ -65,14 +65,13 @@ class BookingManager {
             $this->notification = new BookingNotification();
         }
     }
-    
-    /**
-     * Create new booking
-     * 
-     * @param array $booking_data Booking data
-     * @return int|WP_Error Booking ID or error
-     */
 
+/**
+ * Create new booking
+ * 
+ * @param array $booking_data Booking data
+ * @return int|WP_Error Booking ID or error
+ */
 public function createBooking($booking_data) {
     try {
         // Validate required fields
@@ -113,8 +112,38 @@ public function createBooking($booking_data) {
             $booking_data['created_at'] = current_time('mysql');
         }
         
-        // Process location data if available
-        if (!empty($booking_data['zip_code_data'])) {
+        // Process location data from the new location system
+        if (!empty($booking_data['location_data'])) {
+            if (is_string($booking_data['location_data'])) {
+                $booking_data['location_data'] = json_decode($booking_data['location_data'], true);
+            }
+            
+            // Store location info in access_info field
+            if (!isset($booking_data['access_info']) || empty($booking_data['access_info'])) {
+                $location_info = [
+                    'zip_code' => $booking_data['location_data']['zip_code'] ?? '',
+                    'city' => $booking_data['location_data']['city'] ?? '',
+                    'area_name' => $booking_data['location_data']['area_name'] ?? '',
+                    'country' => $booking_data['location_data']['country'] ?? '',
+                ];
+                $booking_data['access_info'] = json_encode($location_info);
+            }
+            
+            // Add location price adjustments
+            if (isset($booking_data['location_data']['price_adjustment']) || 
+                isset($booking_data['location_data']['service_fee'])) {
+                $price_adjustment = isset($booking_data['location_data']['price_adjustment']) ? 
+                    floatval($booking_data['location_data']['price_adjustment']) : 0;
+                $service_fee = isset($booking_data['location_data']['service_fee']) ? 
+                    floatval($booking_data['location_data']['service_fee']) : 0;
+                    
+                // Store the location fees separately for reference
+                $booking_data['location_adjustment'] = $price_adjustment;
+                $booking_data['location_fee'] = $service_fee;
+            }
+        } 
+        // For backward compatibility - process legacy ZIP code data if the new location data isn't available
+        else if (!empty($booking_data['zip_code_data'])) {
             if (is_string($booking_data['zip_code_data'])) {
                 $booking_data['zip_code_data'] = json_decode($booking_data['zip_code_data'], true);
             }
@@ -124,7 +153,6 @@ public function createBooking($booking_data) {
                 $location_info = [
                     'zip_code' => $booking_data['zip_code_data']['zip_code'] ?? '',
                     'city' => $booking_data['zip_code_data']['city'] ?? '',
-                    'area_name' => $booking_data['zip_code_data']['area_name'] ?? '',
                     'state' => $booking_data['zip_code_data']['state'] ?? '',
                     'country' => $booking_data['zip_code_data']['country'] ?? '',
                 ];
@@ -145,6 +173,15 @@ public function createBooking($booking_data) {
             }
         }
         
+        // Process selected options
+        if (!empty($booking_data['options'])) {
+            if (is_array($booking_data['options'])) {
+                $booking_data['sub_services'] = json_encode($booking_data['options']);
+            } else if (is_string($booking_data['options'])) {
+                $booking_data['sub_services'] = $booking_data['options'];
+            }
+        }
+        
         // Create booking using model or direct insertion
         $booking_id = $this->createBookingRecord($booking_data);
         
@@ -161,11 +198,25 @@ public function createBooking($booking_data) {
             update_post_meta($booking_id, '_vandel_location_fee', $booking_data['location_fee'] ?? 0);
         }
         
+        // Add comments if provided
+        if (!empty($booking_data['comments'])) {
+            // Try to use note model if available
+            if (class_exists('\\VandelBooking\\Booking\\NoteModel')) {
+                $note_model = new \VandelBooking\Booking\NoteModel();
+                $note_model->addNote($booking_id, $booking_data['comments']);
+            }
+        }
+        
         // Send notifications if available
         $this->sendNotifications($booking_id);
         
-        // Update client total spent
-        $this->updateClientSpending($client_id, $booking_data['total_price']);
+        // Update client total spent for completed bookings
+        if ($booking_data['status'] === 'completed') {
+            $this->updateClientSpending($client_id, $booking_data['total_price']);
+        }
+        
+        // Run action hook for other plugins to hook into
+        do_action('vandel_booking_created', $booking_id, $booking_data);
         
         // Return booking ID
         return $booking_id;

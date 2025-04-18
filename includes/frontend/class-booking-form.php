@@ -204,115 +204,53 @@ class BookingForm {
     /**
      * Render ZIP Code step
      */
-    private function renderZipCodeStep() {
-        ?>
-<div class="vandel-form-section">
-    <h3><?php _e('Enter Your Location', 'vandel-booking'); ?></h3>
-    <p><?php _e('Please enter your ZIP code to check service availability in your area.', 'vandel-booking'); ?></p>
-
-    <div class="vandel-form-row">
-        <div class="vandel-form-group">
-            <label for="vandel-zip-code"><?php _e('ZIP Code', 'vandel-booking'); ?> <span
-                    class="required">*</span></label>
-            <input type="text" id="vandel-zip-code" name="zip_code" required>
-        </div>
-    </div>
-
-    <div id="vandel-zip-validation-message" class="vandel-validation-message"></div>
-
-    <!-- Location Details Display -->
-    <div id="vandel-location-details" class="vandel-location-details" style="display: none;">
-        <div class="vandel-location-info">
-            <div class="vandel-location-icon">
-                <span class="dashicons dashicons-location"></span>
-            </div>
-            <div class="vandel-location-text">
-                <div class="vandel-location-name">
-                    <span id="vandel-city-state"></span>
-                </div>
-                <div class="vandel-location-country">
-                    <span id="vandel-country"></span>
-                </div>
-                <!-- This div will be populated with fee information -->
-            </div>
-        </div>
-    </div>
-
-    <!-- Confirmation Summary: Add this to your confirmation step -->
-    <div class="vandel-summary-item" id="summary-location-container">
-        <span class="vandel-summary-label"><?php _e('Location:', 'vandel-booking'); ?></span>
-        <span class="vandel-summary-value" id="summary-location">--</span>
-        <small class="vandel-summary-zipcode" id="summary-zip-code"></small>
-    </div>
-    </div>
-    <?php
+// Replace or modify the existing ZIP code step with the location selection step
+private function renderZipCodeStep() {
+    // Check if we should use the new location system
+    $use_location_system = get_option('vandel_enable_location_system', 'yes') === 'yes';
+    
+    if ($use_location_system && class_exists('\\VandelBooking\\Frontend\\LocationSelection')) {
+        // Let the LocationSelection class handle rendering
+        $location_selection = new \VandelBooking\Frontend\LocationSelection();
+        $html = '';
+        echo apply_filters('vandel_booking_form_location_step', $html, []);
+        return;
     }
     
-    /**
-     * Render service selection step
-     * 
-     * @param int $selected_service_id Pre-selected service ID
-     */
-    private function renderServiceStep($selected_service_id = 0) {
-        ?>
-<div class="vandel-form-section">
-    <h3><?php _e('Select Service', 'vandel-booking'); ?></h3>
-    <p><?php _e('Please choose the service you would like to book.', 'vandel-booking'); ?></p>
+    // Fallback to original ZIP code step if the location system is not enabled
+    ?>
+    <div class="vandel-form-section">
+        <h3><?php _e('Enter Your Location', 'vandel-booking'); ?></h3>
+        <p><?php _e('Please enter your ZIP code to check service availability in your area.', 'vandel-booking'); ?></p>
 
-    <div class="vandel-services-grid">
-        <?php
-                if (empty($this->services)) {
-                    echo '<p class="vandel-notice">' . __('No services available. Please check back later.', 'vandel-booking') . '</p>';
-                } else {
-                    foreach ($this->services as $service) {
-                        $is_selected = (int)$selected_service_id === (int)$service['id'];
-                        $is_popular = isset($service['is_popular']) && $service['is_popular'] === 'yes';
-                        
-                        $service_classes = 'vandel-service-card';
-                        if ($is_selected) {
-                            $service_classes .= ' selected';
-                        }
-                        ?>
-        <div class="<?php echo esc_attr($service_classes); ?>"
-            data-service-id="<?php echo esc_attr($service['id']); ?>">
-            <?php if ($is_popular): ?>
-            <span class="vandel-popular-badge"><?php _e('Popular', 'vandel-booking'); ?></span>
-            <?php endif; ?>
-
-            <div class="vandel-service-icon">
-                <?php if (!empty($service['icon'])): ?>
-                <img src="<?php echo esc_url($service['icon']); ?>" alt="<?php echo esc_attr($service['title']); ?>">
-                <?php else: ?>
-                <span class="dashicons dashicons-admin-generic"></span>
-                <?php endif; ?>
+        <div class="vandel-form-row">
+            <div class="vandel-form-group">
+                <label for="vandel-zip-code"><?php _e('ZIP Code', 'vandel-booking'); ?> <span class="required">*</span></label>
+                <input type="text" id="vandel-zip-code" name="zip_code" required>
             </div>
+        </div>
 
-            <div class="vandel-service-info">
-                <h4 class="vandel-service-title"><?php echo esc_html($service['title']); ?></h4>
-                <?php if (!empty($service['subtitle'])): ?>
-                <p class="vandel-service-subtitle"><?php echo esc_html($service['subtitle']); ?></p>
-                <?php endif; ?>
+        <div id="vandel-zip-validation-message" class="vandel-validation-message"></div>
 
-                <div class="vandel-service-price">
-                    <?php echo \VandelBooking\Helpers::formatPrice($service['price']); ?>
+        <!-- Location Details Display -->
+        <div id="vandel-location-details" class="vandel-location-details" style="display: none;">
+            <div class="vandel-location-info">
+                <div class="vandel-location-icon">
+                    <span class="dashicons dashicons-location"></span>
+                </div>
+                <div class="vandel-location-text">
+                    <div class="vandel-location-name">
+                        <span id="vandel-city-state"></span>
+                    </div>
+                    <div class="vandel-location-country">
+                        <span id="vandel-country"></span>
+                    </div>
                 </div>
             </div>
         </div>
-        <?php
-                    }
-                }
-                ?>
     </div>
-
-    <div id="vandel-service-options" class="vandel-service-options" style="display: none;">
-        <h4><?php _e('Service Options', 'vandel-booking'); ?></h4>
-        <div id="vandel-options-container" class="vandel-options-container">
-            <!-- Options will be loaded here via AJAX -->
-        </div>
-    </div>
-</div>
-<?php
-    }
+    <?php
+}
     
     /**
      * Render customer details step

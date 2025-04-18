@@ -1978,3 +1978,185 @@ grid {
   border-radius: 8px;
   margin-bottom: 15px;
 }
+
+/* Location Management Admin Styles */
+.vandel-locations-admin {
+  margin: 20px 0;
+}
+
+.vandel-filters {
+  margin-bottom: 20px;
+  background: #fff;
+  padding: 15px;
+  border: 1px solid #e2e4e7;
+  border-radius: 3px;
+}
+
+.vandel-filters select,
+.vandel-filters input[type="search"] {
+  margin-right: 10px;
+  min-width: 180px;
+}
+
+.vandel-locations-table {
+  margin-top: 20px;
+}
+
+.vandel-status-badge {
+  display: inline-block;
+  padding: 3px 8px;
+  border-radius: 3px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.vandel-status-badge.active {
+  background-color: #46b450;
+  color: #fff;
+}
+
+.vandel-status-badge.inactive {
+  background-color: #dc3232;
+  color: #fff;
+}
+
+/* Modal Styles */
+.vandel-modal {
+  display: none;
+  position: fixed;
+  z-index: 1000;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  overflow: auto;
+}
+
+.vandel-modal-content {
+  background-color: #fefefe;
+  margin: 5% auto;
+  padding: 20px;
+  border: 1px solid #888;
+  width: 80%;
+  max-width: 800px;
+  border-radius: 4px;
+}
+
+.vandel-modal-close {
+  color: #aaa;
+  float: right;
+  font-size: 28px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.vandel-modal-close:hover,
+.vandel-modal-close:focus {
+  color: black;
+  text-decoration: none;
+}
+
+.vandel-form-row {
+  display: flex;
+  flex-wrap: wrap;
+  margin-bottom: 15px;
+}
+
+.vandel-form-group {
+  flex: 1;
+  min-width: 250px;
+  margin-right: 15px;
+}
+
+.vandel-form-group:last-child {
+  margin-right: 0;
+}
+
+.vandel-form-group label {
+  display: block;
+  margin-bottom: 5px;
+  font-weight: 500;
+}
+
+.vandel-form-group input[type="text"],
+.vandel-form-group input[type="number"],
+.vandel-form-group select {
+  width: 100%;
+}
+
+.vandel-form-actions {
+  margin-top: 20px;
+  text-align: right;
+}
+
+.vandel-form-actions button {
+  margin-left: 10px;
+}
+
+.vandel-checkbox-label {
+  display: flex;
+  align-items: center;
+}
+
+.vandel-checkbox-text {
+  margin-left: 8px;
+}
+
+/* Frontend Location Selection Styles */
+.vandel-location-details {
+  margin-top: 15px;
+  background: #f9f9f9;
+  padding: 15px;
+  border-radius: 4px;
+  border-left: 4px solid #2271b1;
+}
+
+.vandel-location-info {
+  display: flex;
+  align-items: flex-start;
+}
+
+.vandel-location-icon {
+  margin-right: 15px;
+}
+
+.vandel-location-icon .dashicons {
+  font-size: 24px;
+  color: #2271b1;
+}
+
+.vandel-location-text {
+  flex: 1;
+}
+
+.vandel-location-name {
+  font-size: 16px;
+  font-weight: 500;
+  margin-bottom: 5px;
+}
+
+.vandel-location-city,
+.vandel-location-country {
+  font-size: 14px;
+  color: #555;
+}
+
+.vandel-price-info {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px dashed #ddd;
+  font-size: 14px;
+}
+
+.vandel-validation-message {
+  margin-top: 10px;
+}
+
+.vandel-error {
+  color: #d63638;
+  background: #f8d7da;
+  padding: 8px 12px;
+  border-radius: 3px;
+  margin-bottom: 10px;
+}

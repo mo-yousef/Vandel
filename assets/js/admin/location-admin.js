@@ -1,238 +1,162 @@
 /**
- * Enhanced Location Management JavaScript
+ * Location Management JavaScript
  */
 (function ($) {
   "use strict";
 
   $(document).ready(function () {
-    console.log("Enhanced Location Admin JS loaded");
-
-    // Initialize ZIP code edit functionality
-    initZipCodeEdit();
-
-    // Initialize location edit functionality
-    initLocationEdit();
-
-    // Initialize search functionality
-    initSearch();
-
-    // Initialize delete confirmation
-    initDeleteConfirmation();
-  });
-
-  /**
-   * Initialize ZIP code edit functionality
-   */
-  function initZipCodeEdit() {
-    // Use event delegation to handle dynamically added elements
-    $(document).on("click", ".vandel-edit-zip-code", function (e) {
+    // Open add location modal
+    $(".add-new-location").on("click", function (e) {
       e.preventDefault();
-      console.log("Edit ZIP code button clicked");
-
-      // Get ZIP code data from data attributes
-      const zipCode = $(this).data("zip-code");
-      const city = $(this).data("city");
-      const state = $(this).data("state");
-      const country = $(this).data("country");
-      const priceAdjustment = $(this).data("price-adjustment");
-      const serviceFee = $(this).data("service-fee");
-      const isServiceable = $(this).data("is-serviceable");
-
-      console.log("Loading ZIP code data:", {
-        zipCode,
-        city,
-        state,
-        country,
-        priceAdjustment,
-        serviceFee,
-        isServiceable,
-      });
-
-      // Populate edit form
-      $("#edit-original-zip-code").val(zipCode);
-      $("#edit-zip-code").val(zipCode);
-      $("#edit-city").val(city);
-      $("#edit-state").val(state);
-      $("#edit-country").val(country);
-      $("#edit-price-adjustment").val(priceAdjustment);
-      $("#edit-service-fee").val(serviceFee);
-      $("#edit-is-serviceable").prop("checked", isServiceable === "yes");
-
-      // Show the modal
-      $("#vandel-edit-zip-code-modal").show();
+      resetLocationForm();
+      $("#modal-title").text(vandelLocationAdmin.strings.addLocation);
+      $("#location-modal").show();
     });
 
-    // Close modal when clicking X button
-    $(document).on("click", ".vandel-modal-close", function () {
-      $("#vandel-edit-zip-code-modal, #vandel-edit-location-modal").hide();
+    // Open import modal
+    $(".import-locations").on("click", function (e) {
+      e.preventDefault();
+      $("#import-modal").show();
+    });
+
+    // Close modals
+    $(".vandel-modal-close, .vandel-modal-cancel").on("click", function () {
+      $(".vandel-modal").hide();
     });
 
     // Close modal when clicking outside
     $(window).on("click", function (e) {
-      if ($(e.target).is("#vandel-edit-zip-code-modal")) {
-        $("#vandel-edit-zip-code-modal").hide();
-      }
-      if ($(e.target).is("#vandel-edit-location-modal")) {
-        $("#vandel-edit-location-modal").hide();
+      if ($(e.target).hasClass("vandel-modal")) {
+        $(".vandel-modal").hide();
       }
     });
-  }
 
-  /**
-   * Initialize location edit functionality
-   */
-  function initLocationEdit() {
-    $(document).on("click", ".vandel-edit-location", function (e) {
+    // Edit location
+    $(".edit-location").on("click", function (e) {
       e.preventDefault();
-      const $link = $(this);
 
-      // Get location data from attributes
-      const id = $link.data("id");
-      const country = $link.data("country");
-      const city = $link.data("city");
-      const areaName = $link.data("area-name");
-      const zipCode = $link.data("zip-code");
-      const priceAdjustment = $link.data("price-adjustment");
-      const serviceFee = $link.data("service-fee");
-      const isActive = $link.data("is-active");
+      const id = $(this).data("id");
+      const country = $(this).data("country");
+      const city = $(this).data("city");
+      const area = $(this).data("area");
+      const zip = $(this).data("zip");
+      const price = $(this).data("price");
+      const fee = $(this).data("fee");
+      const active = $(this).data("active");
 
-      console.log("Editing location:", {
-        id,
-        country,
-        city,
-        areaName,
-        zipCode,
-        priceAdjustment,
-        serviceFee,
-        isActive,
-      });
+      $("#location-id").val(id);
+      $("#country").val(country);
+      $("#city").val(city);
+      $("#area_name").val(area);
+      $("#zip_code").val(zip);
+      $("#price_adjustment").val(price);
+      $("#service_fee").val(fee);
+      $("#is_active").prop("checked", active === "yes");
 
-      // Fill in the form fields
-      $("#edit-location-id").val(id);
+      $("#modal-title").text(vandelLocationAdmin.strings.editLocation);
+      $("#location-modal").show();
+    });
 
-      const $countrySelect = $("#edit-country");
-      $countrySelect.val(country);
+    // Delete location
+    $(".delete-location").on("click", function (e) {
+      e.preventDefault();
 
-      // Load cities for selected country
-      const $citySelect = $("#edit-city");
-      $citySelect
-        .empty()
-        .append(
-          '<option value="">' +
-            (window.vandelLocationAdmin?.strings?.loadingCities ||
-              "Loading cities...") +
-            "</option>"
-        );
+      const id = $(this).data("id");
 
-      // Enhanced debugging
-      console.log("Fetching cities for country:", country);
-      console.log("AJAX URL:", window.vandelLocationAdmin?.ajaxUrl || ajaxurl);
-      console.log("Nonce:", window.vandelLocationAdmin?.nonce || "not set");
+      if (confirm(vandelLocationAdmin.strings.confirmDelete)) {
+        $.ajax({
+          url: vandelLocationAdmin.ajaxUrl,
+          type: "POST",
+          data: {
+            action: "vandel_delete_location",
+            id: id,
+            nonce: vandelLocationAdmin.nonce,
+          },
+          success: function (response) {
+            if (response.success) {
+              window.location.reload();
+            } else {
+              alert(response.data.message || vandelLocationAdmin.strings.error);
+            }
+          },
+          error: function () {
+            alert(vandelLocationAdmin.strings.error);
+          },
+        });
+      }
+    });
 
-      // Add additional error handling and debugging
+    // Submit location form
+    $("#location-form").on("submit", function (e) {
+      e.preventDefault();
+
+      const formData = {
+        action: "vandel_save_location",
+        nonce: vandelLocationAdmin.nonce,
+        id: $("#location-id").val(),
+        country: $("#country").val(),
+        city: $("#city").val(),
+        area_name: $("#area_name").val(),
+        zip_code: $("#zip_code").val(),
+        price_adjustment: $("#price_adjustment").val(),
+        service_fee: $("#service_fee").val(),
+        is_active: $("#is_active").is(":checked") ? "yes" : "no",
+      };
+
       $.ajax({
-        url: window.vandelLocationAdmin?.ajaxUrl || ajaxurl,
+        url: vandelLocationAdmin.ajaxUrl,
         type: "POST",
-        data: {
-          action: "vandel_get_cities",
-          country: country,
-          nonce: window.vandelLocationAdmin?.nonce || "",
-        },
+        data: formData,
         success: function (response) {
-          console.log("AJAX response:", response);
-
           if (response.success) {
-            const cities = response.data;
-
-            $citySelect
-              .empty()
-              .append(
-                '<option value="">' +
-                  (window.vandelLocationAdmin?.strings?.selectCity ||
-                    "Select city") +
-                  "</option>"
-              );
-
-            $.each(cities, function (index, cityName) {
-              $citySelect.append(
-                '<option value="' + cityName + '">' + cityName + "</option>"
-              );
-            });
-
-            // Set selected city
-            $citySelect.val(city);
+            window.location.reload();
           } else {
-            $citySelect
-              .empty()
-              .append(
-                '<option value="">' +
-                  (response.data?.message || "Error loading cities") +
-                  "</option>"
-              );
-            console.error("Error loading cities:", response);
+            alert(response.data.message || vandelLocationAdmin.strings.error);
           }
         },
-        error: function (xhr, status, error) {
-          console.error("AJAX error:", status, error);
-          console.log("Response text:", xhr.responseText);
-
-          $citySelect
-            .empty()
-            .append(
-              '<option value="">Error: ' + status + " - " + error + "</option>"
-            );
-        },
-        complete: function () {
-          console.log("AJAX request completed");
+        error: function () {
+          alert(vandelLocationAdmin.strings.error);
         },
       });
-
-      $("#edit-area-name").val(areaName);
-      $("#edit-zip-code").val(zipCode);
-      $("#edit-price-adjustment").val(priceAdjustment);
-      $("#edit-service-fee").val(serviceFee);
-      $("#edit-is-active").prop("checked", isActive === "yes");
-
-      // Show the modal
-      $("#vandel-edit-location-modal").show();
     });
-  }
 
-  /**
-   * Initialize search functionality
-   */
-  function initSearch() {
-    $("#vandel-zip-search, #vandel-location-search").on("keyup", function () {
-      const searchText = $(this).val().toLowerCase();
-      const isZipSearch = $(this).attr("id") === "vandel-zip-search";
-      const tableSelector = isZipSearch
-        ? ".vandel-data-table"
-        : ".vandel-location-table";
+    // Submit import form
+    $("#import-form").on("submit", function (e) {
+      e.preventDefault();
 
-      $(`${tableSelector} tbody tr`).each(function () {
-        const rowText = $(this).text().toLowerCase();
-        $(this).toggle(rowText.indexOf(searchText) > -1);
+      const formData = new FormData(this);
+      formData.append("action", "vandel_import_locations");
+      formData.append("nonce", vandelLocationAdmin.nonce);
+
+      $.ajax({
+        url: vandelLocationAdmin.ajaxUrl,
+        type: "POST",
+        data: formData,
+        contentType: false,
+        processData: false,
+        success: function (response) {
+          if (response.success) {
+            window.location.reload();
+          } else {
+            alert(response.data.message || vandelLocationAdmin.strings.error);
+          }
+        },
+        error: function () {
+          alert(vandelLocationAdmin.strings.error);
+        },
       });
     });
-  }
 
-  /**
-   * Initialize delete confirmation
-   */
-  function initDeleteConfirmation() {
-    $(document).on(
-      "click",
-      ".vandel-delete-zip-code, .vandel-delete-location",
-      function (e) {
-        const confirmMessage =
-          window.vandelLocationAdmin?.confirmDelete ||
-          window.vandelZipCodeAdmin?.confirmDelete ||
-          "Are you sure you want to delete this item?";
-
-        if (!confirm(confirmMessage)) {
-          e.preventDefault();
-        }
-      }
-    );
-  }
+    // Reset location form
+    function resetLocationForm() {
+      $("#location-id").val("0");
+      $("#country").val("");
+      $("#city").val("");
+      $("#area_name").val("");
+      $("#zip_code").val("");
+      $("#price_adjustment").val("0");
+      $("#service_fee").val("0");
+      $("#is_active").prop("checked", true);
+    }
+  });
 })(jQuery);

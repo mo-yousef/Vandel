@@ -1,57 +1,207 @@
 <?php
 namespace VandelBooking\Admin;
 
-use VandelBooking\Location\LocationModel;
-
 /**
- * Location AJAX Handlers
+ * Location AJAX Handler
  */
 class LocationAjaxHandler {
     /**
-     * @var LocationModel
+     * @var \VandelBooking\Location\LocationModel
      */
     private $location_model;
-
+    
     /**
      * Constructor
      */
     public function __construct() {
+        // Initialize location model
         if (class_exists('\\VandelBooking\\Location\\LocationModel')) {
-            $this->location_model = new LocationModel();
-        } else {
-            error_log('LocationModel class not found');
+            $this->location_model = new \VandelBooking\Location\LocationModel();
         }
-        $this->initHooks();
-    }
-
-    /**
-     * Initialize WordPress hooks
-     */
-    private function initHooks() {
-        // Debug log
-        error_log('LocationAjaxHandler: Initializing hooks');
         
-        // Register all the hooks needed
-        add_action('wp_ajax_vandel_get_cities', [$this, 'getCities']);
-        add_action('wp_ajax_vandel_get_areas', [$this, 'getAreas']);
-        add_action('wp_ajax_vandel_import_locations', [$this, 'importLocations']);
-        add_action('wp_ajax_vandel_export_locations', [$this, 'exportLocations']);
-        add_action('wp_ajax_vandel_validate_location', [$this, 'validateLocation']);
-        add_action('wp_ajax_nopriv_vandel_validate_location', [$this, 'validateLocation']);
+        // Register AJAX handlers
+        add_action('wp_ajax_vandel_save_location', [$this, 'ajaxSaveLocation']);
+        add_action('wp_ajax_vandel_delete_location', [$this, 'ajaxDeleteLocation']);
+        add_action('wp_ajax_vandel_import_locations', [$this, 'ajaxImportLocations']);
+        add_action('wp_ajax_vandel_get_cities', [$this, 'ajaxGetCities']);
+        add_action('wp_ajax_vandel_get_areas', [$this, 'ajaxGetAreas']);
+        add_action('wp_ajax_vandel_validate_location', [$this, 'ajaxValidateLocation']);
+        add_action('wp_ajax_nopriv_vandel_validate_location', [$this, 'ajaxValidateLocation']);
     }
-
+    
     /**
-     * Get cities for a country
+     * AJAX handler for saving location
      */
-    public function getCities() {
-        // Log the incoming request for debugging
-        error_log('getCities AJAX called with: ' . print_r($_POST, true));
+    public function ajaxSaveLocation() {
+        // Check nonce
+        if (!check_ajax_referer('vandel_location_admin', 'nonce', false)) {
+            wp_send_json_error(['message' => __('Security check failed', 'vandel-booking')]);
+            return;
+        }
         
-        // Security check
-        $nonce_verified = wp_verify_nonce($_POST['nonce'] ?? '', 'vandel_location_nonce');
-        if (!$nonce_verified) {
-            error_log('Nonce verification failed in getCities');
-            wp_send_json_error(['message' => __('Security verification failed', 'vandel-booking')]);
+        // Check if location model is available
+        if (!$this->location_model) {
+            wp_send_json_error(['message' => __('Location model not available', 'vandel-booking')]);
+            return;
+        }
+        
+        // Get form data
+        $id = isset($_POST['id']) ? intval($_POST['id']) : 0;
+        
+        $location_data = [
+            'country' => isset($_POST['country']) ? sanitize_text_field($_POST['country']) : '',
+            'city' => isset($_POST['city']) ? sanitize_text_field($_POST['city']) : '',
+            'area_name' => isset($_POST['area_name']) ? sanitize_text_field($_POST['area_name']) : '',
+            'zip_code' => isset($_POST['zip_code']) ? sanitize_text_field($_POST['zip_code']) : '',
+            'price_adjustment' => isset($_POST['price_adjustment']) ? floatval($_POST['price_adjustment']) : 0,
+            'service_fee' => isset($_POST['service_fee']) ? floatval($_POST['service_fee']) : 0,
+            'is_active' => isset($_POST['is_active']) && $_POST['is_active'] === 'yes' ? 'yes' : 'no'
+        ];
+        
+        // Validate required fields
+        if (empty($location_data['country']) || empty($location_data['city']) || 
+            empty($location_data['area_name']) || empty($location_data['zip_code'])) {
+            wp_send_json_error(['message' => __('Please fill all required fields', 'vandel-booking')]);
+            return;
+        }
+        
+        // Update or add location
+        if ($id > 0) {
+            $result = $this->location_model->update($id, $location_data);
+            $message = __('Location updated successfully', 'vandel-booking');
+        } else {
+            $result = $this->location_model->add($location_data);
+            $message = __('Location added successfully', 'vandel-booking');
+        }
+        
+        if ($result) {
+            wp_send_json_success(['message' => $message]);
+        } else {
+            wp_send_json_error(['message' => __('Failed to save location', 'vandel-booking')]);
+        }
+    }
+    
+    /**
+     * AJAX handler for deleting location
+     */
+    public function ajaxDeleteLocation() {
+        // Check nonce
+        if (!check_ajax_referer('vandel_location_admin', 'nonce', false)) {
+            wp_send_json_error(['message' => __('Security check failed', 'vandel-booking')]);
+            return;
+        }
+        
+        // Check if location model is available
+        if (!$this->location_model) {
+            wp_send_json_error(['message' => __('Location model not available', 'vandel-booking')]);
+            return;
+        }
+        
+        // Get location ID
+        $id = isset($_POST['id']) ? intval($_POST['id']) : 0;
+        
+        if ($id <= 0) {
+            wp_send_json_error(['message' => __('Invalid location ID', 'vandel-booking')]);
+            return;
+        }
+        
+        // Delete location
+        $result = $this->location_model->delete($id);
+        
+        if ($result) {
+            wp_send_json_success(['message' => __('Location deleted successfully', 'vandel-booking')]);
+        } else {
+            wp_send_json_error(['message' => __('Failed to delete location', 'vandel-booking')]);
+        }
+    }
+    
+    /**
+     * AJAX handler for importing locations
+     */
+    public function ajaxImportLocations() {
+        // Check nonce
+        if (!check_ajax_referer('vandel_location_admin', 'nonce', false)) {
+            wp_send_json_error(['message' => __('Security check failed', 'vandel-booking')]);
+            return;
+        }
+        
+        // Check if location model is available
+        if (!$this->location_model) {
+            wp_send_json_error(['message' => __('Location model not available', 'vandel-booking')]);
+            return;
+        }
+        
+        // Check if file was uploaded
+        if (!isset($_FILES['import_file']) || !is_uploaded_file($_FILES['import_file']['tmp_name'])) {
+            wp_send_json_error(['message' => __('No file uploaded', 'vandel-booking')]);
+            return;
+        }
+        
+        // Read CSV file
+        $file = fopen($_FILES['import_file']['tmp_name'], 'r');
+        if (!$file) {
+            wp_send_json_error(['message' => __('Unable to open file', 'vandel-booking')]);
+            return;
+        }
+        
+        // Get headers
+        $headers = fgetcsv($file);
+        
+        // Check required headers
+        $required_headers = ['country', 'city', 'area_name', 'zip_code'];
+        $missing_headers = array_diff($required_headers, $headers);
+        
+        if (!empty($missing_headers)) {
+            fclose($file);
+            wp_send_json_error([
+                'message' => sprintf(
+                    __('Missing required headers: %s', 'vandel-booking'),
+                    implode(', ', $missing_headers)
+                )
+            ]);
+            return;
+        }
+        
+        // Parse locations
+        $locations = [];
+        while (($row = fgetcsv($file)) !== false) {
+            $location = array_combine($headers, $row);
+            $locations[] = $location;
+        }
+        
+        fclose($file);
+        
+        if (empty($locations)) {
+            wp_send_json_error(['message' => __('No locations found in file', 'vandel-booking')]);
+            return;
+        }
+        
+        // Import locations
+        $result = $this->location_model->bulkImport($locations);
+        
+        wp_send_json_success([
+            'message' => sprintf(
+                __('Import completed. %d locations imported, %d updated, %d failed.', 'vandel-booking'),
+                $result['imported'],
+                $result['updated'],
+                $result['failed']
+            )
+        ]);
+    }
+    
+    /**
+     * AJAX handler for getting cities
+     */
+    public function ajaxGetCities() {
+        // Check nonce
+        if (!check_ajax_referer('vandel_location_nonce', 'nonce', false)) {
+            wp_send_json_error(['message' => __('Security check failed', 'vandel-booking')]);
+            return;
+        }
+        
+        // Check if location model is available
+        if (!$this->location_model) {
+            wp_send_json_error(['message' => __('Location model not available', 'vandel-booking')]);
             return;
         }
         
@@ -63,26 +213,27 @@ class LocationAjaxHandler {
             return;
         }
         
-        if (!$this->location_model) {
-            // Return dummy data for testing if model isn't available
-            error_log('LocationModel not available, returning dummy data for cities');
-            wp_send_json_success(['Stockholm', 'Gothenburg', 'Malmö', 'Uppsala']);
-            return;
-        }
-        
-        // Get cities from the model
+        // Get cities
         $cities = $this->location_model->getCities($country);
-        error_log('Cities found: ' . print_r($cities, true));
         
         wp_send_json_success($cities);
     }
     
     /**
-     * Get areas for a city
+     * AJAX handler for getting areas
      */
-    public function getAreas() {
-        // Security check
-        check_ajax_referer('vandel_location_nonce', 'nonce');
+    public function ajaxGetAreas() {
+        // Check nonce
+        if (!check_ajax_referer('vandel_location_nonce', 'nonce', false)) {
+            wp_send_json_error(['message' => __('Security check failed', 'vandel-booking')]);
+            return;
+        }
+        
+        // Check if location model is available
+        if (!$this->location_model) {
+            wp_send_json_error(['message' => __('Location model not available', 'vandel-booking')]);
+            return;
+        }
         
         // Get country and city
         $country = isset($_POST['country']) ? sanitize_text_field($_POST['country']) : '';
@@ -93,238 +244,59 @@ class LocationAjaxHandler {
             return;
         }
         
+        // Get areas
+        $areas = $this->location_model->getAreas($country, $city);
+        
+        wp_send_json_success($areas);
+    }
+    
+    /**
+     * AJAX handler for validating location
+     */
+    public function ajaxValidateLocation() {
+        // Check nonce
+        if (!check_ajax_referer('vandel_booking_nonce', 'nonce', false) && 
+            !check_ajax_referer('vandel_location_nonce', 'nonce', false)) {
+            wp_send_json_error(['message' => __('Security check failed', 'vandel-booking')]);
+            return;
+        }
+        
+        // Check if location model is available
         if (!$this->location_model) {
             wp_send_json_error(['message' => __('Location model not available', 'vandel-booking')]);
             return;
         }
         
-        $areas = $this->location_model->getAreas($country, $city);
-        
-        // Format areas for select dropdown
-        $formatted_areas = [];
-        foreach ($areas as $area) {
-            $formatted_areas[] = [
-                'id' => $area->id,
-                'text' => $area->area_name . ' : ' . $area->zip_code,
-                'zip_code' => $area->zip_code,
-                'price_adjustment' => $area->price_adjustment,
-                'service_fee' => $area->service_fee
-            ];
-        }
-        
-        wp_send_json_success($formatted_areas);
-    }
-    
-    /**
-     * Import locations from CSV/Excel
-     */
-    public function importLocations() {
-        // Security check
-        check_ajax_referer('vandel_location_nonce', 'nonce');
-        
-        // Check user capabilities
-        if (!current_user_can('manage_options')) {
-            wp_send_json_error(['message' => __('Insufficient permissions', 'vandel-booking')]);
-            return;
-        }
-
-        // Check if file was uploaded
-        if (!isset($_FILES['file'])) {
-            wp_send_json_error(['message' => __('No file uploaded', 'vandel-booking')]);
-            return;
-        }
-
-        $file = $_FILES['file'];
-
-        // Validate file type
-        $allowed_types = ['text/csv', 'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'];
-        if (!in_array($file['type'], $allowed_types)) {
-            wp_send_json_error(['message' => __('Invalid file type. Please upload a CSV or Excel file.', 'vandel-booking')]);
-            return;
-        }
-
-        // Temporarily move the file
-        $upload_dir = wp_upload_dir();
-        $file_path = $upload_dir['path'] . '/' . basename($file['name']);
-        
-        if (!move_uploaded_file($file['tmp_name'], $file_path)) {
-            wp_send_json_error(['message' => __('Failed to move uploaded file', 'vandel-booking')]);
-            return;
-        }
-
-        try {
-            // Check if we have PhpSpreadsheet available
-            if (!class_exists('\\PhpOffice\\PhpSpreadsheet\\IOFactory')) {
-                throw new \Exception(__('PhpSpreadsheet library is required for Excel import', 'vandel-booking'));
-            }
-            
-            // Determine file type and read
-            $file_type = \PhpOffice\PhpSpreadsheet\IOFactory::identify($file_path);
-            $reader = \PhpOffice\PhpSpreadsheet\IOFactory::createReader($file_type);
-            $spreadsheet = $reader->load($file_path);
-            $worksheet = $spreadsheet->getActiveSheet();
-            $data = $worksheet->toArray();
-
-            // Remove header row
-            array_shift($data);
-
-            $locations = [];
-            foreach ($data as $row) {
-                // Validate row has minimum required fields
-                if (count($row) < 4) continue;
-
-                $locations[] = [
-                    'country' => sanitize_text_field($row[0]),
-                    'city' => sanitize_text_field($row[1]),
-                    'area_name' => sanitize_text_field($row[2]),
-                    'zip_code' => sanitize_text_field($row[3]),
-                    'price_adjustment' => isset($row[4]) ? floatval($row[4]) : 0,
-                    'service_fee' => isset($row[5]) ? floatval($row[5]) : 0,
-                    'is_active' => isset($row[6]) && strtolower($row[6]) === 'yes' ? 'yes' : 'no'
-                ];
-            }
-
-            // Bulk import
-            $results = $this->location_model->bulkImport($locations);
-
-            // Clean up uploaded file
-            unlink($file_path);
-
-            wp_send_json_success([
-                'message' => sprintf(
-                    __('Import completed. %d locations imported, %d updated, %d failed.', 'vandel-booking'), 
-                    $results['imported'], 
-                    $results['updated'],
-                    $results['failed']
-                ),
-                'results' => $results
-            ]);
-
-        } catch (\Exception $e) {
-            // Clean up file in case of error
-            if (file_exists($file_path)) {
-                unlink($file_path);
-            }
-
-            wp_send_json_error(['message' => $e->getMessage()]);
-        }
-    }
-
-    /**
-     * Export locations to CSV
-     */
-    public function exportLocations() {
-        // Security check
-        check_ajax_referer('vandel_location_nonce', 'nonce');
-
-        // Check user capabilities
-        if (!current_user_can('manage_options')) {
-            wp_die(__('Insufficient permissions', 'vandel-booking'));
-        }
-
-        // Fetch all locations
-        global $wpdb;
-        $table_name = $wpdb->prefix . 'vandel_locations';
-        
-        // Check if table exists
-        if ($wpdb->get_var("SHOW TABLES LIKE '$table_name'") !== $table_name) {
-            wp_die(__('Locations table does not exist', 'vandel-booking'));
-        }
-        
-        $locations = $wpdb->get_results("SELECT * FROM $table_name ORDER BY country, city, area_name", ARRAY_A);
-
-        // Prepare CSV
-        $csv_data = [
-            ['Country', 'City', 'Area Name', 'ZIP Code', 'Price Adjustment', 'Service Fee', 'Active']
-        ];
-
-        foreach ($locations as $location) {
-            $csv_data[] = [
-                $location['country'],
-                $location['city'],
-                $location['area_name'],
-                $location['zip_code'],
-                $location['price_adjustment'],
-                $location['service_fee'],
-                $location['is_active']
-            ];
-        }
-
-        // Output CSV
-        header('Content-Type: text/csv');
-        header('Content-Disposition: attachment; filename="vandel_locations_' . date('Y-m-d') . '.csv"');
-        header('Pragma: no-cache');
-        header('Expires: 0');
-
-        $fp = fopen('php://output', 'wb');
-        foreach ($csv_data as $line) {
-            fputcsv($fp, $line);
-        }
-        fclose($fp);
-        exit;
-    }
-
-    /**
-     * Validate location via AJAX
-     */
-    public function validateLocation() {
-        // Security check - Accept either booking nonce or location nonce
-        if (!check_ajax_referer('vandel_booking_nonce', 'nonce', false) && 
-            !check_ajax_referer('vandel_location_nonce', 'nonce', false)) {
-            wp_send_json_error(['message' => __('Security verification failed', 'vandel-booking')]);
-            return;
-        }
-
-        // Get location details
-        $country = isset($_POST['country']) ? sanitize_text_field($_POST['country']) : '';
-        $city = isset($_POST['city']) ? sanitize_text_field($_POST['city']) : '';
+        // Get ZIP code
         $zip_code = isset($_POST['zip_code']) ? sanitize_text_field($_POST['zip_code']) : '';
-
+        
         if (empty($zip_code)) {
-            wp_send_json_error(['message' => __('ZIP Code cannot be empty', 'vandel-booking')]);
+            wp_send_json_error(['message' => __('ZIP code is required', 'vandel-booking')]);
             return;
         }
-
-        // Check if we have a location model
-        if (!$this->location_model) {
-            // Return sample data for demo/testing
-            wp_send_json_success([
-                'zip_code' => $zip_code,
-                'area_name' => 'Demo Area',
-                'city' => $city ?: 'Demo City',
-                'country' => $country ?: 'Sweden',
-                'price_adjustment' => 0,
-                'service_fee' => 0,
-                'is_active' => 'yes',
-                'location_string' => 'Demo Area, Demo City'
-            ]);
+        
+        // Get location by ZIP code
+        $location = $this->location_model->getByZipCode($zip_code);
+        
+        if (!$location) {
+            wp_send_json_error(['message' => __('Location not found for this ZIP code', 'vandel-booking')]);
             return;
         }
-
-        // Check location details
-        $details = $this->location_model->getByZipCode($zip_code, $country, $city);
-
-        if (!$details) {
-            wp_send_json_error(['message' => __('Location not found', 'vandel-booking')]);
+        
+        if ($location->is_active !== 'yes') {
+            wp_send_json_error(['message' => __('This location is not active for bookings', 'vandel-booking')]);
             return;
         }
-
-        // Check if location is active
-        if ($details->is_active !== 'yes') {
-            wp_send_json_error(['message' => __('Sorry, we do not serve this area', 'vandel-booking')]);
-            return;
-        }
-
+        
         wp_send_json_success([
-            'id' => $details->id,
-            'zip_code' => $details->zip_code,
-            'area_name' => $details->area_name,
-            'city' => $details->city,
-            'country' => $details->country,
-            'price_adjustment' => floatval($details->price_adjustment),
-            'service_fee' => floatval($details->service_fee),
-            'is_active' => $details->is_active,
-            'location_string' => sprintf('%s, %s', $details->area_name, $details->city)
+            'id' => $location->id,
+            'country' => $location->country,
+            'city' => $location->city,
+            'area_name' => $location->area_name,
+            'zip_code' => $location->zip_code,
+            'price_adjustment' => floatval($location->price_adjustment),
+            'service_fee' => floatval($location->service_fee),
+            'location_string' => sprintf('%s, %s', $location->area_name, $location->city)
         ]);
     }
 }

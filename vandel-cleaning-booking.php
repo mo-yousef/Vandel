@@ -865,3 +865,82 @@ function vandel_enqueue_admin_scripts($hook) {
     }
 }
 add_action('admin_enqueue_scripts', 'vandel_enqueue_admin_scripts');
+
+
+
+
+/**
+ * Initialize Location Management System
+ */
+function vandel_init_location_system() {
+    // Ensure tables exist
+    if (class_exists('\\VandelBooking\\Database\\Installer')) {
+        $installer = new \VandelBooking\Database\Installer();
+        
+        // Check if location table is in the list of tables to create
+        if (property_exists($installer, 'tables')) {
+            $reflection = new \ReflectionClass($installer);
+            $property = $reflection->getProperty('tables');
+            $property->setAccessible(true);
+            $tables = $property->getValue($installer);
+            
+            if (!in_array('locations', $tables)) {
+                $tables[] = 'locations';
+                $property->setValue($installer, $tables);
+            }
+        }
+        
+        // Install or update tables
+        $installer->install();
+    }
+    
+    // Initialize components
+    if (class_exists('\\VandelBooking\\Location\\LocationModel')) {
+        // Initialize frontend component
+        if (class_exists('\\VandelBooking\\Frontend\\LocationSelection')) {
+            new \VandelBooking\Frontend\LocationSelection();
+        } else {
+            // Try to include and instantiate it
+            $location_selection_file = VANDEL_PLUGIN_DIR . 'includes/frontend/class-location-selection.php';
+            if (file_exists($location_selection_file)) {
+                require_once $location_selection_file;
+                if (class_exists('\\VandelBooking\\Frontend\\LocationSelection')) {
+                    new \VandelBooking\Frontend\LocationSelection();
+                }
+            }
+        }
+        
+        // Initialize admin component
+        if (is_admin()) {
+            if (class_exists('\\VandelBooking\\Admin\\LocationAdmin')) {
+                new \VandelBooking\Admin\LocationAdmin();
+            } else {
+                // Try to include and instantiate it
+                $location_admin_file = VANDEL_PLUGIN_DIR . 'includes/admin/class-location-admin.php';
+                if (file_exists($location_admin_file)) {
+                    require_once $location_admin_file;
+                    if (class_exists('\\VandelBooking\\Admin\\LocationAdmin')) {
+                        new \VandelBooking\Admin\LocationAdmin();
+                    }
+                }
+            }
+            
+            // Initialize location AJAX handler
+            if (class_exists('\\VandelBooking\\Admin\\LocationAjaxHandler')) {
+                new \VandelBooking\Admin\LocationAjaxHandler();
+            } else {
+                // Try to include and instantiate it
+                $location_ajax_file = VANDEL_PLUGIN_DIR . 'includes/admin/class-location-ajax-handler.php';
+                if (file_exists($location_ajax_file)) {
+                    require_once $location_ajax_file;
+                    if (class_exists('\\VandelBooking\\Admin\\LocationAjaxHandler')) {
+                        new \VandelBooking\Admin\LocationAjaxHandler();
+                    }
+                }
+            }
+        }
+    }
+}
+
+// Hook the initialization function
+add_action('plugins_loaded', 'vandel_init_location_system', 20);
