@@ -18,6 +18,13 @@ class Settings_Tab implements Tab_Interface {
      */
     public function register_hooks() {
         // No specific hooks for settings tab
+register_setting('vandel_advanced_settings', 'vandel_enable_debug');
+register_setting('vandel_advanced_settings', 'vandel_enable_cache');
+register_setting('vandel_advanced_settings', 'vandel_cache_expiration', 'intval');
+register_setting('vandel_advanced_settings', 'vandel_auto_cleanup');
+register_setting('vandel_advanced_settings', 'vandel_cleanup_days', 'intval');
+register_setting('vandel_advanced_settings', 'vandel_custom_css');
+register_setting('vandel_advanced_settings', 'vandel_custom_js');
     }
     
     /**
@@ -154,12 +161,50 @@ class Settings_Tab implements Tab_Interface {
             case 'advanced':
                 $this->render_advanced_settings();
                 break;
+                                    case 'zip-codes':
+                                        $this->render_zip_code_settings();
+                                        break;
+
         }
         
         echo '</div>'; // .vandel-settings-content
         echo '</div>'; // .vandel-settings-wrapper
     }
     
+
+            //     <!-- Settings Content -->
+            //     <div class="vandel-settings-content">
+            //         <?php
+            //                 // Initialize section classes if not already done
+            //                 $this->initialize_section_classes();
+                            
+            //                 // Render the active section
+            //                 if (isset($this->section_classes[$active_section]) && $this->section_classes[$active_section]) {
+            //                     $this->section_classes[$active_section]->render();
+            //                 } else {
+            //                     // Fallback to built-in section renderers
+            //                     switch ($active_section) {
+            //                         case 'general':
+            //                             $this->render_general_settings();
+            //                             break;
+            //                         case 'booking':
+            //                             $this->render_booking_settings();
+            //                             break;
+            //                         case 'notifications':
+            //                             $this->render_notification_settings();
+            //                             break;
+            //                         case 'integrations':
+            //                             $this->render_integration_settings();
+            //                             break;
+            //                         case 'zip-codes':
+            //                             $this->render_zip_code_settings();
+            //                             break;
+            //                         default:
+            //                             $this->render_general_settings();
+            //                     }
+            //                 }
+            //                 
+
     /**
      * Render settings navigation
      */
@@ -1100,6 +1145,95 @@ class Settings_Tab implements Tab_Interface {
             
             <?php submit_button(); ?>
         </form>
+        <?php
+    }
+
+    /**
+     * Render advanced settings section
+     */
+    private function render_advanced_settings() {
+        ?>
+        <div class="vandel-settings-section">
+            <h2><?php _e('Advanced Settings', 'vandel-booking'); ?></h2>
+            <p><?php _e('Configure advanced options for the booking system.', 'vandel-booking'); ?></p>
+            
+            <form method="post" action="options.php">
+                <?php
+                settings_fields('vandel_advanced_settings');
+                ?>
+                
+                <table class="form-table">
+                    <tr>
+                        <th scope="row"><?php _e('Debug Mode', 'vandel-booking'); ?></th>
+                        <td>
+                            <label for="vandel_enable_debug">
+                                <input type="checkbox" id="vandel_enable_debug" name="vandel_enable_debug" value="yes" <?php checked(get_option('vandel_enable_debug'), 'yes'); ?>>
+                                <?php _e('Enable debug logging', 'vandel-booking'); ?>
+                            </label>
+                            <p class="description"><?php _e('When enabled, debug information will be logged to the WordPress debug log.', 'vandel-booking'); ?></p>
+                        </td>
+                    </tr>
+                    
+                    <tr>
+                        <th scope="row"><?php _e('Cache Settings', 'vandel-booking'); ?></th>
+                        <td>
+                            <label for="vandel_enable_cache">
+                                <input type="checkbox" id="vandel_enable_cache" name="vandel_enable_cache" value="yes" <?php checked(get_option('vandel_enable_cache'), 'yes'); ?>>
+                                <?php _e('Enable data caching', 'vandel-booking'); ?>
+                            </label>
+                            <p class="description"><?php _e('Cache service and booking data to improve performance.', 'vandel-booking'); ?></p>
+                        </td>
+                    </tr>
+                    
+                    <tr>
+                        <th scope="row"><?php _e('Cache Expiration', 'vandel-booking'); ?></th>
+                        <td>
+                            <input type="number" name="vandel_cache_expiration" value="<?php echo esc_attr(get_option('vandel_cache_expiration', 3600)); ?>" min="60" step="60" class="small-text">
+                            <?php _e('seconds', 'vandel-booking'); ?>
+                            <p class="description"><?php _e('Time in seconds before cached data expires. Default is 1 hour (3600 seconds).', 'vandel-booking'); ?></p>
+                        </td>
+                    </tr>
+                    
+                    <tr>
+                        <th scope="row"><?php _e('Database Cleanup', 'vandel-booking'); ?></th>
+                        <td>
+                            <label for="vandel_auto_cleanup">
+                                <input type="checkbox" id="vandel_auto_cleanup" name="vandel_auto_cleanup" value="yes" <?php checked(get_option('vandel_auto_cleanup'), 'yes'); ?>>
+                                <?php _e('Enable automatic cleanup', 'vandel-booking'); ?>
+                            </label>
+                            <p class="description"><?php _e('Automatically remove old, canceled bookings after a certain period.', 'vandel-booking'); ?></p>
+                        </td>
+                    </tr>
+                    
+                    <tr>
+                        <th scope="row"><?php _e('Cleanup After', 'vandel-booking'); ?></th>
+                        <td>
+                            <input type="number" name="vandel_cleanup_days" value="<?php echo esc_attr(get_option('vandel_cleanup_days', 90)); ?>" min="30" class="small-text">
+                            <?php _e('days', 'vandel-booking'); ?>
+                            <p class="description"><?php _e('Number of days after which old canceled bookings will be removed. Minimum 30 days.', 'vandel-booking'); ?></p>
+                        </td>
+                    </tr>
+                    
+                    <tr>
+                        <th scope="row"><?php _e('Custom CSS', 'vandel-booking'); ?></th>
+                        <td>
+                            <textarea name="vandel_custom_css" rows="8" class="large-text code"><?php echo esc_textarea(get_option('vandel_custom_css', '')); ?></textarea>
+                            <p class="description"><?php _e('Add custom CSS to style the booking form. This will be added to both admin and frontend.', 'vandel-booking'); ?></p>
+                        </td>
+                    </tr>
+                    
+                    <tr>
+                        <th scope="row"><?php _e('Custom JavaScript', 'vandel-booking'); ?></th>
+                        <td>
+                            <textarea name="vandel_custom_js" rows="8" class="large-text code"><?php echo esc_textarea(get_option('vandel_custom_js', '')); ?></textarea>
+                            <p class="description"><?php _e('Add custom JavaScript. This will be added to both admin and frontend.', 'vandel-booking'); ?></p>
+                        </td>
+                    </tr>
+                </table>
+                
+                <?php submit_button(); ?>
+            </form>
+        </div>
         <?php
     }
 }

@@ -320,6 +320,7 @@ class Location_Settings {
         }
         
         ?>
+
 <div class="vandel-settings-section">
     <h2><?php _e('Location Management', 'vandel-booking'); ?></h2>
 
