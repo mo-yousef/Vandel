@@ -220,19 +220,32 @@ class BookingForm {
 
     <div id="vandel-zip-validation-message" class="vandel-validation-message"></div>
 
+    <!-- Location Details Display -->
     <div id="vandel-location-details" class="vandel-location-details" style="display: none;">
         <div class="vandel-location-info">
             <div class="vandel-location-icon">
                 <span class="dashicons dashicons-location"></span>
             </div>
             <div class="vandel-location-text">
-                <span id="vandel-city-state"></span>
-                <span id="vandel-country"></span>
+                <div class="vandel-location-name">
+                    <span id="vandel-city-state"></span>
+                </div>
+                <div class="vandel-location-country">
+                    <span id="vandel-country"></span>
+                </div>
+                <!-- This div will be populated with fee information -->
             </div>
         </div>
     </div>
-</div>
-<?php
+
+    <!-- Confirmation Summary: Add this to your confirmation step -->
+    <div class="vandel-summary-item" id="summary-location-container">
+        <span class="vandel-summary-label"><?php _e('Location:', 'vandel-booking'); ?></span>
+        <span class="vandel-summary-value" id="summary-location">--</span>
+        <small class="vandel-summary-zipcode" id="summary-zip-code"></small>
+    </div>
+    </div>
+    <?php
     }
     
     /**

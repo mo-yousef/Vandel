@@ -443,7 +443,106 @@ class BookingDetails {
 
 
 
-
+/**
+ * Render location information section
+ * 
+ * @param object $booking Booking object
+ */
+private function render_location_info($booking) {
+    $location_info = null;
+    
+    // Try to parse access_info as JSON first
+    if (!empty($booking->access_info)) {
+        $decoded = json_decode($booking->access_info, true);
+        if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+            $location_info = $decoded;
+        }
+    }
+    
+    // If not JSON, use it as a ZIP code
+    $zip_code = empty($location_info) ? $booking->access_info : ($location_info['zip_code'] ?? '');
+    
+    // Get location details from the database if available
+    $location_details = null;
+    
+    if (!empty($zip_code) && class_exists('\\VandelBooking\\Location\\LocationModel')) {
+        $location_model = new \VandelBooking\Location\LocationModel();
+        $location_details = $location_model->getByZipCode($zip_code);
+    }
+    
+    if (!$location_details && !empty($zip_code) && class_exists('\\VandelBooking\\Location\\ZipCodeModel')) {
+        $zip_code_model = new \VandelBooking\Location\ZipCodeModel();
+        $location_details = $zip_code_model->get($zip_code);
+    }
+    
+    // Get location adjustment and fees from post meta
+    $location_adjustment = get_post_meta($booking->id, '_vandel_location_adjustment', true);
+    $location_fee = get_post_meta($booking->id, '_vandel_location_fee', true);
+    
+    // Display location information
+    ?>
+    <div class="vandel-card vandel-location-info-card">
+        <div class="vandel-card-header">
+            <h3><?php _e('Location Information', 'vandel-booking'); ?></h3>
+        </div>
+        <div class="vandel-card-body">
+            <?php if ($location_details || $location_info): ?>
+                <div class="vandel-location-details">
+                    <div class="vandel-location-field">
+                        <label><?php _e('ZIP Code:', 'vandel-booking'); ?></label>
+                        <span><?php echo esc_html($zip_code); ?></span>
+                    </div>
+                    
+                    <?php if (!empty($location_info['area_name']) || !empty($location_details->area_name)): ?>
+                    <div class="vandel-location-field">
+                        <label><?php _e('Area:', 'vandel-booking'); ?></label>
+                        <span><?php echo esc_html($location_info['area_name'] ?? $location_details->area_name); ?></span>
+                    </div>
+                    <?php endif; ?>
+                    
+                    <div class="vandel-location-field">
+                        <label><?php _e('City:', 'vandel-booking'); ?></label>
+                        <span><?php echo esc_html($location_info['city'] ?? $location_details->city ?? '--'); ?></span>
+                    </div>
+                    
+                    <?php if (!empty($location_info['state']) || !empty($location_details->state)): ?>
+                    <div class="vandel-location-field">
+                        <label><?php _e('State/Region:', 'vandel-booking'); ?></label>
+                        <span><?php echo esc_html($location_info['state'] ?? $location_details->state); ?></span>
+                    </div>
+                    <?php endif; ?>
+                    
+                    <div class="vandel-location-field">
+                        <label><?php _e('Country:', 'vandel-booking'); ?></label>
+                        <span><?php echo esc_html($location_info['country'] ?? $location_details->country ?? '--'); ?></span>
+                    </div>
+                    
+                    <?php if (!empty($location_adjustment) || !empty($location_details->price_adjustment)): 
+                        $adjustment = !empty($location_adjustment) ? $location_adjustment : $location_details->price_adjustment;
+                        $sign = floatval($adjustment) >= 0 ? '+' : '';
+                    ?>
+                    <div class="vandel-location-field">
+                        <label><?php _e('Location Adjustment:', 'vandel-booking'); ?></label>
+                        <span><?php echo $sign . \VandelBooking\Helpers::formatPrice($adjustment); ?></span>
+                    </div>
+                    <?php endif; ?>
+                    
+                    <?php if (!empty($location_fee) || !empty($location_details->service_fee)): 
+                        $fee = !empty($location_fee) ? $location_fee : $location_details->service_fee;
+                    ?>
+                    <div class="vandel-location-field">
+                        <label><?php _e('Service Fee:', 'vandel-booking'); ?></label>
+                        <span><?php echo \VandelBooking\Helpers::formatPrice($fee); ?></span>
+                    </div>
+                    <?php endif; ?>
+                </div>
+            <?php else: ?>
+                <p><?php _e('No location information available for this booking.', 'vandel-booking'); ?></p>
+            <?php endif; ?>
+        </div>
+    </div>
+    <?php
+}
 
 
 

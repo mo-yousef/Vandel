@@ -783,11 +783,11 @@
   transition: 0.3s;
 }
 
-.vandel-toggle input:checked+.vandel-toggle-slider {
+.vandel-toggle input:checked + .vandel-toggle-slider {
   background-color: #4299e1;
 }
 
-.vandel-toggle input:checked+.vandel-toggle-slider:before {
+.vandel-toggle input:checked + .vandel-toggle-slider:before {
   transform: translateX(24px);
 }
 
@@ -1400,8 +1400,8 @@
 
 .vandel-status-bar-container {
   display: flex;
-  align-items: center;
-  gap: 15px;
+  gap: 4px;
+  flex-direction: row;
 }
 
 .vandel-status-bar-label {
@@ -1844,7 +1844,6 @@
 }
 
 @media (max-width: 600px) {
-
   .vandel-stat-cards,
   .vandel-status-summary,
   .vandel-client-stats-grid,
@@ -1884,7 +1883,7 @@
 
 /* Apply theme color wherever appropriate */
 .button-primary.vandel-action-button,
-.vandel-toggle input:checked+.vandel-toggle-slider,
+.vandel-toggle input:checked + .vandel-toggle-slider,
 .fc-theme-standard .fc-button-primary,
 .vandel-timeline-dot {
   background-color: var(--vandel-primary-color);

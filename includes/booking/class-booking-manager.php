@@ -72,74 +72,112 @@ class BookingManager {
      * @param array $booking_data Booking data
      * @return int|WP_Error Booking ID or error
      */
-    public function createBooking($booking_data) {
-        try {
-            // Validate required fields
-            $required_fields = ['service', 'customer_name', 'customer_email', 'booking_date', 'total_price'];
-            foreach ($required_fields as $field) {
-                if (empty($booking_data[$field])) {
-                    return new \WP_Error(
-                        'missing_field',
-                        sprintf(__('Missing required field: %s', 'vandel-booking'), $field)
-                    );
-                }
-            }
-            
-            // Create client record
-            try {
-                $client_id = $this->getOrCreateClient($booking_data);
-            } catch (\Exception $e) {
-                return new \WP_Error('client_error', $e->getMessage());
-            }
-            
-            if (!$client_id) {
+
+public function createBooking($booking_data) {
+    try {
+        // Validate required fields
+        $required_fields = ['service', 'customer_name', 'customer_email', 'booking_date', 'total_price'];
+        foreach ($required_fields as $field) {
+            if (empty($booking_data[$field])) {
                 return new \WP_Error(
-                    'client_creation_failed',
-                    __('Failed to create client', 'vandel-booking')
+                    'missing_field',
+                    sprintf(__('Missing required field: %s', 'vandel-booking'), $field)
                 );
             }
-            
-            // Add client_id to booking data
-            $booking_data['client_id'] = $client_id;
-            
-            // Set default status if not provided
-            if (!isset($booking_data['status'])) {
-                $booking_data['status'] = get_option('vandel_default_booking_status', 'pending');
-            }
-            
-            // Set created_at if not provided
-            if (!isset($booking_data['created_at'])) {
-                $booking_data['created_at'] = current_time('mysql');
-            }
-            
-            // Create booking using model or direct insertion
-            $booking_id = $this->createBookingRecord($booking_data);
-            
-            if (!$booking_id || is_wp_error($booking_id)) {
-                return $booking_id ?: new \WP_Error(
-                    'booking_creation_failed',
-                    __('Failed to create booking', 'vandel-booking')
-                );
-            }
-            
-            // Send notifications if available
-            $this->sendNotifications($booking_id);
-            
-            // Update client total spent
-            $this->updateClientSpending($client_id, $booking_data['total_price']);
-            
-            // Return booking ID
-            return $booking_id;
-            
+        }
+        
+        // Create client record
+        try {
+            $client_id = $this->getOrCreateClient($booking_data);
         } catch (\Exception $e) {
-            error_log('Exception in createBooking: ' . $e->getMessage());
+            return new \WP_Error('client_error', $e->getMessage());
+        }
+        
+        if (!$client_id) {
             return new \WP_Error(
-                'booking_exception',
-                __('Error creating booking: ', 'vandel-booking') . $e->getMessage()
+                'client_creation_failed',
+                __('Failed to create client', 'vandel-booking')
             );
         }
+        
+        // Add client_id to booking data
+        $booking_data['client_id'] = $client_id;
+        
+        // Set default status if not provided
+        if (!isset($booking_data['status'])) {
+            $booking_data['status'] = get_option('vandel_default_booking_status', 'pending');
+        }
+        
+        // Set created_at if not provided
+        if (!isset($booking_data['created_at'])) {
+            $booking_data['created_at'] = current_time('mysql');
+        }
+        
+        // Process location data if available
+        if (!empty($booking_data['zip_code_data'])) {
+            if (is_string($booking_data['zip_code_data'])) {
+                $booking_data['zip_code_data'] = json_decode($booking_data['zip_code_data'], true);
+            }
+            
+            // Store location info in access_info field
+            if (!isset($booking_data['access_info']) || empty($booking_data['access_info'])) {
+                $location_info = [
+                    'zip_code' => $booking_data['zip_code_data']['zip_code'] ?? '',
+                    'city' => $booking_data['zip_code_data']['city'] ?? '',
+                    'area_name' => $booking_data['zip_code_data']['area_name'] ?? '',
+                    'state' => $booking_data['zip_code_data']['state'] ?? '',
+                    'country' => $booking_data['zip_code_data']['country'] ?? '',
+                ];
+                $booking_data['access_info'] = json_encode($location_info);
+            }
+            
+            // Add location price adjustments
+            if (isset($booking_data['zip_code_data']['price_adjustment']) || 
+                isset($booking_data['zip_code_data']['service_fee'])) {
+                $price_adjustment = isset($booking_data['zip_code_data']['price_adjustment']) ? 
+                    floatval($booking_data['zip_code_data']['price_adjustment']) : 0;
+                $service_fee = isset($booking_data['zip_code_data']['service_fee']) ? 
+                    floatval($booking_data['zip_code_data']['service_fee']) : 0;
+                    
+                // Store the location fees separately for reference
+                $booking_data['location_adjustment'] = $price_adjustment;
+                $booking_data['location_fee'] = $service_fee;
+            }
+        }
+        
+        // Create booking using model or direct insertion
+        $booking_id = $this->createBookingRecord($booking_data);
+        
+        if (!$booking_id || is_wp_error($booking_id)) {
+            return $booking_id ?: new \WP_Error(
+                'booking_creation_failed',
+                __('Failed to create booking', 'vandel-booking')
+            );
+        }
+        
+        // Store location fees as meta if needed
+        if (!empty($booking_data['location_adjustment']) || !empty($booking_data['location_fee'])) {
+            update_post_meta($booking_id, '_vandel_location_adjustment', $booking_data['location_adjustment'] ?? 0);
+            update_post_meta($booking_id, '_vandel_location_fee', $booking_data['location_fee'] ?? 0);
+        }
+        
+        // Send notifications if available
+        $this->sendNotifications($booking_id);
+        
+        // Update client total spent
+        $this->updateClientSpending($client_id, $booking_data['total_price']);
+        
+        // Return booking ID
+        return $booking_id;
+        
+    } catch (\Exception $e) {
+        error_log('Exception in createBooking: ' . $e->getMessage());
+        return new \WP_Error(
+            'booking_exception',
+            __('Error creating booking: ', 'vandel-booking') . $e->getMessage()
+        );
     }
-    
+}
     /**
      * Get or create client
      * 

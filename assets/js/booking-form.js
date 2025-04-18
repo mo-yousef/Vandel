@@ -3,7 +3,7 @@
  * Handles multi-step form navigation, validation, and AJAX requests
  */
 (function ($) {
-  "use strict";
+  ("use strict");
 
   // Initialize when document is ready
   $(document).ready(function () {
@@ -173,9 +173,43 @@
             $("#vandel-zip-code-data").val(JSON.stringify(response.data));
 
             // Show location details
-            $("#vandel-city-state").text(response.data.location_string);
+            let locationText = response.data.city;
+            if (response.data.area_name) {
+              locationText = response.data.area_name + ", " + locationText;
+            }
+            if (response.data.state) {
+              locationText += ", " + response.data.state;
+            }
+
+            $("#vandel-city-state").text(locationText);
             $("#vandel-country").text(response.data.country);
             $locationDetails.slideDown();
+
+            // Display price info if available
+            let priceInfo = "";
+            if (
+              response.data.price_adjustment &&
+              parseFloat(response.data.price_adjustment) !== 0
+            ) {
+              const sign =
+                parseFloat(response.data.price_adjustment) > 0 ? "+" : "";
+              priceInfo += `<div>Location Fee: ${sign}${
+                vandelBooking.currencySymbol
+              }${parseFloat(response.data.price_adjustment).toFixed(2)}</div>`;
+            }
+            if (
+              response.data.service_fee &&
+              parseFloat(response.data.service_fee) > 0
+            ) {
+              priceInfo += `<div>Service Fee: ${
+                vandelBooking.currencySymbol
+              }${parseFloat(response.data.service_fee).toFixed(2)}</div>`;
+            }
+            if (priceInfo) {
+              $locationDetails.append(
+                `<div class="vandel-price-info">${priceInfo}</div>`
+              );
+            }
 
             // Clear validation message
             $zipMessage.empty();
@@ -203,7 +237,7 @@
     $zipField.on("input", function () {
       // Clear previous validation
       $zipMessage.empty();
-      $locationDetails.slideUp();
+      $locationDetails.slideUp().find(".vandel-price-info").remove();
       $zipNextButton.prop("disabled", true);
 
       // Enable next button if field has value (actual validation will happen on click)
@@ -429,6 +463,9 @@
   /**
    * Calculate total price based on selections
    */
+  /**
+   * Calculate total price based on selections
+   */
   function calculateTotalPrice(formData) {
     let totalPrice = formData.service_data.price || 0;
     let optionsPrice = 0;
@@ -448,6 +485,24 @@
       const serviceFee = parseFloat(formData.zip_code_data.service_fee || 0);
 
       totalPrice += priceAdjustment + serviceFee;
+
+      // Update any display elements with fee information
+      if ($("#summary-adjustment").length) {
+        if (priceAdjustment !== 0) {
+          const sign = priceAdjustment > 0 ? "+" : "";
+          $("#summary-adjustment").text(sign + formatPrice(priceAdjustment));
+          $("#summary-adjustment-container").show();
+        } else {
+          $("#summary-adjustment-container").hide();
+        }
+
+        if (serviceFee > 0) {
+          $("#summary-service-fee").text(formatPrice(serviceFee));
+          $("#summary-service-fee-container").show();
+        } else {
+          $("#summary-service-fee-container").hide();
+        }
+      }
     }
 
     // Update form data
@@ -455,6 +510,11 @@
 
     // Update hidden field
     $("#vandel-total-price").val(totalPrice);
+
+    // Update price display if available
+    if ($("#vandel-price-display").length) {
+      $("#vandel-price-display").text(formatPrice(totalPrice));
+    }
 
     return totalPrice;
   }
@@ -562,6 +622,9 @@
   /**
    * Update booking summary before confirmation
    */
+  /**
+   * Update booking summary before confirmation
+   */
   function updateBookingSummary($form, formData) {
     // Service details
     $("#summary-service").text(formData.service_data.title || "--");
@@ -584,11 +647,23 @@
 
     $("#summary-time").text(time || "--");
 
-    // Location (if ZIP code feature is enabled)
-    if (vandelBooking.zipCodeEnabled && formData.zip_code_data) {
-      $("#summary-location").text(
-        formData.zip_code_data.location_string || formData.zip_code
+    // Location information
+    if (formData.zip_code_data) {
+      let locationText = formData.zip_code_data.city || "--";
+      if (formData.zip_code_data.area_name) {
+        locationText = formData.zip_code_data.area_name + ", " + locationText;
+      }
+      if (formData.zip_code_data.state) {
+        locationText += ", " + formData.zip_code_data.state;
+      }
+
+      $("#summary-location").text(locationText);
+      $("#summary-zip-code").text(
+        formData.zip_code_data.zip_code || formData.zip_code
       );
+      $("#summary-location-container").show();
+    } else {
+      $("#summary-location-container").hide();
     }
 
     // Comments
@@ -646,8 +721,8 @@
       $("#summary-options-price-container").hide();
     }
 
-    // ZIP code adjustments if applicable
-    if (vandelBooking.zipCodeEnabled && formData.zip_code_data) {
+    // Location fees
+    if (formData.zip_code_data) {
       const priceAdjustment = parseFloat(
         formData.zip_code_data.price_adjustment || 0
       );
