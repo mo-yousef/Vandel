@@ -495,53 +495,82 @@ class BookingForm {
     /**
      * AJAX handler to validate ZIP code
      */
-    public function ajaxValidateZipCode() {
-        check_ajax_referer('vandel_booking_nonce', 'nonce');
+/**
+ * AJAX handler to validate ZIP code
+ */
+public function ajaxValidateZipCode() {
+    check_ajax_referer('vandel_booking_nonce', 'nonce');
+    
+    $zip_code = sanitize_text_field($_POST['zip_code']);
+    
+    if (empty($zip_code)) {
+        wp_send_json_error(['message' => __('ZIP Code cannot be empty', 'vandel-booking')]);
+        return;
+    }
+    
+    // First try Location Management system (new system)
+    $location_found = false;
+    if (class_exists('\\VandelBooking\\Location\\LocationModel')) {
+        $location_model = new \VandelBooking\Location\LocationModel();
         
-        $zip_code = sanitize_text_field($_POST['zip_code']);
+        // Check if getByZipCode method exists
+        if (method_exists($location_model, 'getByZipCode')) {
+            $location = $location_model->getByZipCode($zip_code);
+            
+            if ($location) {
+                $location_found = true;
+                
+                // Check if location is active
+                if ($location->is_active !== 'yes') {
+                    wp_send_json_error(['message' => __('Sorry, we do not serve this area yet', 'vandel-booking')]);
+                    return;
+                }
+                
+                wp_send_json_success([
+                    'zip_code' => $location->zip_code,
+                    'city' => $location->city,
+                    'area_name' => $location->area_name,
+                    'state' => isset($location->state) ? $location->state : '',
+                    'country' => $location->country,
+                    'price_adjustment' => floatval($location->price_adjustment),
+                    'service_fee' => floatval($location->service_fee),
+                    'location_string' => sprintf('%s, %s', $location->area_name ? $location->area_name . ', ' : '', $location->city)
+                ]);
+                return;
+            }
+        }
+    }
+    
+    // If not found in Location Management, try ZIP Code model (legacy)
+    if (!$location_found && class_exists('\\VandelBooking\\Location\\ZipCodeModel')) {
+        $zip_code_model = new \VandelBooking\Location\ZipCodeModel();
+        $zip_details = $zip_code_model->get($zip_code);
         
-        if (empty($zip_code)) {
-            wp_send_json_error(['message' => __('ZIP Code cannot be empty', 'vandel-booking')]);
+        if (!$zip_details) {
+            wp_send_json_error(['message' => __('ZIP Code not found in our service area', 'vandel-booking')]);
             return;
         }
         
-        // Check if zip code model exists
-        if (class_exists('\\VandelBooking\\Location\\ZipCodeModel')) {
-            $zip_code_model = new \VandelBooking\Location\ZipCodeModel();
-            $zip_details = $zip_code_model->get($zip_code);
-            
-            if (!$zip_details) {
-                wp_send_json_error(['message' => __('ZIP Code not found in our service area', 'vandel-booking')]);
-                return;
-            }
-            
-            if ($zip_details->is_serviceable !== 'yes') {
-                wp_send_json_error(['message' => __('Sorry, we do not serve this area yet', 'vandel-booking')]);
-                return;
-            }
-            
-            wp_send_json_success([
-                'zip_code' => $zip_details->zip_code,
-                'city' => $zip_details->city,
-                'state' => $zip_details->state,
-                'country' => $zip_details->country,
-                'price_adjustment' => floatval($zip_details->price_adjustment),
-                'service_fee' => floatval($zip_details->service_fee),
-                'location_string' => sprintf('%s, %s', $zip_details->city, $zip_details->state)
-            ]);
-        } else {
-            // If ZIP code model doesn't exist, simulate success for demo purposes
-            wp_send_json_success([
-                'zip_code' => $zip_code,
-                'city' => 'Demo City',
-                'state' => 'DS',
-                'country' => 'Demo Country',
-                'price_adjustment' => 0,
-                'service_fee' => 0,
-                'location_string' => 'Demo City, DS'
-            ]);
+        if ($zip_details->is_serviceable !== 'yes') {
+            wp_send_json_error(['message' => __('Sorry, we do not serve this area yet', 'vandel-booking')]);
+            return;
         }
+        
+        wp_send_json_success([
+            'zip_code' => $zip_details->zip_code,
+            'city' => $zip_details->city,
+            'state' => $zip_details->state,
+            'country' => $zip_details->country,
+            'price_adjustment' => floatval($zip_details->price_adjustment),
+            'service_fee' => floatval($zip_details->service_fee),
+            'location_string' => sprintf('%s, %s', $zip_details->city, $zip_details->state)
+        ]);
+        return;
     }
+    
+    // If no ZIP code system is available or ZIP code not found in either system
+    wp_send_json_error(['message' => __('ZIP Code not found in our service area', 'vandel-booking')]);
+}
     
 /**
  * AJAX handler to get service details

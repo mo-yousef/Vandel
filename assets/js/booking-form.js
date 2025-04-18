@@ -1,9 +1,9 @@
 /**
  * Vandel Booking Form JavaScript
- * Handles multi-step form navigation, validation, and AJAX requests
+ * Improved version with real-time ZIP code validation
  */
 (function ($) {
-  ("use strict");
+  "use strict";
 
   // Initialize when document is ready
   $(document).ready(function () {
@@ -33,7 +33,7 @@
     // Initialize form navigation
     initFormNavigation($form, formData);
 
-    // Initialize ZIP code validation
+    // Initialize ZIP code validation with enhanced real-time feedback
     if (typeof vandelBooking !== "undefined" && vandelBooking.zipCodeEnabled) {
       initZipCodeValidation($form, formData);
     }
@@ -124,7 +124,7 @@
   }
 
   /**
-   * Initialize ZIP code validation
+   * Enhanced ZIP code validation with real-time feedback
    */
   function initZipCodeValidation($form, formData) {
     const $zipField = $("#vandel-zip-code");
@@ -137,22 +137,59 @@
     // Disable next button initially
     $zipNextButton.prop("disabled", true);
 
-    // Validate ZIP code on next button click
-    $zipNextButton.on("click", function (e) {
-      e.preventDefault();
+    // Create validation status indicator
+    const $statusIndicator = $('<div class="vandel-validation-status"></div>');
+    $zipField.after($statusIndicator);
 
-      const zipCode = $zipField.val().trim();
-      if (!zipCode) {
-        showValidationError($zipMessage, vandelBooking.strings.zipCodeError);
-        return false;
+    // Add input state indicators
+    $zipField.addClass("vandel-validating-input");
+
+    // Debounce function to limit API calls
+    let zipTimeout = null;
+    const DEBOUNCE_DELAY = 500; // ms
+
+    // Validate on ZIP code input with debounce
+    $zipField.on("input", function () {
+      const zipCode = $(this).val().trim();
+
+      // Clear previous timeout and validation
+      clearTimeout(zipTimeout);
+      $zipMessage.empty();
+      $locationDetails.slideUp().find(".vandel-price-info").remove();
+      $zipNextButton.prop("disabled", true);
+
+      // Remove previous validation classes
+      $zipField.removeClass("valid-zip invalid-zip");
+      $statusIndicator.removeClass("valid-indicator invalid-indicator").empty();
+
+      // Enable next button if field has value (actual validation will happen via API)
+      if (zipCode.length < 3) {
+        // Not enough characters yet, just wait
+        $statusIndicator.removeClass("validating-indicator");
+        return;
       }
 
-      // Show loading state
-      $zipMessage.html(
-        '<div class="vandel-loading">' +
-          __("Checking...", "vandel-booking") +
-          "</div>"
-      );
+      // Show validating indicator
+      $statusIndicator
+        .addClass("validating-indicator")
+        .html('<span class="validating-spinner"></span>');
+
+      // Set a timeout to validate after user stops typing
+      zipTimeout = setTimeout(function () {
+        validateZipCode(zipCode);
+      }, DEBOUNCE_DELAY);
+    });
+
+    // Function to validate ZIP code via AJAX
+    function validateZipCode(zipCode) {
+      if (!zipCode) {
+        showValidationError($zipMessage, vandelBooking.strings.zipCodeError);
+        $zipField.addClass("invalid-zip");
+        $statusIndicator
+          .addClass("invalid-indicator")
+          .html('<span class="dashicons dashicons-no"></span>');
+        return;
+      }
 
       // Call AJAX to validate ZIP code
       $.ajax({
@@ -211,39 +248,59 @@
               );
             }
 
+            // Update validation status
+            $zipField.addClass("valid-zip");
+            $statusIndicator
+              .removeClass("validating-indicator")
+              .addClass("valid-indicator")
+              .html('<span class="dashicons dashicons-yes"></span>');
+
             // Clear validation message
             $zipMessage.empty();
 
             // Enable next button
             $zipNextButton.prop("disabled", false);
-
-            // Trigger next step
-            $zipNextButton.trigger("click");
           } else {
             showValidationError($zipMessage, response.data.message);
+            $zipField.addClass("invalid-zip");
+            $statusIndicator
+              .removeClass("validating-indicator")
+              .addClass("invalid-indicator")
+              .html('<span class="dashicons dashicons-no"></span>');
             $zipNextButton.prop("disabled", true);
             $locationDetails.slideUp();
           }
         },
         error: function () {
           showValidationError($zipMessage, vandelBooking.strings.errorOccurred);
+          $zipField.addClass("invalid-zip");
+          $statusIndicator
+            .removeClass("validating-indicator")
+            .addClass("invalid-indicator")
+            .html('<span class="dashicons dashicons-warning"></span>');
           $zipNextButton.prop("disabled", true);
           $locationDetails.slideUp();
         },
       });
-    });
+    }
 
-    // Validate on ZIP code change
-    $zipField.on("input", function () {
-      // Clear previous validation
-      $zipMessage.empty();
-      $locationDetails.slideUp().find(".vandel-price-info").remove();
-      $zipNextButton.prop("disabled", true);
-
-      // Enable next button if field has value (actual validation will happen on click)
-      if ($(this).val().trim().length > 3) {
-        $zipNextButton.prop("disabled", false);
+    // Also keep the next button validation for better UX
+    $zipNextButton.on("click", function (e) {
+      const zipCode = $zipField.val().trim();
+      if (!zipCode) {
+        e.preventDefault();
+        showValidationError($zipMessage, vandelBooking.strings.zipCodeError);
+        return false;
       }
+
+      // If we already have validated data, proceed
+      if (formData.zip_code && formData.zip_code === zipCode) {
+        return true;
+      }
+
+      // Otherwise re-validate to be sure
+      e.preventDefault();
+      validateZipCode(zipCode);
     });
   }
 
@@ -278,8 +335,8 @@
 
       // Show loading state
       $optionsContentContainer.html(
-        '<div class="vandel-loading">' +
-          __("Loading options...", "vandel-booking") +
+        '<div class="vandel-loading"><span class="vandel-spinner"></span> ' +
+          vandelBooking.strings.loadingOptions +
           "</div>"
       );
       $optionsContainer.slideDown();
@@ -308,13 +365,20 @@
               $optionsContainer.slideUp();
             }
 
+            // Update any price display
+            if ($("#vandel-price-display").length) {
+              $("#vandel-price-display").text(
+                formatPrice(formData.total_price)
+              );
+            }
+
             // Enable next button
             $serviceNextButton.prop("disabled", false);
           } else {
             const errorMsg =
               response.data && response.data.message
                 ? response.data.message
-                : "An error occurred. Please try again.";
+                : vandelBooking.strings.errorOccurred;
 
             $optionsContentContainer.html(
               '<div class="vandel-error">' + errorMsg + "</div>"
@@ -325,7 +389,9 @@
         error: function (xhr, status, error) {
           console.error("AJAX Error:", status, error);
           $optionsContentContainer.html(
-            '<div class="vandel-error">An error occurred. Please try again.</div>'
+            '<div class="vandel-error">' +
+              vandelBooking.strings.errorOccurred +
+              "</div>"
           );
           $serviceNextButton.prop("disabled", true);
         },
@@ -463,9 +529,6 @@
   /**
    * Calculate total price based on selections
    */
-  /**
-   * Calculate total price based on selections
-   */
   function calculateTotalPrice(formData) {
     let totalPrice = formData.service_data.price || 0;
     let optionsPrice = 0;
@@ -550,21 +613,19 @@
         total_price: formData.total_price,
       };
 
-      // Add options if any - FIXED VERSION
+      // Add options if any
       if (Object.keys(formData.selected_options).length > 0) {
         Object.entries(formData.selected_options).forEach(([id, option]) => {
           submissionData[`options[${id}]`] = option.value;
         });
       }
 
-      console.log("Submitting booking with data:", submissionData);
-
       // Show loading state
       $submitButton
         .prop("disabled", true)
         .html(
           '<span class="vandel-loading-spinner"></span> ' +
-            vandelBooking.strings.processingPayment
+            vandelBooking.strings.processingBooking
         );
 
       // Submit booking via AJAX
@@ -573,8 +634,6 @@
         type: "POST",
         data: submissionData,
         success: function (response) {
-          console.log("Booking submission response:", response);
-
           if (response.success) {
             // Show success message
             $form.find(".vandel-booking-step").removeClass("active");
@@ -619,9 +678,6 @@
     });
   }
 
-  /**
-   * Update booking summary before confirmation
-   */
   /**
    * Update booking summary before confirmation
    */
@@ -754,13 +810,21 @@
   function validateStep(step, $form, formData) {
     switch (step) {
       case "location":
-        // Already validated via AJAX
+        // Make sure we have valid ZIP code data
+        if (formData.zip_code === "") {
+          const $zipField = $("#vandel-zip-code");
+          const $zipMessage = $("#vandel-zip-validation-message");
+
+          showValidationError($zipMessage, vandelBooking.strings.zipCodeError);
+          $zipField.addClass("invalid-zip").focus();
+          return false;
+        }
         return true;
 
       case "service":
         // Validate service selection
         if (!formData.service_id) {
-          alert(vandelBooking.strings.requiredField);
+          alert(vandelBooking.strings.selectServiceError);
           return false;
         }
         return true;
@@ -879,12 +943,5 @@
     // Simple validation - at least 6 digits
     const phoneRegex = /^[\d\s\+\-\(\)]{6,20}$/;
     return phoneRegex.test(phone);
-  }
-
-  /**
-   * Translation helper function
-   */
-  function __(text, domain) {
-    return text;
   }
 })(jQuery);

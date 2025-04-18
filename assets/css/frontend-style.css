@@ -621,7 +621,8 @@
   border-radius: var(--vandel-border-radius);
   margin-bottom: 15px;
 }
-.vandel-field-error {
+.vandel-field-error,
+.vandel-error-message {
   color: red;
   font-size: 12px;
   background: #ff000014;

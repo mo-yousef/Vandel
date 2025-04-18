@@ -333,3 +333,67 @@ function vandel_ajax_recalculate_client_stats() {
 
 // Register AJAX handler
 add_action('wp_ajax_vandel_recalculate_client_stats', 'vandel_ajax_recalculate_client_stats');
+
+
+
+/**
+ * Migrate legacy ZIP codes to Location Management
+ */
+function vandel_migrate_zip_codes_to_locations() {
+    global $wpdb;
+    
+    // Check if both tables exist
+    $zip_codes_table = $wpdb->prefix . 'vandel_zip_codes';
+    $locations_table = $wpdb->prefix . 'vandel_locations';
+    
+    if ($wpdb->get_var("SHOW TABLES LIKE '$zip_codes_table'") !== $zip_codes_table ||
+        $wpdb->get_var("SHOW TABLES LIKE '$locations_table'") !== $locations_table) {
+        return false;
+    }
+    
+    // Get all ZIP codes
+    $zip_codes = $wpdb->get_results("SELECT * FROM $zip_codes_table");
+    
+    if (empty($zip_codes)) {
+        return false;
+    }
+    
+    $imported = 0;
+    
+    foreach ($zip_codes as $zip) {
+        // Check if already exists in locations
+        $exists = $wpdb->get_var($wpdb->prepare(
+            "SELECT COUNT(*) FROM $locations_table WHERE zip_code = %s AND country = %s AND city = %s",
+            $zip->zip_code, $zip->country, $zip->city
+        ));
+        
+        if ($exists) {
+            continue; // Skip if already exists
+        }
+        
+        // Insert into locations
+        $result = $wpdb->insert(
+            $locations_table,
+            [
+                'country' => $zip->country,
+                'city' => $zip->city,
+                'area_name' => '', // No area name in legacy data
+                'zip_code' => $zip->zip_code,
+                'price_adjustment' => $zip->price_adjustment,
+                'service_fee' => $zip->service_fee,
+                'is_active' => $zip->is_serviceable,
+                'created_at' => current_time('mysql')
+            ],
+            ['%s', '%s', '%s', '%s', '%f', '%f', '%s', '%s']
+        );
+        
+        if ($result) {
+            $imported++;
+        }
+    }
+    
+    return $imported;
+}
+
+// Add this to an admin action or run manually
+add_action('admin_init', 'vandel_migrate_zip_codes_to_locations');

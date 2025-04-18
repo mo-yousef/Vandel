@@ -134,32 +134,34 @@ class LocationModel {
         ));
     }
     
-    /**
-     * Get location details by ZIP code
-     * 
-     * @param string $zip_code ZIP Code
-     * @param string $country Country (optional)
-     * @param string $city City (optional)
-     * @return object|null Location details
-     */
-    public function getByZipCode($zip_code, $country = '', $city = '') {
-        global $wpdb;
-        
-        $query = "SELECT * FROM {$this->table} WHERE zip_code = %s";
-        $params = [$zip_code];
-        
-        if (!empty($country)) {
-            $query .= " AND country = %s";
-            $params[] = $country;
-        }
-        
-        if (!empty($city)) {
-            $query .= " AND city = %s";
-            $params[] = $city;
-        }
-        
-        return $wpdb->get_row($wpdb->prepare($query, $params));
+/**
+ * Get location by ZIP code
+ * 
+ * @param string $zip_code ZIP code
+ * @param string $country Country (optional)
+ * @param string $city City (optional)
+ * @return object|false Location object or false if not found
+ */
+public function getByZipCode($zip_code, $country = '', $city = '') {
+    global $wpdb;
+    
+    $query = "SELECT * FROM {$this->table} WHERE zip_code = %s";
+    $values = [$zip_code];
+    
+    if (!empty($country)) {
+        $query .= " AND country = %s";
+        $values[] = $country;
     }
+    
+    if (!empty($city)) {
+        $query .= " AND city = %s";
+        $values[] = $city;
+    }
+    
+    $query .= " LIMIT 1";
+    
+    return $wpdb->get_row($wpdb->prepare($query, $values));
+}
     
     /**
      * Update a location
