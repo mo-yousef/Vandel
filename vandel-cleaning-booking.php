@@ -751,6 +751,17 @@ function vandel_init_locations() {
 register_activation_hook(__FILE__, 'vandel_ensure_tables_exist');
 register_activation_hook(__FILE__, 'vandel_init_locations');
 
+
+register_activation_hook(__FILE__, function() {
+
+    
+    // Initialize location data
+    if (class_exists('\\VandelBooking\\Location\\LocationModel')) {
+        $location_model = new \VandelBooking\Location\LocationModel();
+        $location_model->initializeSweden();
+    }
+});
+
 // Also run them on admin init, but only once
 add_action('admin_init', function() {
     // Only run if tables don't exist or if the option is not set
@@ -944,3 +955,40 @@ function vandel_init_location_system() {
 
 // Hook the initialization function
 add_action('plugins_loaded', 'vandel_init_location_system', 20);
+
+
+
+// Initialize Location Model
+if (file_exists(VANDEL_PLUGIN_DIR . 'includes/location/class-location-model.php')) {
+    require_once VANDEL_PLUGIN_DIR . 'includes/location/class-location-model.php';
+    add_action('init', function() {
+        if (class_exists('\\VandelBooking\\Location\\LocationModel')) {
+            global $vandel_location_model;
+            $vandel_location_model = new \VandelBooking\Location\LocationModel();
+        }
+    });
+}
+
+// Initialize Booking Workflow
+if (file_exists(VANDEL_PLUGIN_DIR . 'includes/booking/class-booking-workflow.php')) {
+    require_once VANDEL_PLUGIN_DIR . 'includes/booking/class-booking-workflow.php';
+    add_action('init', function() {
+        if (class_exists('\\VandelBooking\\Booking\\BookingWorkflow')) {
+            global $vandel_booking_workflow;
+            $vandel_booking_workflow = new \VandelBooking\Booking\BookingWorkflow();
+        }
+    });
+}
+
+// Initialize Client Dashboard
+if (file_exists(VANDEL_PLUGIN_DIR . 'includes/frontend/class-client-dashboard.php')) {
+    require_once VANDEL_PLUGIN_DIR . 'includes/frontend/class-client-dashboard.php';
+    add_action('init', function() {
+        if (class_exists('\\VandelBooking\\Frontend\\ClientDashboard')) {
+            global $vandel_client_dashboard;
+            $vandel_client_dashboard = new \VandelBooking\Frontend\ClientDashboard();
+        }
+    });
+}
+
+

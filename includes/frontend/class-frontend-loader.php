@@ -51,5 +51,6 @@ class FrontendLoader {
                 true
             );
         }
+        
     }
 }

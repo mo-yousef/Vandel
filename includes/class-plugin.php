@@ -532,9 +532,78 @@ class Plugin {
             }
         }
         
+
+
+        // Load location selection component
+        if (class_exists('\\VandelBooking\\Frontend\\LocationSelection')) {
+            new \VandelBooking\Frontend\LocationSelection();
+            $loaded_components[] = 'LocationSelection';
+        }
+        
+        // Load client dashboard component
+        if (class_exists('\\VandelBooking\\Frontend\\ClientDashboard')) {
+            new \VandelBooking\Frontend\ClientDashboard();
+            $loaded_components[] = 'ClientDashboard';
+        }
+        
+
+
         return $loaded_components;
     }
     
+
+/**
+ * Load booking components
+ * 
+ * @return array Loaded components
+ */
+private function loadBookingComponents() {
+    $loaded_components = [];
+    
+    // Load booking workflow component
+    if (class_exists('\\VandelBooking\\Booking\\BookingWorkflow')) {
+        new \VandelBooking\Booking\BookingWorkflow();
+        $loaded_components[] = 'BookingWorkflow';
+    }
+    
+    return $loaded_components;
+}
+
+
+/**
+ * Enqueue frontend assets
+ */
+public function enqueueAssets() {
+    // ... existing code ...
+    
+    // Enqueue location selection script
+    wp_enqueue_script(
+        'vandel-location-selection',
+        VANDEL_PLUGIN_URL . 'assets/js/location-selection.js',
+        ['jquery'],
+        VANDEL_VERSION,
+        true
+    );
+    
+    // Enqueue client dashboard assets
+    global $post;
+    if (is_a($post, 'WP_Post') && has_shortcode($post->post_content, 'vandel_client_dashboard')) {
+        wp_enqueue_style(
+            'vandel-client-dashboard',
+            VANDEL_PLUGIN_URL . 'assets/css/client-dashboard.css',
+            [],
+            VANDEL_VERSION
+        );
+        
+        wp_enqueue_script(
+            'vandel-client-dashboard',
+            VANDEL_PLUGIN_URL . 'assets/js/client-dashboard.js',
+            ['jquery'],
+            VANDEL_VERSION,
+            true
+        );
+    }
+}
     /**
      * Load custom post types
      * 
@@ -618,4 +687,6 @@ class Plugin {
     public function getLoadedComponents() {
         return $this->loaded_components;
     }
+
+
 }
