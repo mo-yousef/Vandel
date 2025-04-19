@@ -1,408 +1,353 @@
 /**
- * Location Selection JavaScript
- * Handles the interactive location selection component for the booking form
+ * Location Selection JavaScript (v2)
+ * Combines original feature‑complete logic with the new improvements
+ * – custom "populated" events instead of arbitrary timeouts
+ * – single reset / hide helpers for cleaner UI resets
+ * – DRY helpers for price + details updates
+ * – retains full area & ZIP validation flows
  */
 (function ($) {
   "use strict";
 
-  // Initialize when document is ready
-  $(document).ready(function () {
-    initLocationSelection();
-  });
+  $(document).ready(initLocationSelection);
 
-  /**
-   * Initialize location selection functionality
-   */
   function initLocationSelection() {
-    // Cache selectors
+    /* ---------------------------------------------------------------------
+     * Cached selectors (use same IDs & classes as template/HTML)
+     * ------------------------------------------------------------------ */
     const $countrySelect = $("#vandel-country");
     const $citySelect = $("#vandel-city");
     const $areaSelect = $("#vandel-area");
     const $zipCodeInput = $("#vandel-zip-code");
     const $locationMessage = $("#vandel-location-message");
     const $locationDetails = $("#vandel-location-details");
+    const $locationArea = $("#vandel-location-area");
+    const $locationCity = $("#vandel-location-city");
+    const $priceInfo = $("#vandel-price-info");
+    const $locationData = $("#vandel-location-data");
     const $nextButton = $(
       '.vandel-booking-step[data-step="location"] .vandel-btn-next'
     );
-    const $locationData = $("#vandel-location-data");
 
-    // Disable city and area selects initially
-    $citySelect.prop("disabled", true);
-    $areaSelect.prop("disabled", true);
+    /* ------------------------------------------------------------------ */
+    /* 1. Initial state                                                   */
+    /* ------------------------------------------------------------------ */
+    disableSelect($citySelect);
+    disableSelect($areaSelect);
+    disableNextBtn();
 
-    // Disable next button initially
-    if ($nextButton.length) {
-      $nextButton.prop("disabled", true);
-    }
-
-    // Handle country selection
+    /* ------------------------------------------------------------------ */
+    /* 2. Country change                                                  */
+    /* ------------------------------------------------------------------ */
     $countrySelect.on("change", function () {
       const country = $(this).val();
 
-      // Reset dependent fields
-      $citySelect
-        .empty()
-        .append(
-          `<option value="">${vandelLocation.strings.selectCity}</option>`
-        )
-        .prop("disabled", true);
-      $areaSelect
-        .empty()
-        .append(
-          `<option value="">${vandelLocation.strings.selectArea}</option>`
-        )
-        .prop("disabled", true);
-      $zipCodeInput.val("");
-      $locationMessage.empty();
-      $locationDetails.slideUp();
+      resetSelects(["city", "area"]);
+      clearZipAndDetails();
 
-      // Disable next button
-      if ($nextButton.length) {
-        $nextButton.prop("disabled", true);
-      }
+      if (!country) return;
 
-      if (!country) {
-        return;
-      }
+      setLoading($citySelect, vandelLocation.strings.loadingCities);
+      loadCities(country);
+    });
 
-      // Show loading state
-      $citySelect.append(
-        `<option value="loading">${vandelLocation.strings.loadingCities}</option>`
-      );
+    /* ------------------------------------------------------------------ */
+    /* 3. City change                                                     */
+    /* ------------------------------------------------------------------ */
+    $citySelect.on("change", function () {
+      const city = $(this).val();
+      const country = $countrySelect.val();
 
-      // Get cities for selected country
+      resetSelects(["area"]);
+      clearZipAndDetails();
+
+      if (!city || !country || city === "loading") return;
+
+      setLoading($areaSelect, vandelLocation.strings.loadingAreas);
+      loadAreas(country, city);
+    });
+
+    /* ------------------------------------------------------------------ */
+    /* 4. Area change (validate location)                                 */
+    /* ------------------------------------------------------------------ */
+    $areaSelect.on("change", function () {
+      const area = $(this).val();
+      const city = $citySelect.val();
+      const country = $countrySelect.val();
+
+      clearZipAndDetails();
+
+      if (!area || !city || !country || area === "loading") return;
+
+      showMessage("info", vandelLocation.strings.validatingLocation);
+      validateLocation({ country, city, area_name: area });
+    });
+
+    /* ------------------------------------------------------------------ */
+    /* 5. ZIP code change (direct validation)                             */
+    /* ------------------------------------------------------------------ */
+    $zipCodeInput.on("change", function () {
+      const zipCode = $(this).val().trim();
+      clearMessagesAndDetails();
+
+      if (!zipCode) return;
+
+      showMessage("info", vandelLocation.strings.validatingZipCode);
+      validateLocation({ zip_code: zipCode });
+    });
+
+    /* ==================================================================
+     *  Helper: AJAX loaders
+     * ================================================================= */
+
+    function loadCities(country) {
       $.ajax({
         url: vandelLocation.ajaxUrl,
         type: "POST",
         data: {
           action: "vandel_get_cities",
           nonce: vandelLocation.nonce,
-          country: country,
+          country,
         },
-        success: function (response) {
-          // Remove loading option
-          $citySelect.find('option[value="loading"]').remove();
-
-          if (response.success && response.data.length > 0) {
-            // Add cities to select
-            response.data.forEach(function (city) {
-              $citySelect.append(`<option value="${city}">${city}</option>`);
-            });
-
-            // Enable city select
-            $citySelect.prop("disabled", false);
-          } else {
-            // No cities found
-            $citySelect.append(
-              `<option value="">${vandelLocation.strings.noLocations}</option>`
-            );
-          }
-        },
-        error: function () {
-          // Remove loading option
-          $citySelect.find('option[value="loading"]').remove();
-          $citySelect.append(
-            `<option value="">${vandelLocation.strings.noLocations}</option>`
+        success: (response) => {
+          populateSelect(
+            $citySelect,
+            response.data,
+            vandelLocation.strings.selectCity
           );
         },
+        error: () => {
+          showNoLocations($citySelect, vandelLocation.strings.selectCity);
+        },
       });
-    });
+    }
 
-    // Handle city selection
-    $citySelect.on("change", function () {
-      const city = $(this).val();
-      const country = $countrySelect.val();
-
-      // Reset dependent fields
-      $areaSelect
-        .empty()
-        .append(
-          `<option value="">${vandelLocation.strings.selectArea}</option>`
-        )
-        .prop("disabled", true);
-      $zipCodeInput.val("");
-      $locationMessage.empty();
-      $locationDetails.slideUp();
-
-      // Disable next button
-      if ($nextButton.length) {
-        $nextButton.prop("disabled", true);
-      }
-
-      if (!city || !country || city === "loading") {
-        return;
-      }
-
-      // Show loading state
-      $areaSelect.append(
-        `<option value="loading">${vandelLocation.strings.loadingAreas}</option>`
-      );
-
-      // Get areas for selected city
+    function loadAreas(country, city) {
       $.ajax({
         url: vandelLocation.ajaxUrl,
         type: "POST",
         data: {
           action: "vandel_get_areas",
           nonce: vandelLocation.nonce,
-          country: country,
-          city: city,
+          country,
+          city,
         },
-        success: function (response) {
-          // Remove loading option
-          $areaSelect.find('option[value="loading"]').remove();
-
-          if (response.success && response.data.length > 0) {
-            // Add areas to select
-            response.data.forEach(function (area) {
-              $areaSelect.append(`<option value="${area}">${area}</option>`);
-            });
-
-            // Enable area select
-            $areaSelect.prop("disabled", false);
-          } else {
-            // No areas found
-            $areaSelect.append(
-              `<option value="">${vandelLocation.strings.noLocations}</option>`
-            );
-          }
-        },
-        error: function () {
-          // Remove loading option
-          $areaSelect.find('option[value="loading"]').remove();
-          $areaSelect.append(
-            `<option value="">${vandelLocation.strings.noLocations}</option>`
+        success: (response) => {
+          populateSelect(
+            $areaSelect,
+            response.data,
+            vandelLocation.strings.selectArea
           );
         },
-      });
-    });
-
-    // Handle area selection
-    $areaSelect.on("change", function () {
-      const area = $(this).val();
-      const city = $citySelect.val();
-      const country = $countrySelect.val();
-
-      // Reset dependent fields
-      $zipCodeInput.val("");
-      $locationMessage.empty();
-      $locationDetails.slideUp();
-
-      // Disable next button
-      if ($nextButton.length) {
-        $nextButton.prop("disabled", true);
-      }
-
-      if (!area || !city || !country || area === "loading") {
-        return;
-      }
-
-      // Show loading state
-      $locationMessage.html(
-        `<div class="vandel-info-message"><span class="vandel-spinner"></span> ${vandelLocation.strings.validatingLocation}</div>`
-      );
-
-      // Validate location
-      $.ajax({
-        url: vandelLocation.ajaxUrl,
-        type: "POST",
-        data: {
-          action: "vandel_validate_location",
-          nonce: vandelLocation.nonce,
-          country: country,
-          city: city,
-          area_name: area,
-        },
-        success: function (response) {
-          if (response.success) {
-            // Store location data
-            if ($locationData.length) {
-              $locationData.val(JSON.stringify(response.data));
-            }
-
-            // Update ZIP code field if available
-            if (response.data.zip_code && $zipCodeInput.length) {
-              $zipCodeInput.val(response.data.zip_code);
-            }
-
-            // Show location details
-            updateLocationDetails(response.data);
-
-            // Enable next button
-            if ($nextButton.length) {
-              $nextButton.prop("disabled", false);
-            }
-
-            // Clear validation message
-            $locationMessage.empty();
-          } else {
-            // Show error message
-            $locationMessage.html(
-              `<div class="vandel-error-message">${response.data.message}</div>`
-            );
-          }
-        },
-        error: function () {
-          // Show error message
-          $locationMessage.html(
-            `<div class="vandel-error-message">${vandelLocation.strings.errorLocation}</div>`
-          );
+        error: () => {
+          showNoLocations($areaSelect, vandelLocation.strings.selectArea);
         },
       });
-    });
-
-    // Handle ZIP code input for direct validation
-    $zipCodeInput.on("change", function () {
-      const zipCode = $(this).val().trim();
-
-      // Reset dependent fields
-      $locationMessage.empty();
-      $locationDetails.slideUp();
-
-      // Disable next button
-      if ($nextButton.length) {
-        $nextButton.prop("disabled", true);
-      }
-
-      if (!zipCode) {
-        return;
-      }
-
-      // Show loading state
-      $locationMessage.html(
-        `<div class="vandel-info-message"><span class="vandel-spinner"></span> ${vandelLocation.strings.validatingZipCode}</div>`
-      );
-
-      // Validate ZIP code
-      $.ajax({
-        url: vandelLocation.ajaxUrl,
-        type: "POST",
-        data: {
-          action: "vandel_validate_location",
-          nonce: vandelLocation.nonce,
-          zip_code: zipCode,
-        },
-        success: function (response) {
-          if (response.success) {
-            // Store location data
-            if ($locationData.length) {
-              $locationData.val(JSON.stringify(response.data));
-            }
-
-            // Update selects if available
-            if (response.data.country && $countrySelect.length) {
-              $countrySelect.val(response.data.country).trigger("change");
-
-              // We need to delay these to ensure the city options are loaded first
-              setTimeout(function () {
-                if (response.data.city && $citySelect.length) {
-                  $citySelect.val(response.data.city).trigger("change");
-
-                  setTimeout(function () {
-                    if (response.data.area_name && $areaSelect.length) {
-                      $areaSelect.val(response.data.area_name);
-                    }
-                  }, 300);
-                }
-              }, 300);
-            }
-
-            // Show location details
-            updateLocationDetails(response.data);
-
-            // Enable next button
-            if ($nextButton.length) {
-              $nextButton.prop("disabled", false);
-            }
-
-            // Clear validation message
-            $locationMessage.empty();
-          } else {
-            // Show error message
-            $locationMessage.html(
-              `<div class="vandel-error-message">${response.data.message}</div>`
-            );
-          }
-        },
-        error: function () {
-          // Show error message
-          $locationMessage.html(
-            `<div class="vandel-error-message">${vandelLocation.strings.errorZipCode}</div>`
-          );
-        },
-      });
-    });
-
-    /**
-     * Update location details display
-     *
-     * @param {Object} locationData Location data
-     */
-    function updateLocationDetails(locationData) {
-      const $locationArea = $("#vandel-location-area");
-      const $locationCity = $("#vandel-location-city");
-      const $priceInfo = $("#vandel-price-info");
-
-      // Update location text
-      if ($locationArea.length && locationData.area_name) {
-        $locationArea.text(locationData.area_name);
-      }
-
-      if ($locationCity.length && locationData.city) {
-        $locationCity.text(
-          locationData.city +
-            (locationData.country ? ", " + locationData.country : "")
-        );
-      }
-
-      // Update price info
-      if ($priceInfo.length) {
-        let priceInfoHtml = "";
-
-        if (
-          locationData.price_adjustment &&
-          parseFloat(locationData.price_adjustment) !== 0
-        ) {
-          const sign = parseFloat(locationData.price_adjustment) > 0 ? "+" : "";
-          priceInfoHtml += `<div>${
-            vandelLocation.strings.priceAdjustment
-          }: ${sign}${formatPrice(locationData.price_adjustment)}</div>`;
-        }
-
-        if (
-          locationData.service_fee &&
-          parseFloat(locationData.service_fee) > 0
-        ) {
-          priceInfoHtml += `<div>${
-            vandelLocation.strings.serviceFee
-          }: ${formatPrice(locationData.service_fee)}</div>`;
-        }
-
-        if (priceInfoHtml) {
-          $priceInfo.html(priceInfoHtml).show();
-        } else {
-          $priceInfo.hide();
-        }
-      }
-
-      // Show location details
-      $locationDetails.slideDown();
     }
 
     /**
-     * Format price with currency symbol
-     *
-     * @param {number} price Price to format
-     * @return {string} Formatted price
+     * Validate by area OR zip. `data` must contain either zip_code OR country+city+area_name
      */
+    function validateLocation(data) {
+      $.ajax({
+        url: vandelLocation.ajaxUrl,
+        type: "POST",
+        data: Object.assign(
+          {
+            action: "vandel_validate_location",
+            nonce: vandelLocation.nonce,
+          },
+          data
+        ),
+        success: (response) => {
+          if (!response.success) {
+            showMessage("error", response.data.message);
+            disableNextBtn();
+            return;
+          }
+
+          // Cache hidden JSON so next step can re‑use the data
+          $locationData.val(JSON.stringify(response.data));
+
+          // Sync selects if validation came from ZIP or mismatched state
+          syncSelectsToValidated(response.data);
+
+          // Apply ZIP suggestion if available
+          if (response.data.zip_code) {
+            $zipCodeInput.val(response.data.zip_code);
+          }
+
+          // UI – show details & price info
+          updateLocationDetails(response.data);
+
+          $locationDetails.slideDown();
+          enableNextBtn();
+          clearMessage();
+        },
+        error: () => {
+          showMessage("error", vandelLocation.strings.errorLocation);
+          disableNextBtn();
+        },
+      });
+    }
+
+    /* ==================================================================
+     *  Helper: select population & reset
+     * ================================================================= */
+
+    function populateSelect($select, items = [], placeholder) {
+      $select.empty().append(`<option value="">${placeholder}</option>`);
+
+      if (items.length) {
+        items.forEach((i) =>
+          $select.append(`<option value="${i}">${i}</option>`)
+        );
+        $select.prop("disabled", false).trigger("populated");
+      } else {
+        $select.append(
+          `<option value="">${vandelLocation.strings.noLocations}</option>`
+        );
+        disableSelect($select);
+      }
+    }
+
+    function setLoading($select, text) {
+      $select.empty().append(`<option value="loading">${text}</option>`);
+      disableSelect($select, true);
+    }
+
+    function showNoLocations($select, placeholder) {
+      $select
+        .empty()
+        .append(
+          `<option value="">${vandelLocation.strings.noLocations}</option>`
+        );
+      disableSelect($select);
+    }
+
+    function resetSelects(list) {
+      if (list.includes("city")) {
+        $citySelect
+          .empty()
+          .append(
+            `<option value="">${vandelLocation.strings.selectCity}</option>`
+          );
+        disableSelect($citySelect);
+      }
+      if (list.includes("area")) {
+        $areaSelect
+          .empty()
+          .append(
+            `<option value="">${vandelLocation.strings.selectArea}</option>`
+          );
+        disableSelect($areaSelect);
+      }
+    }
+
+    function disableSelect($el, keepValue = false) {
+      $el.prop("disabled", true);
+      if (!keepValue) $el.val("");
+    }
+
+    /* ==================================================================
+     *  Helper: message & buttons
+     * ================================================================= */
+
+    function showMessage(type, msg) {
+      const cls =
+        type === "error" ? "vandel-error-message" : "vandel-info-message";
+      $locationMessage.html(
+        `<div class="${cls}">${
+          type === "info" ? '<span class="vandel-spinner"></span> ' : ""
+        }${msg}</div>`
+      );
+    }
+
+    function clearMessage() {
+      $locationMessage.empty();
+    }
+
+    function clearZipAndDetails() {
+      $zipCodeInput.val("");
+      clearMessagesAndDetails();
+    }
+
+    function clearMessagesAndDetails() {
+      clearMessage();
+      hideDetails();
+      disableNextBtn();
+    }
+
+    function hideDetails() {
+      $locationDetails.slideUp();
+      $priceInfo.slideUp();
+      $locationData.val("");
+    }
+
+    function enableNextBtn() {
+      if ($nextButton.length) $nextButton.prop("disabled", false);
+    }
+
+    function disableNextBtn() {
+      if ($nextButton.length) $nextButton.prop("disabled", true);
+    }
+
+    /* ==================================================================
+     *  Helper: sync selects if validation began with ZIP
+     * ================================================================= */
+
+    function syncSelectsToValidated(data) {
+      if ($countrySelect.val() !== data.country) {
+        $countrySelect.val(data.country).trigger("change");
+        $citySelect.one("populated", () => {
+          $citySelect.val(data.city).trigger("change");
+          $areaSelect.one("populated", () => $areaSelect.val(data.area_name));
+        });
+      } else if ($citySelect.val() !== data.city) {
+        $citySelect.val(data.city).trigger("change");
+        $areaSelect.one("populated", () => $areaSelect.val(data.area_name));
+      } else if ($areaSelect.val() !== data.area_name) {
+        $areaSelect.val(data.area_name);
+      }
+    }
+
+    /* ==================================================================
+     *  Helper: details & price display
+     * ================================================================= */
+
+    function updateLocationDetails(data) {
+      if (data.area_name) $locationArea.text(data.area_name);
+      if (data.city)
+        $locationCity.text(
+          `${data.city}${data.country ? ", " + data.country : ""}`
+        );
+
+      // price info
+      let html = "";
+      if (data.price_adjustment && parseFloat(data.price_adjustment) !== 0) {
+        const sign = parseFloat(data.price_adjustment) > 0 ? "+" : "";
+        html += `<div class="vandel-price-adjustment"><span class="vandel-price-label">${
+          vandelLocation.strings.priceAdjustment
+        }:</span> ${sign}${formatPrice(data.price_adjustment)}</div>`;
+      }
+      if (data.service_fee && parseFloat(data.service_fee) > 0) {
+        html += `<div class="vandel-service-fee"><span class="vandel-price-label">${
+          vandelLocation.strings.serviceFee
+        }:</span> ${formatPrice(data.service_fee)}</div>`;
+      }
+      if (html) {
+        $priceInfo.html(html).slideDown();
+      } else {
+        $priceInfo.slideUp();
+      }
+    }
+
     function formatPrice(price) {
-      // Get currency symbol from parent script if available
-      const currencySymbol =
+      const symbol =
         typeof vandelBooking !== "undefined" && vandelBooking.currencySymbol
           ? vandelBooking.currencySymbol
           : "$";
-
-      return currencySymbol + " " + parseFloat(price).toFixed(2);
+      return symbol + parseFloat(price).toFixed(2);
     }
   }
 })(jQuery);

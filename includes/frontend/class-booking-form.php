@@ -33,6 +33,111 @@ class BookingForm {
         add_action('wp_ajax_nopriv_vandel_submit_booking', [$this, 'ajaxSubmitBooking']);
     }
     
+
+/**
+ * Render service selection step
+ * 
+ * @param int $selected_service_id Pre-selected service ID (optional)
+ */
+private function renderServiceStep($selected_service_id = 0) {
+    ?>
+    <div class="vandel-form-section">
+        <h3><?php _e('Select Service', 'vandel-booking'); ?></h3>
+        <p><?php _e('Choose the service you would like to book.', 'vandel-booking'); ?></p>
+
+        <div class="vandel-services-grid">
+            <?php
+            // Check if we have services
+            if (empty($this->services)) {
+                ?>
+                <div class="vandel-empty-services">
+                    <p><?php _e('No services available. Please check back later.', 'vandel-booking'); ?></p>
+                </div>
+                <?php
+            } else {
+                foreach ($this->services as $service) {
+                    $is_selected = $selected_service_id && $selected_service_id == $service['id'];
+                    $popular_badge = isset($service['is_popular']) && $service['is_popular'] ? '<span class="vandel-popular-badge">' . __('Popular', 'vandel-booking') . '</span>' : '';
+                    ?>
+                    <div class="vandel-service-card <?php echo $is_selected ? 'selected' : ''; ?>" data-service-id="<?php echo esc_attr($service['id']); ?>">
+                        <?php echo $popular_badge; ?>
+                        
+                        <div class="vandel-service-header">
+                            <?php if (!empty($service['icon'])): ?>
+                                <div class="vandel-service-icon">
+                                    <img src="<?php echo esc_url($service['icon']); ?>" alt="<?php echo esc_attr($service['title']); ?>">
+                                </div>
+                            <?php endif; ?>
+                            
+                            <h4 class="vandel-service-title"><?php echo esc_html($service['title']); ?></h4>
+                            
+                            <?php if (!empty($service['subtitle'])): ?>
+                                <p class="vandel-service-subtitle"><?php echo esc_html($service['subtitle']); ?></p>
+                            <?php endif; ?>
+                        </div>
+                        
+                        <div class="vandel-service-body">
+                            <?php if (!empty($service['description'])): ?>
+                                <p class="vandel-service-description"><?php echo esc_html($service['description']); ?></p>
+                            <?php endif; ?>
+                            
+                            <div class="vandel-service-meta">
+                                <?php if (isset($service['duration'])): ?>
+                                    <div class="vandel-service-duration">
+                                        <span class="vandel-meta-icon dashicons dashicons-clock"></span>
+                                        <span class="vandel-meta-value">
+                                            <?php 
+                                            $duration = intval($service['duration']);
+                                            if ($duration >= 60) {
+                                                $hours = floor($duration / 60);
+                                                $minutes = $duration % 60;
+                                                if ($minutes > 0) {
+                                                    printf(_x('%d h %d min', 'service duration', 'vandel-booking'), $hours, $minutes);
+                                                } else {
+                                                    printf(_n('%d hour', '%d hours', $hours, 'vandel-booking'), $hours);
+                                                }
+                                            } else {
+                                                printf(_n('%d minute', '%d minutes', $duration, 'vandel-booking'), $duration);
+                                            }
+                                            ?>
+                                        </span>
+                                    </div>
+                                <?php endif; ?>
+                                
+                                <div class="vandel-service-price">
+                                    <span class="vandel-meta-icon dashicons dashicons-tag"></span>
+                                    <span class="vandel-meta-value"><?php echo \VandelBooking\Helpers::formatPrice($service['price']); ?></span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="vandel-service-footer">
+                            <button type="button" class="vandel-btn vandel-select-service"><?php _e('Select', 'vandel-booking'); ?></button>
+                        </div>
+                    </div>
+                    <?php
+                }
+            }
+            ?>
+        </div>
+
+        <!-- Service Options Container -->
+        <div id="vandel-service-options" style="display: none;">
+            <h4><?php _e('Service Options', 'vandel-booking'); ?></h4>
+            <p><?php _e('Customize your service with these additional options.', 'vandel-booking'); ?></p>
+            
+            <div id="vandel-options-container"></div>
+            
+            <!-- Real-time price display -->
+            <div class="vandel-price-display">
+                <span class="vandel-price-label"><?php _e('Total:', 'vandel-booking'); ?></span>
+                <span id="vandel-price-display"><?php echo \VandelBooking\Helpers::formatPrice(0); ?></span>
+            </div>
+        </div>
+    </div>
+    <?php
+}
+
     /**
      * Render booking form
      * 

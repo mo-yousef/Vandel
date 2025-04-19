@@ -4,7 +4,15 @@
 (function ($) {
   "use strict";
 
+  // Initialize when document is ready
   $(document).ready(function () {
+    initLocationManagement();
+  });
+
+  /**
+   * Initialize location management functionality
+   */
+  function initLocationManagement() {
     // Open add location modal
     $(".add-new-location").on("click", function (e) {
       e.preventDefault();
@@ -158,5 +166,5 @@
       $("#service_fee").val("0");
       $("#is_active").prop("checked", true);
     }
-  });
+  }
 })(jQuery);

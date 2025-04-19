@@ -992,3 +992,45 @@ if (file_exists(VANDEL_PLUGIN_DIR . 'includes/frontend/class-client-dashboard.ph
 }
 
 
+
+
+
+/**
+ * Hide WP left menu + top bar for the “Vandel Dashboard” admin page.
+ */
+add_action( 'admin_head', function () {
+
+	// Bail early if we’re not on *exactly* the plugin page
+	if ( ! isset( $_GET['page'] ) || $_GET['page'] !== 'vandel-dashboard' ) {
+		return;
+	}
+
+	?>
+	<style>
+		/* Top admin bar */
+		#wpadminbar            { display: none !important; }
+body,
+.vandel-dashboard-container {
+    background: #f7f9fb;
+}
+		/* Left admin menu & its wrapper */
+		#adminmenumain,
+		#adminmenuwrap,
+		#adminmenu             { display: none !important; }
+
+		/* Push the content to the very left & remove top padding left by the bar */
+		#wpcontent,
+		#wpbody,
+		#wpwrap                { margin: 0 !important; padding-top: 0 !important; }
+
+		/* Optional: hide footer / nag notices if you want a *totally* clean canvas */
+		#wpfooter,
+		.update-nag,
+		.notice,
+		#screen-meta-links     { display: none !important; }
+	</style>
+	<?php
+} );
+
+
+
