@@ -68,6 +68,8 @@ class LocationService {
         
         // Enqueue admin scripts
         add_action('admin_enqueue_scripts', [$this, 'enqueue_admin_scripts']);
+
+        add_action('rest_api_init', [$this, 'register_rest_api']);
     }
     
     /**
@@ -1518,4 +1520,5 @@ public function ajax_update_zipcode() {
         
         return $data;
     }
+
 }
