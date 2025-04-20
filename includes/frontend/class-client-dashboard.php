@@ -431,7 +431,6 @@ class ClientDashboard {
         
         // Check cancellation window
         $cancellation_window = intval(get_option('vandel_booking_cancellation_window', 24));
-        
         if ($cancellation_window > 0) {
             $booking_time = strtotime($booking->booking_date);
             $current_time = current_time('timestamp');

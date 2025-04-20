@@ -992,9 +992,6 @@ if (file_exists(VANDEL_PLUGIN_DIR . 'includes/frontend/class-client-dashboard.ph
 }
 
 
-
-
-
 /**
  * Hide WP left menu + top bar for the “Vandel Dashboard” admin page.
  */
