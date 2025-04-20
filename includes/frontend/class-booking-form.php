@@ -138,6 +138,118 @@ private function renderServiceStep($selected_service_id = 0) {
     <?php
 }
 
+/**
+ * Function to integrate LocationService with the booking form
+ * Add this to your booking form class
+ */
+function integrate_location_service_with_booking_form() {
+    // Check if LocationService exists
+    if (!class_exists('\\VandelBooking\\Location\\LocationService')) {
+        return;
+    }
+    
+    // Initialize LocationService
+    $location_service = new \VandelBooking\Location\LocationService();
+    
+    // Enqueue necessary scripts
+    wp_enqueue_script(
+        'vandel-location-frontend',
+        VANDEL_PLUGIN_URL . 'assets/js/location-frontend.js',
+        ['jquery'],
+        VANDEL_VERSION,
+        true
+    );
+    
+    // Get location data for the form
+    $location_data = [];
+    
+    // Get enabled countries
+    $enabled_countries = get_option('vandel_enabled_countries', []);
+    
+    if (!empty($enabled_countries)) {
+        $location_data['countries'] = $enabled_countries;
+        
+        // Get enabled cities for each country
+        $enabled_cities = get_option('vandel_enabled_cities', []);
+        $location_data['cities'] = $enabled_cities;
+    }
+    
+    // Localize script with data
+    wp_localize_script(
+        'vandel-location-frontend',
+        'vandelLocationData',
+        [
+            'ajaxUrl' => admin_url('admin-ajax.php'),
+            'nonce' => wp_create_nonce('vandel_booking_nonce'),
+            'locations' => $location_data,
+            'strings' => [
+                'selectCountry' => __('Select Country', 'vandel-booking'),
+                'selectCity' => __('Select City', 'vandel-booking'),
+                'enterZipCode' => __('Enter ZIP Code', 'vandel-booking'),
+                'validating' => __('Validating...', 'vandel-booking'),
+                'invalidZipCode' => __('Invalid ZIP code or area not serviced', 'vandel-booking')
+            ]
+        ]
+    );
+    
+    // Add location fields to the booking form
+    add_action('vandel_booking_form_after_service_selection', function() use ($location_data) {
+        ?>
+        <div class="vandel-location-fields">
+            <h3><?php _e('Your Location', 'vandel-booking'); ?></h3>
+            
+            <div class="vandel-form-row">
+                <div class="vandel-form-group">
+                    <label for="vandel-country"><?php _e('Country', 'vandel-booking'); ?></label>
+                    <select id="vandel-country" name="country" required>
+                        <option value=""><?php _e('Select Country', 'vandel-booking'); ?></option>
+                        <?php foreach ($location_data['countries'] as $country): ?>
+                            <option value="<?php echo esc_attr($country); ?>"><?php echo esc_html($country); ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                
+                <div class="vandel-form-group">
+                    <label for="vandel-city"><?php _e('City', 'vandel-booking'); ?></label>
+                    <select id="vandel-city" name="city" required disabled>
+                        <option value=""><?php _e('Select City', 'vandel-booking'); ?></option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="vandel-form-row">
+                <div class="vandel-form-group">
+                    <label for="vandel-zip-code"><?php _e('ZIP Code', 'vandel-booking'); ?></label>
+                    <input type="text" id="vandel-zip-code" name="zip_code" required>
+                    <div id="vandel-location-message" class="vandel-message"></div>
+                </div>
+            </div>
+            
+            <div id="vandel-location-details" class="vandel-location-details" style="display: none;">
+                <div class="vandel-location-info">
+                    <div class="vandel-info-label"><?php _e('Area:', 'vandel-booking'); ?></div>
+                    <div id="vandel-area-name" class="vandel-info-value"></div>
+                </div>
+                
+                <div class="vandel-price-info" style="display: none;">
+                    <div class="vandel-price-adjustment">
+                        <div class="vandel-info-label"><?php _e('Price Adjustment:', 'vandel-booking'); ?></div>
+                        <div id="vandel-price-adjustment" class="vandel-info-value"></div>
+                    </div>
+                    
+                    <div class="vandel-service-fee">
+                        <div class="vandel-info-label"><?php _e('Service Fee:', 'vandel-booking'); ?></div>
+                        <div id="vandel-service-fee" class="vandel-info-value"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <input type="hidden" id="vandel-location-data" name="location_data" value="">
+        </div>
+        <?php
+    });
+}
+
     /**
      * Render booking form
      * 

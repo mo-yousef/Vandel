@@ -60,9 +60,10 @@ class Settings_Tab implements Tab_Interface {
             'notifications' => __('Notifications', 'vandel-booking'),
             'integrations' => __('Integrations', 'vandel-booking'),
             'zip-codes' => __('ZIP Codes', 'vandel-booking'),
-            'locations' => __('Locations', 'vandel-booking')
+            'locations' => __('Locations', 'vandel-booking')  // Make sure this is included
         ];
     }
+
     
     /**
      * Register plugin settings
@@ -325,74 +326,108 @@ class Settings_Tab implements Tab_Interface {
         return false;
     }
     
-    /**
-     * Render tab content
-     */
-    public function render() {
-        // Check for redirect transient before any output
-        $redirect = get_transient('vandel_settings_redirect');
-        if ($redirect && (time() - $redirect['time']) < 30) {
-            delete_transient('vandel_settings_redirect');
-            wp_redirect($redirect['url']);
-            exit;
-        }
-        
-        // Get current section
-        $section = isset($_GET['section']) ? sanitize_key($_GET['section']) : 'general';
-        
-        // Display status messages
-        $this->display_status_messages();
-        
-        ?>
-        <div class="vandel-settings-wrap">
-            <div class="vandel-settings-header">
-                <h2><?php _e('Settings', 'vandel-booking'); ?></h2>
-            </div>
+        // In includes/admin/dashboard/class-settings-tab.php
+        // Inside the Settings_Tab class
+
+        /**
+         * Render tab content
+         */
+        public function render() {
+            // Get current section
+            $section = isset($_GET['section']) ? sanitize_key($_GET['section']) : 'general';
             
-            <div class="vandel-settings-container">
-                <div class="vandel-settings-nav">
-                    <ul class="vandel-settings-nav-items">
-                        <?php foreach ($this->sections as $section_id => $section_title): ?>
-                            <li class="vandel-settings-nav-item <?php echo $section === $section_id ? 'active' : ''; ?>">
-                                <a href="<?php echo esc_url(admin_url('admin.php?page=vandel-dashboard&tab=settings&section=' . $section_id)); ?>">
-                                    <?php echo esc_html($section_title); ?>
-                                </a>
-                            </li>
-                        <?php endforeach; ?>
-                    </ul>
+            // Display status messages
+            $this->display_status_messages();
+            
+            ?>
+            <div class="vandel-settings-wrap">
+                <div class="vandel-settings-header">
+                    <h2><?php _e('Settings', 'vandel-booking'); ?></h2>
                 </div>
                 
-                <div class="vandel-settings-content">
-                    <?php
-                    // Load section content
-                    switch ($section) {
-                        case 'general':
-                            $this->render_general_settings();
-                            break;
-                        case 'booking':
-                            $this->render_booking_settings();
-                            break;
-                        case 'notifications':
-                            $this->render_notification_settings();
-                            break;
-                        case 'integrations':
-                            $this->render_integration_settings();
-                            break;
-                        case 'zip-codes':
-                            $this->render_zip_code_settings();
-                            break;
-                        case 'locations':
-                            $this->render_location_settings();
-                            break;
-                        default:
-                            $this->render_general_settings();
-                    }
-                    ?>
+                <div class="vandel-settings-container">
+                    <div class="vandel-settings-nav">
+                        <ul class="vandel-settings-nav-items">
+                            <?php foreach ($this->sections as $section_id => $section_title): ?>
+                                <li class="vandel-settings-nav-item <?php echo $section === $section_id ? 'active' : ''; ?>">
+                                    <a href="<?php echo esc_url(admin_url('admin.php?page=vandel-dashboard&tab=settings&section=' . $section_id)); ?>">
+                                        <?php echo esc_html($section_title); ?>
+                                    </a>
+                                </li>
+                            <?php endforeach; ?>
+                        </ul>
+                    </div>
+                    
+                    <div class="vandel-settings-content">
+                        <?php
+                        // Load section content
+                        switch ($section) {
+                            case 'general':
+                                $this->render_general_settings();
+                                break;
+                            case 'booking':
+                                $this->render_booking_settings();
+                                break;
+                            case 'notifications':
+                                $this->render_notification_settings();
+                                break;
+                            case 'integrations':
+                                $this->render_integration_settings();
+                                break;
+                            case 'zip-codes':
+                                $this->render_zip_code_settings();
+                                break;
+                            case 'locations':
+                                $this->render_location_settings();
+                                break;
+                            default:
+                                $this->render_general_settings();
+                        }
+                        ?>
+                    </div>
                 </div>
             </div>
-        </div>
-        <?php
+            <?php
+        }
+
+/**
+ * Render location settings
+ */
+private function render_location_settings() {
+    // Check if LocationService class exists
+    if (class_exists('\\VandelBooking\\Location\\LocationService')) {
+        // Initialize LocationService
+        $location_service = new \VandelBooking\Location\LocationService();
+        
+        // Check if render_admin_page method exists
+        if (method_exists($location_service, 'render_admin_page')) {
+            // Call the render method from LocationService
+            $location_service->render_admin_page();
+            return;
+        }
     }
+    
+    // Fallback if LocationService is not available
+    ?>
+    <div class="vandel-settings-section">
+        <h3><?php _e('Location Management', 'vandel-booking'); ?></h3>
+        
+        <div class="notice notice-warning">
+            <p><?php _e('The Location Management System is not available. Please make sure the LocationService class is properly installed.', 'vandel-booking'); ?></p>
+        </div>
+        
+        <p><?php _e('The Location Management feature allows you to manage service areas by country, city, and ZIP code.', 'vandel-booking'); ?></p>
+        
+        <p><?php _e('Benefits include:', 'vandel-booking'); ?></p>
+        <ul>
+            <li><?php _e('Geographically organize your service areas', 'vandel-booking'); ?></li>
+            <li><?php _e('Set different pricing for different locations', 'vandel-booking'); ?></li>
+            <li><?php _e('Control which areas you service', 'vandel-booking'); ?></li>
+            <li><?php _e('Import ZIP codes for quick setup', 'vandel-booking'); ?></li>
+        </ul>
+    </div>
+    <?php
+}
     
     /**
      * Display status messages
@@ -1085,282 +1120,5 @@ class Settings_Tab implements Tab_Interface {
         <?php
     }
     
-    /**
-     * Render location settings
-     */
-    private function render_location_settings() {
-        $location_system_enabled = get_option('vandel_enable_location_system', 'yes') === 'yes';
-        
-        if (!$location_system_enabled) {
-            echo '<div class="notice notice-warning"><p>' . 
-                sprintf(
-                    __('Location Management System is disabled. <a href="%s">Enable it here</a>.', 'vandel-booking'),
-                    admin_url('admin.php?page=vandel-dashboard&tab=settings&section=integrations')
-                ) . 
-                '</p></div>';
-        }
-        
-        // Get locations
-        $locations = [];
-        if (class_exists('\\VandelBooking\\Location\\LocationModel')) {
-            $location_model = new \VandelBooking\Location\LocationModel();
-            $locations = $location_model->getAll();
-            
-            // Get list of countries for filter
-            $countries = $location_model->getCountries();
-        }
-        
-        // Apply filters if any
-        $filter_country = isset($_GET['country']) ? sanitize_text_field($_GET['country']) : '';
-        $filter_city = isset($_GET['city']) ? sanitize_text_field($_GET['city']) : '';
-        $search = isset($_GET['s']) ? sanitize_text_field($_GET['s']) : '';
-        
-        if (!empty($filter_country) || !empty($filter_city) || !empty($search)) {
-            $filter_args = [
-                'country' => $filter_country,
-                'city' => $filter_city,
-                'search' => $search
-            ];
-            
-            $locations = $location_model->getAll($filter_args);
-        }
-        
-        // Get cities for selected country
-        $cities = [];
-        if (!empty($filter_country) && class_exists('\\VandelBooking\\Location\\LocationModel')) {
-            $cities = $location_model->getCities($filter_country);
-        }
-        ?>
-        <div class="vandel-settings-section">
-            <h3><?php _e('Location Management', 'vandel-booking'); ?></h3>
-            
-            <div class="vandel-card">
-                <div class="vandel-card-header">
-                    <h4><?php _e('Add New Location', 'vandel-booking'); ?></h4>
-                </div>
-                <div class="vandel-card-body">
-                    <form method="post" action="">
-                        <?php wp_nonce_field('vandel_location_actions'); ?>
-                        <input type="hidden" name="vandel_add_location" value="1">
-                        
-                        <div class="vandel-form-row">
-                            <div class="vandel-form-group">
-                                <label for="country"><?php _e('Country', 'vandel-booking'); ?> <span class="required">*</span></label>
-                                <input type="text" id="country" name="country" required>
-                            </div>
-                            <div class="vandel-form-group">
-                                <label for="city"><?php _e('City', 'vandel-booking'); ?> <span class="required">*</span></label>
-                                <input type="text" id="city" name="city" required>
-                            </div>
-                        </div>
-                        
-                        <div class="vandel-form-row">
-                            <div class="vandel-form-group">
-                                <label for="area_name"><?php _e('Area Name', 'vandel-booking'); ?> <span class="required">*</span></label>
-                                <input type="text" id="area_name" name="area_name" required>
-                            </div>
-                            <div class="vandel-form-group">
-                                <label for="zip_code"><?php _e('ZIP Code', 'vandel-booking'); ?> <span class="required">*</span></label>
-                                <input type="text" id="zip_code" name="zip_code" required>
-                            </div>
-                        </div>
-                        
-                        <div class="vandel-form-row">
-                            <div class="vandel-form-group">
-                                <label for="price_adjustment"><?php _e('Price Adjustment', 'vandel-booking'); ?></label>
-                                <input type="number" id="price_adjustment" name="price_adjustment" step="0.01" value="0">
-                                <p class="description"><?php _e('Additional price adjustment for this location (can be negative)', 'vandel-booking'); ?></p>
-                            </div>
-                            <div class="vandel-form-group">
-                                <label for="service_fee"><?php _e('Service Fee', 'vandel-booking'); ?></label>
-                                <input type="number" id="service_fee" name="service_fee" step="0.01" min="0" value="0">
-                                <p class="description"><?php _e('Additional service fee for this location', 'vandel-booking'); ?></p>
-                            </div>
-                        </div>
-                        
-                        <div class="vandel-form-row">
-                            <div class="vandel-form-group">
-                                <label>
-                                    <input type="checkbox" id="is_active" name="is_active" checked>
-                                    <?php _e('This location is active for bookings', 'vandel-booking'); ?>
-                                </label>
-                            </div>
-                        </div>
-                        
-                        <div class="vandel-form-actions">
-                            <button type="submit" class="button button-primary"><?php _e('Add Location', 'vandel-booking'); ?></button>
-                        </div>
-                    </form>
-                </div>
-            </div>
-            
-            <div class="vandel-card">
-                <div class="vandel-card-header">
-                    <h4><?php _e('Import/Export Locations', 'vandel-booking'); ?></h4>
-                </div>
-                <div class="vandel-card-body">
-                    <div class="vandel-import-export-actions">
-                        <div class="vandel-action-group">
-                            <h5><?php _e('Import Locations', 'vandel-booking'); ?></h5>
-                            <p><?php _e('Upload a CSV file with locations.', 'vandel-booking'); ?></p>
-                            
-                            <p><?php _e('Or use one of these predefined location files:', 'vandel-booking'); ?></p>
-                            <div class="vandel-predefined-imports">
-                                <button type="button" class="button vandel-import-existing-file" data-file="sweden" data-country="Sweden">
-                                    <?php _e('Import Sweden Locations', 'vandel-booking'); ?>
-                                </button>
-                                
-                                <!-- Add more predefined location files as needed -->
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="vandel-card">
-                <div class="vandel-card-header">
-                    <h4><?php _e('Locations', 'vandel-booking'); ?></h4>
-                    
-                    <!-- Filters -->
-                    <div class="vandel-filters">
-                        <form method="get" action="">
-                            <input type="hidden" name="page" value="vandel-dashboard">
-                            <input type="hidden" name="tab" value="settings">
-                            <input type="hidden" name="section" value="locations">
-                            
-                            <?php if (!empty($countries)): ?>
-                                <select name="country" id="filter-country">
-                                    <option value=""><?php _e('All Countries', 'vandel-booking'); ?></option>
-                                    <?php foreach ($countries as $country): ?>
-                                        <option value="<?php echo esc_attr($country); ?>" <?php selected($filter_country, $country); ?>><?php echo esc_html($country); ?></option>
-                                    <?php endforeach; ?>
-                                </select>
-                            <?php endif; ?>
-                            
-                            <?php if (!empty($cities)): ?>
-                                <select name="city" id="filter-city">
-                                    <option value=""><?php _e('All Cities', 'vandel-booking'); ?></option>
-                                    <?php foreach ($cities as $city): ?>
-                                        <option value="<?php echo esc_attr($city); ?>" <?php selected($filter_city, $city); ?>><?php echo esc_html($city); ?></option>
-                                    <?php endforeach; ?>
-                                </select>
-                            <?php endif; ?>
-                            
-                            <input type="search" name="s" value="<?php echo esc_attr($search); ?>" placeholder="<?php esc_attr_e('Search locations...', 'vandel-booking'); ?>">
-                            
-                            <button type="submit" class="button"><?php _e('Filter', 'vandel-booking'); ?></button>
-                            
-                            <?php if (!empty($filter_country) || !empty($filter_city) || !empty($search)): ?>
-<a href="<?php echo admin_url('admin.php?page=vandel-dashboard&tab=settings&section=locations'); ?>" class="button"><?php _e('Reset', 'vandel-booking'); ?></a>
-                            <?php endif; ?>
-                        </form>
-                    </div>
-                </div>
-                <div class="vandel-card-body">
-                    <?php if (empty($locations)): ?>
-                        <p><?php _e('No locations found.', 'vandel-booking'); ?></p>
-                    <?php else: ?>
-                        <div class="vandel-table-container">
-                            <table class="wp-list-table widefat fixed striped vandel-data-table">
-                                <thead>
-                                    <tr>
-                                        <th scope="col"><?php _e('Country', 'vandel-booking'); ?></th>
-                                        <th scope="col"><?php _e('City', 'vandel-booking'); ?></th>
-                                        <th scope="col"><?php _e('Area', 'vandel-booking'); ?></th>
-                                        <th scope="col"><?php _e('ZIP Code', 'vandel-booking'); ?></th>
-                                        <th scope="col"><?php _e('Price Adjustment', 'vandel-booking'); ?></th>
-                                        <th scope="col"><?php _e('Service Fee', 'vandel-booking'); ?></th>
-                                        <th scope="col"><?php _e('Status', 'vandel-booking'); ?></th>
-                                        <th scope="col"><?php _e('Actions', 'vandel-booking'); ?></th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <?php foreach ($locations as $location): ?>
-                                        <tr>
-                                            <td><?php echo esc_html($location->country); ?></td>
-                                            <td><?php echo esc_html($location->city); ?></td>
-                                            <td><?php echo esc_html($location->area_name); ?></td>
-                                            <td><?php echo esc_html($location->zip_code); ?></td>
-                                            <td><?php echo \VandelBooking\Helpers::formatPrice($location->price_adjustment); ?></td>
-                                            <td><?php echo \VandelBooking\Helpers::formatPrice($location->service_fee); ?></td>
-                                            <td>
-                                                <?php if ($location->is_active === 'yes'): ?>
-                                                    <span class="vandel-status-badge active"><?php _e('Active', 'vandel-booking'); ?></span>
-                                                <?php else: ?>
-                                                    <span class="vandel-status-badge inactive"><?php _e('Inactive', 'vandel-booking'); ?></span>
-                                                <?php endif; ?>
-                                            </td>
-                                            <td>
-                                                <a href="<?php echo wp_nonce_url(admin_url('admin.php?page=vandel-dashboard&tab=settings&section=locations&action=delete_location&location_id=' . $location->id), 'delete_location_' . $location->id); ?>" 
-                                                   class="vandel-delete-location"
-                                                   data-id="<?php echo esc_attr($location->id); ?>">
-                                                    <?php _e('Delete', 'vandel-booking'); ?>
-                                                </a>
-                                            </td>
-                                        </tr>
-                                    <?php endforeach; ?>
-                                </tbody>
-                            </table>
-                        </div>
-                    <?php endif; ?>
-                </div>
-            </div>
-        </div>
-        
-        <script>
-        jQuery(document).ready(function($) {
-            // Filter country change event
-            $('#filter-country').on('change', function() {
-                if ($(this).val()) {
-                    // Submit form to reload with updated cities
-                    $(this).closest('form').submit();
-                }
-            });
-            
-            // Initialize delete confirmation
-            $('.vandel-delete-location, .vandel-delete-zip-code').on('click', function(e) {
-                if (!confirm('<?php _e('Are you sure you want to delete this item?', 'vandel-booking'); ?>')) {
-                    e.preventDefault();
-                }
-            });
-            
-            // Initialize import existing file buttons
-            $('.vandel-import-existing-file').on('click', function() {
-                const file = $(this).data('file');
-                const country = $(this).data('country');
-                
-                if (confirm('<?php _e('Are you sure you want to import locations for', 'vandel-booking'); ?> ' + country + '?')) {
-                    // Show loading indicator
-                    $(this).prop('disabled', true).text('<?php _e('Importing...', 'vandel-booking'); ?>');
-                    
-                    // Make AJAX request
-                    $.ajax({
-                        url: ajaxurl,
-                        type: 'POST',
-                        data: {
-                            action: 'vandel_import_predefined_locations',
-                            nonce: '<?php echo wp_create_nonce('vandel_location_actions'); ?>',
-                            file: file,
-                            country: country
-                        },
-                        success: function(response) {
-                            if (response.success) {
-                                alert(response.data.message);
-                                location.reload();
-                            } else {
-                                alert(response.data.message || '<?php _e('Import failed', 'vandel-booking'); ?>');
-                                $('.vandel-import-existing-file').prop('disabled', false).text('<?php _e('Import Sweden Locations', 'vandel-booking'); ?>');
-                            }
-                        },
-                        error: function() {
-                            alert('<?php _e('Import failed', 'vandel-booking'); ?>');
-                            $('.vandel-import-existing-file').prop('disabled', false).text('<?php _e('Import Sweden Locations', 'vandel-booking'); ?>');
-                        }
-                    });
-                }
-            });
-        });
-        </script>
-        <?php
-    }
+
 }

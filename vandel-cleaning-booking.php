@@ -675,24 +675,6 @@ if (file_exists(VANDEL_PLUGIN_DIR . 'includes/database/class-installer.php')) {
     });
 }
 
-// Enqueue scripts and styles for the admin area
-wp_enqueue_script(
-    'vandel-zip-code-admin',
-    VANDEL_PLUGIN_URL . 'assets/js/admin/location-admin.js',
-    ['jquery'],
-    VANDEL_VERSION,
-    true
-);
-// Enqueue location-importer.js
-wp_enqueue_script(
-    'vandel-location-importer',
-    VANDEL_PLUGIN_URL . 'assets/js/admin/location-importer.js',
-    ['jquery'],
-    VANDEL_VERSION,
-    true
-);
-
-
 
 // Add these fixes to the vandel-cleaning-booking.php file
 
@@ -826,34 +808,7 @@ function vandel_enqueue_admin_scripts($hook) {
     $tab = isset($_GET['tab']) ? sanitize_key($_GET['tab']) : 'overview';
     $section = isset($_GET['section']) ? sanitize_key($_GET['section']) : '';
     
-    // Load location admin script for settings > locations
-    if ($tab === 'settings' && $section === 'locations') {
-        wp_enqueue_script(
-            'vandel-location-admin',
-            VANDEL_PLUGIN_URL . 'assets/js/admin/location-admin.js',
-            ['jquery'],
-            VANDEL_VERSION,
-            true
-        );
-        
-        // Localize with the correct AJAX URL and nonce
-        wp_localize_script(
-            'vandel-location-admin',
-            'vandelLocationAdmin',
-            [
-                'ajaxUrl' => admin_url('admin-ajax.php'),
-                'nonce' => wp_create_nonce('vandel_location_nonce'),
-                'confirmDelete' => __('Are you sure you want to delete this location?', 'vandel-booking'),
-                'strings' => [
-                    'selectCity' => __('Select City', 'vandel-booking'),
-                    'loadingCities' => __('Loading cities...', 'vandel-booking'),
-                    'selectArea' => __('Select Area', 'vandel-booking'),
-                    'loadingAreas' => __('Loading areas...', 'vandel-booking')
-                ]
-            ]
-        );
-    }
-    
+
     // Load ZIP code admin script for settings > zip-codes
     if ($tab === 'settings' && $section === 'zip-codes') {
         wp_enqueue_script(
@@ -1031,3 +986,12 @@ body,
 
 
 
+// In your main plugin file (vandel-cleaning-booking.php)
+if (file_exists(VANDEL_PLUGIN_DIR . 'includes/location/class-location-service.php')) {
+    require_once VANDEL_PLUGIN_DIR . 'includes/location/class-location-service.php';
+    add_action('plugins_loaded', function() {
+        if (class_exists('\\VandelBooking\\Location\\LocationService')) {
+            new \VandelBooking\Location\LocationService();
+        }
+    });
+}
