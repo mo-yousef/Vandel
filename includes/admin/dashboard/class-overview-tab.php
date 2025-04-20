@@ -3,7 +3,7 @@ namespace VandelBooking\Admin\Dashboard;
 
 /**
  * Enhanced Overview Tab for Cleaning Business
- * Provides a comprehensive dashboard with key metrics and cleaning-specific analytics
+ * Provides a comprehensive, modern dashboard with key metrics and cleaning-specific analytics
  */
 class Overview_Tab implements Tab_Interface {
     /**
@@ -46,31 +46,358 @@ class Overview_Tab implements Tab_Interface {
         // Get recent bookings for activity feed
         $recent_bookings = $this->get_recent_bookings($bookings_table, $bookings_table_exists);
         
-        // Get location data for service areas heatmap
-        $location_data = $this->get_location_statistics($bookings_table, $bookings_table_exists);
-        
-        // Get repeat client statistics
-        $repeat_client_stats = $this->get_repeat_client_statistics(
-            $bookings_table, 
-            $clients_table, 
-            $bookings_table_exists && $clients_table_exists
-        );
-        
-        // Render the dashboard
-        $this->render_dashboard_view(
-            $booking_stats,
-            $revenue_stats, 
-            $client_stats, 
-            $service_stats,
-            $upcoming_bookings,
-            $recent_bookings,
-            $location_data,
-            $repeat_client_stats
-        );
+        ?>
+        <div id="overview" class="vandel-dashboard-overview">
+            <div class="vandel-dashboard-header">
+                <div class="vandel-header-content">
+                    <h1><?php _e('Dashboard Overview', 'vandel-booking'); ?></h1>
+                    <p><?php _e('Your cleaning business performance at a glance', 'vandel-booking'); ?></p>
+                </div>
+                <div class="vandel-quick-actions">
+                    <a href="<?php echo admin_url('admin.php?page=vandel-dashboard&tab=bookings&action=add'); ?>" class="button button-primary">
+                        <span class="dashicons dashicons-plus-alt"></span> 
+                        <?php _e('New Booking', 'vandel-booking'); ?>
+                    </a>
+                    <a href="<?php echo admin_url('admin.php?page=vandel-dashboard&tab=clients&action=add'); ?>" class="button button-secondary">
+                        <span class="dashicons dashicons-admin-users"></span> 
+                        <?php _e('Add Client', 'vandel-booking'); ?>
+                    </a>
+                </div>
+            </div>
+
+            <div class="vandel-dashboard-grid">
+                <div class="vandel-dashboard-main">
+                    <!-- Key Performance Metrics -->
+                    <div class="vandel-performance-metrics">
+                        <div class="vandel-metric-card total-revenue">
+                            <div class="vandel-metric-icon">
+                                <span class="dashicons dashicons-chart-bar"></span>
+                            </div>
+                            <div class="vandel-metric-content">
+                                <h3><?php _e('Total Revenue', 'vandel-booking'); ?></h3>
+                                <div class="vandel-metric-value">
+                                    <?php echo \VandelBooking\Helpers::formatPrice($revenue_stats['total']); ?>
+                                </div>
+                                <div class="vandel-metric-change <?php echo $revenue_stats['growth_rate'] >= 0 ? 'positive' : 'negative'; ?>">
+                                    <?php 
+                                    echo $revenue_stats['growth_rate'] >= 0 ? '+' : '';
+                                    echo number_format($revenue_stats['growth_rate'], 1) . '%'; 
+                                    ?> 
+                                    <span><?php _e('this month', 'vandel-booking'); ?></span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="vandel-metric-card total-bookings">
+                            <div class="vandel-metric-icon">
+                                <span class="dashicons dashicons-calendar-alt"></span>
+                            </div>
+                            <div class="vandel-metric-content">
+                                <h3><?php _e('Total Bookings', 'vandel-booking'); ?></h3>
+                                <div class="vandel-metric-value">
+                                    <?php echo number_format_i18n($booking_stats['total']); ?>
+                                </div>
+                                <div class="vandel-metric-change <?php echo $booking_stats['growth_rate'] >= 0 ? 'positive' : 'negative'; ?>">
+                                    <?php 
+                                    echo $booking_stats['growth_rate'] >= 0 ? '+' : '';
+                                    echo number_format($booking_stats['growth_rate'], 1) . '%'; 
+                                    ?> 
+                                    <span><?php _e('this month', 'vandel-booking'); ?></span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="vandel-metric-card new-clients">
+                            <div class="vandel-metric-icon">
+                                <span class="dashicons dashicons-groups"></span>
+                            </div>
+                            <div class="vandel-metric-content">
+                                <h3><?php _e('New Clients', 'vandel-booking'); ?></h3>
+                                <div class="vandel-metric-value">
+                                    <?php echo number_format_i18n($client_stats['new_this_month']); ?>
+                                </div>
+                                <div class="vandel-metric-change positive">
+                                    +<?php 
+                                    $total_clients = $client_stats['total'];
+                                    echo number_format(($client_stats['new_this_month'] / max(1, $total_clients)) * 100, 1) . '%'; 
+                                    ?> 
+                                    <span><?php _e('this month', 'vandel-booking'); ?></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Service Performance Card -->
+                    <?php if (!empty($service_stats['services'])): ?>
+                    <div class="vandel-card service-performance">
+                        <div class="vandel-card-header">
+                            <h3><?php _e('Service Performance', 'vandel-booking'); ?></h3>
+                        </div>
+                        <div class="vandel-card-body">
+                            <div class="vandel-chart-wrapper">
+                                <canvas id="service-performance-chart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    <?php endif; ?>
+
+                    <!-- Upcoming Bookings -->
+                    <div class="vandel-card upcoming-bookings">
+                        <div class="vandel-card-header">
+                            <h3><?php _e('Upcoming Bookings', 'vandel-booking'); ?></h3>
+                            <a href="<?php echo admin_url('admin.php?page=vandel-dashboard&tab=calendar'); ?>" class="vandel-view-all">
+                                <?php _e('View Calendar', 'vandel-booking'); ?>
+                            </a>
+                        </div>
+                        <div class="vandel-card-body">
+                            <?php if (empty($upcoming_bookings)): ?>
+                                <div class="vandel-empty-state">
+                                    <span class="dashicons dashicons-calendar-alt"></span>
+                                    <p><?php _e('No upcoming bookings scheduled.', 'vandel-booking'); ?></p>
+                                </div>
+                            <?php else: ?>
+                                <div class="vandel-booking-list">
+                                    <?php foreach ($upcoming_bookings as $booking): 
+                                        $service = get_post($booking->service);
+                                        $service_name = $service ? $service->post_title : __('Standard Cleaning', 'vandel-booking');
+                                    ?>
+                                    <div class="vandel-booking-item">
+                                        <div class="vandel-booking-details">
+                                            <div class="vandel-booking-client">
+                                                <?php echo esc_html($booking->customer_name); ?>
+                                            </div>
+                                            <div class="vandel-booking-service">
+                                                <?php echo esc_html($service_name); ?>
+                                            </div>
+                                            <div class="vandel-booking-datetime">
+                                                <?php echo date_i18n(get_option('date_format') . ' ' . get_option('time_format'), strtotime($booking->booking_date)); ?>
+                                            </div>
+                                        </div>
+                                        <div class="vandel-booking-status">
+                                            <span class="vandel-status-badge vandel-status-badge-<?php echo esc_attr($booking->status); ?>">
+                                                <?php echo esc_html(ucfirst($booking->status)); ?>
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <?php endforeach; ?>
+                                </div>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="vandel-dashboard-sidebar">
+                    <!-- Client Insights -->
+                    <div class="vandel-card client-insights">
+                        <div class="vandel-card-header">
+                            <h3><?php _e('Client Insights', 'vandel-booking'); ?></h3>
+                            <a href="<?php echo admin_url('admin.php?page=vandel-dashboard&tab=clients'); ?>" class="vandel-view-all">
+                                <?php _e('View All', 'vandel-booking'); ?>
+                            </a>
+                        </div>
+                        <div class="vandel-card-body">
+                            <div class="vandel-client-metrics">
+                                <div class="vandel-client-metric">
+                                    <div class="vandel-metric-value"><?php echo number_format_i18n($client_stats['total']); ?></div>
+                                    <div class="vandel-metric-label"><?php _e('Total Clients', 'vandel-booking'); ?></div>
+                                </div>
+                                <div class="vandel-client-metric">
+                                    <div class="vandel-metric-value">
+                                        <?php 
+                                        // $repeat_rate = $client_stats['total'] > 0 
+                                        //     ? round(($repeat_client_stats['total_repeat'] / $client_stats['total']) * 100, 1)
+                                        //     : 0; 
+                                        // echo $repeat_rate . '%'; 
+                                        ?>
+                                    </div>
+                                    <div class="vandel-metric-label"><?php _e('Repeat Clients', 'vandel-booking'); ?></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Recent Activity -->
+                    <div class="vandel-card recent-activity">
+                        <div class="vandel-card-header">
+                            <h3><?php _e('Recent Activity', 'vandel-booking'); ?></h3>
+                        </div>
+                        <div class="vandel-card-body">
+                            <?php if (empty($recent_bookings)): ?>
+                                <div class="vandel-empty-state">
+                                    <span class="dashicons dashicons-info"></span>
+                                    <p><?php _e('No recent activity.', 'vandel-booking'); ?></p>
+                                </div>
+                            <?php else: ?>
+                                <div class="vandel-activity-feed">
+                                    <?php foreach ($recent_bookings as $booking): 
+                                        $service = get_post($booking->service);
+                                        $service_name = $service ? $service->post_title : __('Standard Cleaning', 'vandel-booking');
+                                    ?>
+                                    <div class="vandel-activity-item">
+                                        <div class="vandel-activity-icon">
+                                            <span class="dashicons dashicons-calendar-alt"></span>
+                                        </div>
+                                        <div class="vandel-activity-content">
+                                            <div class="vandel-activity-message">
+                                                <?php echo esc_html($booking->customer_name); ?> 
+                                                <?php 
+                                                switch ($booking->status) {
+                                                    case 'pending':
+                                                        _e('created a booking', 'vandel-booking');
+                                                        break;
+                                                    case 'confirmed':
+                                                        _e('confirmed a booking', 'vandel-booking');
+                                                        break;
+                                                    case 'completed':
+                                                        _e('completed a cleaning', 'vandel-booking');
+                                                        break;
+                                                    case 'canceled':
+                                                        _e('canceled a booking', 'vandel-booking');
+                                                        break;
+                                                    default:
+                                                        _e('updated a booking', 'vandel-booking');
+                                                }
+                                                ?> 
+                                                (<?php echo esc_html($service_name); ?>)
+                                            </div>
+                                            <div class="vandel-activity-time">
+                                                <?php echo human_time_diff(strtotime($booking->created_at), current_time('timestamp')); ?> 
+                                                <?php _e('ago', 'vandel-booking'); ?>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <?php endforeach; ?>
+                                </div>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
+        <?php if (!empty($service_stats['services']) || !empty($booking_stats['monthly_trend'])): ?>
+        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+        <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            <?php if (!empty($service_stats['services'])): ?>
+            // Service Performance Chart
+            const serviceCtx = document.getElementById('service-performance-chart').getContext('2d');
+            new Chart(serviceCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: <?php 
+                        echo json_encode(array_map(
+                            fn($service) => $service['title'], 
+                            $service_stats['services']
+                        )); 
+                    ?>,
+                    datasets: [{
+                        data: <?php 
+                            echo json_encode(array_map(
+                                fn($service) => $service['count'], 
+                                $service_stats['services']
+                            )); 
+                        ?>,
+                        backgroundColor: [
+                            'rgba(54, 162, 235, 0.8)',   // Blue
+                            'rgba(255, 99, 132, 0.8)',   // Pink
+                            'rgba(75, 192, 192, 0.8)',   // Teal
+                            'rgba(255, 206, 86, 0.8)',   // Yellow
+                            'rgba(153, 102, 255, 0.8)',  // Purple
+                            'rgba(255, 159, 64, 0.8)'    // Orange
+                        ],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'right',
+                            labels: {
+                                boxWidth: 12,
+                                padding: 15
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const label = context.label || '';
+                                    const value = context.raw || 0;
+                                    const dataset = context.dataset;
+                                    const total = dataset.data.reduce((acc, num) => acc + num, 0);
+                                    const pct = ((value / total) * 100).toFixed(1);
+                                    return `${label}: ${value} (${pct}%)`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+            <?php endif; ?>
+
+            <?php if (!empty($booking_stats['monthly_trend'])): ?>
+            // Monthly Booking Trend Chart
+            const trendCtx = document.getElementById('monthly-booking-trend').getContext('2d');
+            new Chart(trendCtx, {
+                type: 'line',
+                data: {
+                    labels: <?php echo json_encode(array_keys($booking_stats['monthly_trend'])); ?>,
+                    datasets: [{
+                        label: '<?php _e('Bookings', 'vandel-booking'); ?>',
+                        data: <?php echo json_encode(array_values($booking_stats['monthly_trend'])); ?>,
+                        borderColor: 'rgba(54, 162, 235, 1)',
+                        backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                        tension: 0.4,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                precision: 0
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false,
+                            callbacks: {
+                                title: function(context) {
+                                    return context[0].label;
+                                },
+                                label: function(context) {
+                                    return `${context.dataset.label}: ${context.parsed.y} bookings`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+            <?php endif; ?>
+        });
+        </script>
+        <?php endif; ?>
+        <?php
     }
-    
-    /**
+
+
+/**
      * Get booking statistics
+     * 
+     * @param string $bookings_table Bookings table name
+     * @param bool $table_exists Whether the table exists
+     * @return array Booking statistics
      */
     private function get_booking_statistics($bookings_table, $table_exists) {
         global $wpdb;
@@ -84,28 +411,27 @@ class Overview_Tab implements Tab_Interface {
             'today'         => 0,
             'this_week'     => 0,
             'this_month'    => 0,
-            'monthly_trend' => []
+            'monthly_trend' => [],
+            'growth_rate'   => 0
         ];
         
         if (!$table_exists) {
             return $stats;
         }
         
-        // Get total booking count
+        // Total bookings
         $stats['total'] = (int) $wpdb->get_var("SELECT COUNT(*) FROM $bookings_table");
         
-        // Get status counts
+        // Status counts
         $status_counts = $wpdb->get_results("
             SELECT status, COUNT(*) as count 
             FROM $bookings_table 
             GROUP BY status
         ");
-        if ($status_counts) {
-            foreach ($status_counts as $status) {
-                // Only set if our array key exists
-                if (array_key_exists($status->status, $stats)) {
-                    $stats[$status->status] = (int) $status->count;
-                }
+        
+        foreach ($status_counts as $status) {
+            if (isset($stats[$status->status])) {
+                $stats[$status->status] = (int) $status->count;
             }
         }
         
@@ -131,7 +457,7 @@ class Overview_Tab implements Tab_Interface {
               AND MONTH(booking_date) = MONTH(CURRENT_DATE())
         ");
         
-        // Get monthly trend (last 6 months)
+        // Monthly trend (last 6 months)
         $monthly_results = $wpdb->get_results("
             SELECT 
                 DATE_FORMAT(booking_date, '%Y-%m') as month,
@@ -142,6 +468,7 @@ class Overview_Tab implements Tab_Interface {
             ORDER BY month ASC
         ");
         
+        // Prepare monthly trend data
         if ($monthly_results) {
             foreach ($monthly_results as $row) {
                 // Convert the year-month to a localizable month name
@@ -150,19 +477,15 @@ class Overview_Tab implements Tab_Interface {
             }
         }
         
-        // Calculate month-over-month growth if possible
+        // Calculate growth rate
         if (count($stats['monthly_trend']) > 1) {
-            $values   = array_values($stats['monthly_trend']);
-            $current  = end($values);
-            $previous = prev($values);
+            $monthly_values = array_values($stats['monthly_trend']);
+            $current_month = end($monthly_values);
+            $previous_month = prev($monthly_values);
             
-            if ($previous > 0) {
-                $stats['growth_rate'] = round((($current - $previous) / $previous) * 100, 1);
-            } else {
-                $stats['growth_rate'] = 0;
+            if ($previous_month > 0) {
+                $stats['growth_rate'] = round((($current_month - $previous_month) / $previous_month) * 100, 1);
             }
-        } else {
-            $stats['growth_rate'] = 0;
         }
         
         return $stats;
@@ -170,6 +493,10 @@ class Overview_Tab implements Tab_Interface {
     
     /**
      * Get revenue statistics
+     * 
+     * @param string $bookings_table Bookings table name
+     * @param bool $table_exists Whether the table exists
+     * @return array Revenue statistics
      */
     private function get_revenue_statistics($bookings_table, $table_exists) {
         global $wpdb;
@@ -179,14 +506,15 @@ class Overview_Tab implements Tab_Interface {
             'this_month'       => 0,
             'last_month'       => 0,
             'monthly_trend'    => [],
-            'avg_booking_value'=> 0
+            'avg_booking_value'=> 0,
+            'growth_rate'      => 0
         ];
         
         if (!$table_exists) {
             return $stats;
         }
         
-        // Total revenue (excluding canceled)
+        // Total revenue (excluding canceled bookings)
         $stats['total'] = (float) $wpdb->get_var("
             SELECT COALESCE(SUM(total_price), 0) 
             FROM $bookings_table 
@@ -223,14 +551,16 @@ class Overview_Tab implements Tab_Interface {
             ORDER BY month ASC
         ");
         
+        // Prepare monthly trend data
         if ($monthly_results) {
             foreach ($monthly_results as $row) {
+                // Convert the year-month to a localizable month name
                 $month_name = date_i18n('M Y', strtotime($row->month . '-01'));
                 $stats['monthly_trend'][$month_name] = (float) $row->revenue;
             }
         }
         
-        // Average booking value for completed or confirmed
+        // Average booking value
         $total_completed_bookings = (int) $wpdb->get_var("
             SELECT COUNT(*) 
             FROM $bookings_table 
@@ -241,11 +571,9 @@ class Overview_Tab implements Tab_Interface {
             $stats['avg_booking_value'] = $stats['total'] / $total_completed_bookings;
         }
         
-        // Month-over-month growth
+        // Calculate growth rate
         if ($stats['last_month'] > 0) {
             $stats['growth_rate'] = round((($stats['this_month'] - $stats['last_month']) / $stats['last_month']) * 100, 1);
-        } else {
-            $stats['growth_rate'] = 0;
         }
         
         return $stats;
@@ -253,6 +581,10 @@ class Overview_Tab implements Tab_Interface {
     
     /**
      * Get client statistics
+     * 
+     * @param string $clients_table Clients table name
+     * @param bool $table_exists Whether the table exists
+     * @return array Client statistics
      */
     private function get_client_statistics($clients_table, $table_exists) {
         global $wpdb;
@@ -289,8 +621,10 @@ class Overview_Tab implements Tab_Interface {
             ORDER BY month ASC
         ");
         
+        // Prepare monthly trend data
         if ($monthly_results) {
             foreach ($monthly_results as $row) {
+                // Convert the year-month to a localizable month name
                 $month_name = date_i18n('M Y', strtotime($row->month . '-01'));
                 $stats['monthly_trend'][$month_name] = (int) $row->count;
             }
@@ -301,6 +635,8 @@ class Overview_Tab implements Tab_Interface {
     
     /**
      * Get service statistics
+     * 
+     * @return array Service statistics
      */
     private function get_service_statistics() {
         $stats = [
@@ -386,6 +722,11 @@ class Overview_Tab implements Tab_Interface {
     
     /**
      * Get upcoming bookings
+     * 
+     * @param string $bookings_table Bookings table name
+     * @param bool $table_exists Whether the table exists
+     * @param int $limit Number of bookings to retrieve
+     * @return array Upcoming bookings
      */
     private function get_upcoming_bookings($bookings_table, $table_exists, $limit = 5) {
         global $wpdb;
@@ -406,6 +747,11 @@ class Overview_Tab implements Tab_Interface {
     
     /**
      * Get recent bookings
+     * 
+     * @param string $bookings_table Bookings table name
+     * @param bool $table_exists Whether the table exists
+     * @param int $limit Number of bookings to retrieve
+     * @return array Recent bookings
      */
     private function get_recent_bookings($bookings_table, $table_exists, $limit = 10) {
         global $wpdb;
@@ -420,796 +766,5 @@ class Overview_Tab implements Tab_Interface {
             ORDER BY created_at DESC 
             LIMIT %d
         ", $limit));
-    }
-    
-    /**
-     * Get location statistics
-     */
-    private function get_location_statistics($bookings_table, $table_exists) {
-        global $wpdb;
-        
-        $stats = [
-            'areas'      => [],
-            'most_active'=> null
-        ];
-        
-        if (!$table_exists) {
-            return $stats;
-        }
-        
-        // Adjust field names to match your DB columns
-        $location_results = $wpdb->get_results("
-            SELECT 
-                COALESCE(customer_address, 'Unknown') as area, 
-                COUNT(*) as booking_count,
-                SUM(total_price) as revenue
-            FROM $bookings_table
-            WHERE status != 'canceled'
-            GROUP BY area
-            ORDER BY booking_count DESC
-            LIMIT 10
-        ");
-        
-        if ($location_results) {
-            $stats['areas']      = $location_results;
-            $stats['most_active']= $location_results[0]->area;
-        }
-        
-        return $stats;
-    }
-    
-    /**
-     * Get repeat client statistics
-     */
-    private function get_repeat_client_statistics($bookings_table, $clients_table, $tables_exist) {
-        global $wpdb;
-        
-        $stats = [
-            'total_repeat'        => 0,
-            'percentage'          => 0,
-            'most_bookings'       => 0,
-            'most_frequent_client'=> null
-        ];
-        
-        if (!$tables_exist) {
-            return $stats;
-        }
-        
-        // Clients with more than one booking
-        $repeat_clients = $wpdb->get_var("
-            SELECT COUNT(DISTINCT client_id) 
-            FROM $bookings_table
-            WHERE client_id IN (
-                SELECT client_id
-                FROM $bookings_table
-                GROUP BY client_id
-                HAVING COUNT(*) > 1
-            )
-        ");
-        
-        $stats['total_repeat'] = (int) $repeat_clients;
-        
-        // Total clients for percentage
-        $total_clients = (int) $wpdb->get_var("
-            SELECT COUNT(*) 
-            FROM $clients_table
-        ");
-        
-        if ($total_clients > 0) {
-            $stats['percentage'] = round(($repeat_clients / $total_clients) * 100, 1);
-        }
-        
-        // Get the single most frequent client
-        $most_frequent = $wpdb->get_row("
-            SELECT 
-                b.client_id, 
-                COUNT(*) as booking_count,
-                c.name as client_name,
-                c.email as client_email
-            FROM $bookings_table b
-            JOIN $clients_table c ON b.client_id = c.id
-            GROUP BY b.client_id, c.name, c.email
-            ORDER BY booking_count DESC
-            LIMIT 1
-        ");
-        
-        if ($most_frequent) {
-            $stats['most_bookings']       = (int) $most_frequent->booking_count;
-            $stats['most_frequent_client']= $most_frequent;
-        }
-        
-        return $stats;
-    }
-    
-    /**
-     * Render the final dashboard view
-     */
-    private function render_dashboard_view(
-        $booking_stats,
-        $revenue_stats,
-        $client_stats,
-        $service_stats,
-        $upcoming_bookings,
-        $recent_bookings,
-        $location_data,
-        $repeat_client_stats
-    ) {
-        ?>
-        <div id="overview" class="vandel-tab-content">
-            <!-- Welcome / Header -->
-            <div class="vandel-dashboard-welcome">
-                <div class="vandel-welcome-content">
-                    <h2><?php _e('Cleaning Business Dashboard', 'vandel-booking'); ?></h2>
-                    <p><?php _e('Monitor your cleaning service performance, client bookings, and business metrics all in one place.', 'vandel-booking'); ?></p>
-                </div>
-                
-                <!-- Quick Stats -->
-                <div class="vandel-quick-stats">
-                    <div class="vandel-stat-cards">
-                        <!-- Total Cleanings -->
-                        <div class="vandel-stat-card">
-                            <div class="vandel-stat-header">
-                                <div class="vandel-stat-icon">
-                                    <span class="dashicons dashicons-calendar-alt"></span>
-                                </div>
-                                <div class="vandel-stat-value">
-                                    <?php echo number_format_i18n($booking_stats['total']); ?>
-                                </div>
-                            </div>
-                            <div class="vandel-stat-footer">
-                                <div class="vandel-stat-label">
-                                    <?php _e('Total Cleanings', 'vandel-booking'); ?>
-                                    <?php if (isset($booking_stats['growth_rate'])): ?>
-                                        <span class="vandel-growth-indicator 
-                                            <?php echo $booking_stats['growth_rate'] >= 0 ? 'positive' : 'negative'; ?>">
-                                            <?php echo ($booking_stats['growth_rate'] >= 0 ? '+' : '') . $booking_stats['growth_rate']; ?>%
-                                        </span>
-                                    <?php endif; ?>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <!-- Total Revenue -->
-                        <div class="vandel-stat-card">
-                            <div class="vandel-stat-header">
-                                <div class="vandel-stat-icon">
-                                    <span class="dashicons dashicons-chart-bar"></span>
-                                </div>
-                                <div class="vandel-stat-value">
-                                    <?php echo \VandelBooking\Helpers::formatPrice($revenue_stats['total']); ?>
-                                </div>
-                            </div>
-                            <div class="vandel-stat-footer">
-                                <div class="vandel-stat-label">
-                                    <?php _e('Total Revenue', 'vandel-booking'); ?>
-                                    <?php if (isset($revenue_stats['growth_rate'])): ?>
-                                        <span class="vandel-growth-indicator 
-                                            <?php echo $revenue_stats['growth_rate'] >= 0 ? 'positive' : 'negative'; ?>">
-                                            <?php echo ($revenue_stats['growth_rate'] >= 0 ? '+' : '') . $revenue_stats['growth_rate']; ?>%
-                                        </span>
-                                    <?php endif; ?>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <!-- Total Clients -->
-                        <div class="vandel-stat-card">
-                            <div class="vandel-stat-header">
-                                <div class="vandel-stat-icon">
-                                    <span class="dashicons dashicons-groups"></span>
-                                </div>
-                                <div class="vandel-stat-value">
-                                    <?php echo number_format_i18n($client_stats['total']); ?>
-                                </div>
-                            </div>
-                            <div class="vandel-stat-footer">
-                                <div class="vandel-stat-label">
-                                    <?php _e('Total Clients', 'vandel-booking'); ?>
-                                    <?php if ($client_stats['new_this_month'] > 0): ?>
-                                        <span class="vandel-growth-indicator positive">
-                                            +<?php echo number_format_i18n($client_stats['new_this_month']); ?>
-                                            <?php _e('this month', 'vandel-booking'); ?>
-                                        </span>
-                                    <?php endif; ?>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <!-- Today's Cleanings -->
-                        <div class="vandel-stat-card">
-                            <div class="vandel-stat-header">
-                                <div class="vandel-stat-icon">
-                                    <span class="dashicons dashicons-admin-home"></span>
-                                </div>
-                                <div class="vandel-stat-value">
-                                    <?php echo number_format_i18n($booking_stats['today']); ?>
-                                </div>
-                            </div>
-                            <div class="vandel-stat-footer">
-                                <div class="vandel-stat-label">
-                                    <?php _e('Today\'s Cleanings', 'vandel-booking'); ?>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Main Dashboard Grid -->
-            <div class="vandel-dashboard-grid">
-                <div class="vandel-dashboard-main">
-                    
-                    <!-- Booking Status Summary -->
-                    <div class="vandel-card">
-                        <div class="vandel-card-header vandel-flex-header">
-                            <h3><?php _e('Cleaning Service Status', 'vandel-booking'); ?></h3>
-                            <a href="<?php echo admin_url('admin.php?page=vandel-dashboard&tab=bookings'); ?>" 
-                               class="vandel-view-all"><?php _e('View All Bookings', 'vandel-booking'); ?></a>
-                        </div>
-                        <div class="vandel-card-body">
-                            <div class="vandel-status-summary">
-                                <div class="vandel-status-item vandel-status-pending">
-                                    <div class="vandel-status-count">
-                                        <?php echo number_format_i18n($booking_stats['pending']); ?>
-                                    </div>
-                                    <div class="vandel-status-label">
-                                        <?php _e('Pending', 'vandel-booking'); ?>
-                                    </div>
-                                    <div class="vandel-status-icon">
-                                        <span class="dashicons dashicons-clock"></span>
-                                    </div>
-                                </div>
-                                
-                                <div class="vandel-status-item vandel-status-confirmed">
-                                    <div class="vandel-status-count">
-                                        <?php echo number_format_i18n($booking_stats['confirmed']); ?>
-                                    </div>
-                                    <div class="vandel-status-label">
-                                        <?php _e('Confirmed', 'vandel-booking'); ?>
-                                    </div>
-                                    <div class="vandel-status-icon">
-                                        <span class="dashicons dashicons-yes-alt"></span>
-                                    </div>
-                                </div>
-                                
-                                <div class="vandel-status-item vandel-status-completed">
-                                    <div class="vandel-status-count">
-                                        <?php echo number_format_i18n($booking_stats['completed']); ?>
-                                    </div>
-                                    <div class="vandel-status-label">
-                                        <?php _e('Completed', 'vandel-booking'); ?>
-                                    </div>
-                                    <div class="vandel-status-icon">
-                                        <span class="dashicons dashicons-saved"></span>
-                                    </div>
-                                </div>
-                                
-                                <div class="vandel-status-item vandel-status-canceled">
-                                    <div class="vandel-status-count">
-                                        <?php echo number_format_i18n($booking_stats['canceled']); ?>
-                                    </div>
-                                    <div class="vandel-status-label">
-                                        <?php _e('Canceled', 'vandel-booking'); ?>
-                                    </div>
-                                    <div class="vandel-status-icon">
-                                        <span class="dashicons dashicons-dismiss"></span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- Upcoming Cleaning Schedule -->
-                    <div class="vandel-card">
-                        <div class="vandel-card-header vandel-flex-header">
-                            <h3><?php _e('Upcoming Cleaning Schedule', 'vandel-booking'); ?></h3>
-                            <a href="<?php echo admin_url('admin.php?page=vandel-dashboard&tab=calendar'); ?>" 
-                               class="vandel-view-all"><?php _e('View Calendar', 'vandel-booking'); ?></a>
-                        </div>
-                        <div class="vandel-card-body">
-                            <?php if (empty($upcoming_bookings)): ?>
-                                <div class="vandel-empty-state">
-                                    <span class="dashicons dashicons-calendar-alt"></span>
-                                    <p><?php _e('No upcoming cleanings scheduled.', 'vandel-booking'); ?></p>
-                                    <a href="<?php echo admin_url('admin.php?page=vandel-dashboard&tab=bookings&action=add'); ?>" 
-                                       class="button button-primary"><?php _e('Schedule Cleaning', 'vandel-booking'); ?></a>
-                                </div>
-                            <?php else: ?>
-                                <div class="vandel-cleaning-schedule">
-                                    <?php foreach ($upcoming_bookings as $booking):
-                                        $service      = get_post($booking->service);
-                                        $service_name = $service ? $service->post_title : __('Standard Cleaning', 'vandel-booking');
-                                    ?>
-                                    <div class="vandel-schedule-item">
-                                        <div class="vandel-schedule-time">
-                                            <div class="vandel-date">
-                                                <?php echo date_i18n(get_option('date_format'), strtotime($booking->booking_date)); ?>
-                                            </div>
-                                            <div class="vandel-time">
-                                                <?php echo date_i18n(get_option('time_format'), strtotime($booking->booking_date)); ?>
-                                            </div>
-                                        </div>
-                                        <div class="vandel-schedule-info">
-                                            <div class="vandel-client-name">
-                                                <a href="<?php 
-                                                    echo admin_url(
-                                                        'admin.php?page=vandel-dashboard&tab=client-details&client_id=' . $booking->client_id
-                                                    ); 
-                                                ?>">
-                                                    <?php echo esc_html($booking->customer_name); ?>
-                                                </a>
-                                            </div>
-                                            <div class="vandel-service-type">
-                                                <?php echo esc_html($service_name); ?>
-                                            </div>
-                                            <?php if (!empty($booking->customer_address)): ?>
-                                            <div class="vandel-client-address">
-                                                <span class="dashicons dashicons-location"></span>
-                                                <?php echo esc_html($booking->customer_address); ?>
-                                            </div>
-                                            <?php endif; ?>
-                                        </div>
-                                        <div class="vandel-schedule-status">
-                                            <span class="vandel-status-badge vandel-status-badge-<?php echo $booking->status; ?>">
-                                                <?php echo ucfirst($booking->status); ?>
-                                            </span>
-                                            <div class="vandel-schedule-actions">
-                                                <a href="<?php 
-                                                    echo admin_url(
-                                                        'admin.php?page=vandel-dashboard&tab=booking-details&booking_id=' . $booking->id
-                                                    ); 
-                                                ?>" 
-                                                   class="vandel-action-btn">
-                                                    <span class="dashicons dashicons-visibility"></span>
-                                                </a>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <?php endforeach; ?>
-                                </div>
-                            <?php endif; ?>
-                        </div>
-                    </div>
-                    
-                    <!-- Monthly Booking Trends -->
-                    <?php if (!empty($booking_stats['monthly_trend'])): ?>
-                    <div class="vandel-card">
-                        <div class="vandel-card-header vandel-flex-header">
-                            <h3><?php _e('Cleaning Service Trends', 'vandel-booking'); ?></h3>
-                        </div>
-                        <div class="vandel-card-body">
-                            <div id="monthly-booking-trend" class="vandel-chart" style="height: 300px;"></div>
-                        </div>
-                    </div>
-                    <?php endif; ?>
-                    
-                    <!-- Service Performance -->
-                    <?php if (!empty($service_stats['services'])): ?>
-                    <div class="vandel-card">
-                        <div class="vandel-card-header">
-                            <h3><?php _e('Cleaning Service Performance', 'vandel-booking'); ?></h3>
-                        </div>
-                        <div class="vandel-card-body">
-                            <div class="vandel-grid-row">
-                                <div class="vandel-grid-col-6">
-                                    <div id="service-performance-chart" class="vandel-chart" style="height: 250px;"></div>
-                                </div>
-                                <div class="vandel-grid-col-6">
-                                    <div class="vandel-service-metrics">
-                                        <div class="vandel-section-title">
-                                            <?php _e('Service Breakdown', 'vandel-booking'); ?>
-                                        </div>
-                                        <div class="vandel-service-list">
-                                            <?php foreach ($service_stats['services'] as $service):
-                                                $percentage = $booking_stats['total'] > 0
-                                                    ? round(($service['count'] / $booking_stats['total']) * 100)
-                                                    : 0;
-                                            ?>
-                                            <div class="vandel-service-item">
-                                                <div class="vandel-service-name">
-                                                    <?php echo esc_html($service['title']); ?>
-                                                    <span class="vandel-service-count">
-                                                        (<?php echo number_format_i18n($service['count']); ?>)
-                                                    </span>
-                                                </div>
-                                                <div class="vandel-service-progress">
-                                                    <div class="vandel-progress-bar">
-                                                        <div class="vandel-progress-fill" 
-                                                             style="width: <?php echo esc_attr($percentage); ?>%">
-                                                        </div>
-                                                    </div>
-                                                    <div class="vandel-progress-percentage">
-                                                        <?php echo $percentage; ?>%
-                                                    </div>
-                                                </div>
-                                                <div class="vandel-service-revenue">
-                                                    <?php echo \VandelBooking\Helpers::formatPrice($service['revenue']); ?>
-                                                </div>
-                                            </div>
-                                            <?php endforeach; ?>
-                                        </div>
-                                        
-                                        <?php if ($service_stats['most_popular'] !== null): ?>
-                                        <div class="vandel-card-highlight">
-                                            <span class="dashicons dashicons-awards"></span>
-                                            <strong>
-                                                <?php _e('Most Popular Service:', 'vandel-booking'); ?>
-                                            </strong>
-                                            <?php echo esc_html($service_stats['most_popular']->post_title); ?>
-                                        </div>
-                                        <?php endif; ?>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <?php endif; ?>
-                    
-                </div><!-- .vandel-dashboard-main -->
-                
-                <!-- Sidebar -->
-                <div class="vandel-dashboard-sidebar">
-                    <!-- Quick Actions -->
-                    <div class="vandel-card">
-                        <div class="vandel-card-header">
-                            <h3><?php _e('Quick Actions', 'vandel-booking'); ?></h3>
-                        </div>
-                        <div class="vandel-card-body">
-                            <div class="vandel-quick-action-buttons">
-                                <a href="<?php echo admin_url('admin.php?page=vandel-dashboard&tab=bookings&action=add'); ?>" 
-                                   class="vandel-quick-action-btn">
-                                    <span class="dashicons dashicons-plus-alt"></span>
-                                    <span class="vandel-quick-action-label">
-                                        <?php _e('New Cleaning', 'vandel-booking'); ?>
-                                    </span>
-                                </a>
-                                
-                                <a href="<?php echo admin_url('admin.php?page=vandel-dashboard&tab=clients&action=add'); ?>" 
-                                   class="vandel-quick-action-btn">
-                                    <span class="dashicons dashicons-admin-users"></span>
-                                    <span class="vandel-quick-action-label">
-                                        <?php _e('Add Client', 'vandel-booking'); ?>
-                                    </span>
-                                </a>
-                                
-                                <a href="<?php echo admin_url('post-new.php?post_type=vandel_service'); ?>" 
-                                   class="vandel-quick-action-btn">
-                                    <span class="dashicons dashicons-admin-generic"></span>
-                                    <span class="vandel-quick-action-label">
-                                        <?php _e('Add Service', 'vandel-booking'); ?>
-                                    </span>
-                                </a>
-                                
-                                <a href="<?php echo admin_url('admin.php?page=vandel-dashboard&tab=calendar'); ?>" 
-                                   class="vandel-quick-action-btn">
-                                    <span class="dashicons dashicons-calendar-alt"></span>
-                                    <span class="vandel-quick-action-label">
-                                        <?php _e('View Calendar', 'vandel-booking'); ?>
-                                    </span>
-                                </a>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- Client Insights -->
-                    <div class="vandel-card">
-                        <div class="vandel-card-header vandel-flex-header">
-                            <h3><?php _e('Client Insights', 'vandel-booking'); ?></h3>
-                            <a href="<?php echo admin_url('admin.php?page=vandel-dashboard&tab=clients'); ?>" 
-                               class="vandel-view-all">
-                                <?php _e('View All Clients', 'vandel-booking'); ?>
-                            </a>
-                        </div>
-                        <div class="vandel-card-body">
-                            <?php if ($repeat_client_stats['total_repeat'] > 0): ?>
-                                <div class="vandel-client-metrics">
-                                    <div class="vandel-metric-item">
-                                        <div class="vandel-metric-value">
-                                            <?php echo number_format_i18n($repeat_client_stats['total_repeat']); ?>
-                                        </div>
-                                        <div class="vandel-metric-label">
-                                            <?php _e('Repeat Clients', 'vandel-booking'); ?>
-                                        </div>
-                                    </div>
-                                    <div class="vandel-metric-item">
-                                        <div class="vandel-metric-value">
-                                            <?php echo $repeat_client_stats['percentage']; ?>%
-                                        </div>
-                                        <div class="vandel-metric-label">
-                                            <?php _e('Client Retention Rate', 'vandel-booking'); ?>
-                                        </div>
-                                    </div>
-                                </div>
-                                
-                                <?php if ($repeat_client_stats['most_frequent_client']): ?>
-                                <div class="vandel-highlight-client">
-                                    <div class="vandel-highlight-client-header">
-                                        <div class="vandel-highlight-client-icon">
-                                            <span class="dashicons dashicons-star-filled"></span>
-                                        </div>
-                                        <div class="vandel-highlight-client-title">
-                                            <?php _e('Most Frequent Client', 'vandel-booking'); ?>
-                                        </div>
-                                    </div>
-                                    <div class="vandel-highlight-client-content">
-                                        <div class="vandel-client-name">
-                                            <a href="<?php 
-                                                echo admin_url(
-                                                    'admin.php?page=vandel-dashboard&tab=client-details&client_id=' 
-                                                    . $repeat_client_stats['most_frequent_client']->client_id
-                                                ); 
-                                            ?>">
-                                                <?php echo esc_html($repeat_client_stats['most_frequent_client']->client_name); ?>
-                                            </a>
-                                        </div>
-                                        <div class="vandel-client-info">
-                                            <span class="vandel-client-email">
-                                                <?php echo esc_html($repeat_client_stats['most_frequent_client']->client_email); ?>
-                                            </span>
-                                        </div>
-                                        <div class="vandel-client-stats">
-                                            <span class="vandel-booking-count">
-                                                <strong>
-                                                    <?php echo number_format_i18n($repeat_client_stats['most_bookings']); ?>
-                                                </strong>
-                                                <?php _e('bookings', 'vandel-booking'); ?>
-                                            </span>
-                                        </div>
-                                    </div>
-                                </div>
-                                <?php endif; ?>
-                            <?php else: ?>
-                                <div class="vandel-empty-state vandel-empty-state-small">
-                                    <p><?php _e('Not enough client data yet.', 'vandel-booking'); ?></p>
-                                    <p><?php _e('Add more clients and bookings to see insights here.', 'vandel-booking'); ?></p>
-                                </div>
-                            <?php endif; ?>
-                        </div>
-                    </div>
-                    
-                    <!-- Service Area Insights -->
-                    <?php if (!empty($location_data['areas'])): ?>
-                    <div class="vandel-card">
-                        <div class="vandel-card-header">
-                            <h3><?php _e('Service Area Insights', 'vandel-booking'); ?></h3>
-                        </div>
-                        <div class="vandel-card-body">
-                            <div class="vandel-area-metrics">
-                                <div class="vandel-area-title">
-                                    <?php _e('Top Service Areas by Bookings', 'vandel-booking'); ?>
-                                </div>
-                                <div class="vandel-area-list">
-                                    <?php 
-                                    // Highest count is used for the progress bars
-                                    $max_count = $location_data['areas'][0]->booking_count;
-                                    foreach (array_slice($location_data['areas'], 0, 5) as $area):
-                                        $percentage = $max_count > 0 
-                                            ? ($area->booking_count / $max_count) * 100 
-                                            : 0;
-                                    ?>
-                                    <div class="vandel-area-item">
-                                        <div class="vandel-area-name">
-                                            <?php echo esc_html($area->area); ?>
-                                            <span class="vandel-area-count">
-                                                (<?php echo number_format_i18n($area->booking_count); ?>)
-                                            </span>
-                                        </div>
-                                        <div class="vandel-area-bar">
-                                            <div class="vandel-area-bar-fill" 
-                                                 style="width: <?php echo esc_attr($percentage); ?>%">
-                                            </div>
-                                        </div>
-                                        <div class="vandel-area-revenue">
-                                            <?php echo \VandelBooking\Helpers::formatPrice($area->revenue); ?>
-                                        </div>
-                                    </div>
-                                    <?php endforeach; ?>
-                                </div>
-                                
-                                <?php if ($location_data['most_active']): ?>
-                                <div class="vandel-card-highlight">
-                                    <span class="dashicons dashicons-location"></span>
-                                    <strong><?php _e('Most Active Area:', 'vandel-booking'); ?></strong>
-                                    <?php echo esc_html($location_data['most_active']); ?>
-                                </div>
-                                <?php endif; ?>
-                            </div>
-                        </div>
-                    </div>
-                    <?php endif; ?>
-                    
-                    <!-- Recent Activity -->
-                    <div class="vandel-card">
-                        <div class="vandel-card-header">
-                            <h3><?php _e('Recent Activity', 'vandel-booking'); ?></h3>
-                        </div>
-                        <div class="vandel-card-body">
-                            <?php if (empty($recent_bookings)): ?>
-                                <div class="vandel-empty-state vandel-empty-state-small">
-                                    <p><?php _e('No recent activity.', 'vandel-booking'); ?></p>
-                                </div>
-                            <?php else: ?>
-                                <div class="vandel-activity-feed">
-                                    <?php foreach ($recent_bookings as $booking):
-                                        $service      = get_post($booking->service);
-                                        $service_name = $service ? $service->post_title : __('Standard Cleaning', 'vandel-booking');
-                                        // Determine dashicon by status
-                                        $icon_class   = 'dashicons-calendar-alt';
-                                        switch ($booking->status) {
-                                            case 'confirmed':
-                                                $icon_class = 'dashicons-yes-alt';
-                                                break;
-                                            case 'completed':
-                                                $icon_class = 'dashicons-saved';
-                                                break;
-                                            case 'canceled':
-                                                $icon_class = 'dashicons-dismiss';
-                                                break;
-                                        }
-                                    ?>
-                                    <div class="vandel-activity-item">
-                                        <div class="vandel-activity-icon">
-                                            <span class="dashicons <?php echo $icon_class; ?>"></span>
-                                        </div>
-                                        <div class="vandel-activity-content">
-                                            <div class="vandel-activity-message">
-                                                <a href="<?php 
-                                                    echo admin_url(
-                                                        'admin.php?page=vandel-dashboard&tab=booking-details&booking_id=' . $booking->id
-                                                    ); 
-                                                ?>">
-                                                    <?php echo esc_html($booking->customer_name); ?>
-                                                </a>
-                                                <?php 
-                                                switch ($booking->status) {
-                                                    case 'pending':
-                                                        _e('booked a cleaning service', 'vandel-booking');
-                                                        break;
-                                                    case 'confirmed':
-                                                        _e('confirmed a cleaning', 'vandel-booking');
-                                                        break;
-                                                    case 'completed':
-                                                        _e('completed a cleaning service', 'vandel-booking');
-                                                        break;
-                                                    case 'canceled':
-                                                        _e('canceled a cleaning service', 'vandel-booking');
-                                                        break;
-                                                    default:
-                                                        _e('updated a booking', 'vandel-booking');
-                                                }
-                                                ?>
-                                                – <?php echo esc_html($service_name); ?>
-                                            </div>
-                                            <div class="vandel-activity-time">
-                                                <?php echo human_time_diff(strtotime($booking->created_at), current_time('timestamp')); ?>
-                                                <?php _e('ago', 'vandel-booking'); ?>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <?php endforeach; ?>
-                                </div>
-                            <?php endif; ?>
-                        </div>
-                    </div>
-                    
-                </div><!-- .vandel-dashboard-sidebar -->
-            </div><!-- .vandel-dashboard-grid -->
-        </div><!-- #overview -->
-        
-        <?php if (!empty($booking_stats['monthly_trend']) || !empty($service_stats['services'])): ?>
-        <script>
-        jQuery(document).ready(function($) {
-            <?php if (!empty($booking_stats['monthly_trend'])): ?>
-            // Monthly Booking Trend (Line Chart)
-            const bookingCtx = document.getElementById('monthly-booking-trend').getContext('2d');
-            new Chart(bookingCtx, {
-                type: 'line',
-                data: {
-                    labels: <?php echo json_encode(array_keys($booking_stats['monthly_trend'])); ?>,
-                    datasets: [{
-                        label: '<?php _e('Cleaning Services', 'vandel-booking'); ?>',
-                        data: <?php echo json_encode(array_values($booking_stats['monthly_trend'])); ?>,
-                        backgroundColor: 'rgba(53, 162, 235, 0.2)',
-                        borderColor: 'rgba(53, 162, 235, 1)',
-                        borderWidth: 2,
-                        tension: 0.4,
-                        fill: true
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            ticks: {
-                                precision: 0
-                            }
-                        }
-                    },
-                    plugins: {
-                        legend: {
-                            position: 'top'
-                        },
-                        tooltip: {
-                            callbacks: {
-                                title: function(tooltipItems) {
-                                    return tooltipItems[0].label;
-                                },
-                                label: function(context) {
-                                    return `${context.dataset.label}: ${context.raw} bookings`;
-                                }
-                            }
-                        }
-                    }
-                }
-            });
-            <?php endif; ?>
-            
-            <?php if (!empty($service_stats['services'])): ?>
-            // Service Performance (Doughnut Chart)
-            const serviceCtx = document.getElementById('service-performance-chart').getContext('2d');
-            new Chart(serviceCtx, {
-                type: 'doughnut',
-                data: {
-                    labels: <?php 
-                        echo json_encode(array_map(
-                            fn($service) => $service['title'], 
-                            $service_stats['services']
-                        )); 
-                    ?>,
-                    datasets: [{
-                        data: <?php 
-                            echo json_encode(array_map(
-                                fn($service) => $service['count'], 
-                                $service_stats['services']
-                            )); 
-                        ?>,
-                        backgroundColor: [
-                            'rgba(54, 162, 235, 0.8)',
-                            'rgba(75, 192, 192, 0.8)',
-                            'rgba(255, 206, 86, 0.8)',
-                            'rgba(153, 102, 255, 0.8)',
-                            'rgba(255, 159, 64, 0.8)',
-                            'rgba(255, 99, 132, 0.8)',
-                            'rgba(199, 199, 199, 0.8)',
-                            'rgba(83, 102, 255, 0.8)',
-                            'rgba(40, 159, 64, 0.8)',
-                            'rgba(210, 99, 132, 0.8)'
-                        ],
-                        borderWidth: 1
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            position: 'right',
-                            labels: {
-                                boxWidth: 12,
-                                padding: 15
-                            }
-                        },
-                        tooltip: {
-                            callbacks: {
-                                label: function(context) {
-                                    const label = context.label || '';
-                                    const value = context.raw || 0;
-                                    const dataset = context.dataset;
-                                    const total = dataset.data.reduce((acc, num) => acc + num, 0);
-                                    const pct = ((value / total) * 100).toFixed(1);
-                                    return `${label}: ${value} (${pct}%)`;
-                                }
-                            }
-                        }
-                    }
-                }
-            });
-            <?php endif; ?>
-        });
-        </script>
-        <?php endif; ?>
-        <?php
     }
 }
