@@ -30,6 +30,9 @@ class Settings_Tab implements Tab_Interface {
      * Process any actions for this tab
      */
     public function process_actions() {
+        // Start output buffering to prevent "headers already sent" errors
+        ob_start();
+        
         // Handle settings form submissions
         if (isset($_POST['vandel_save_settings']) && isset($_POST['_wpnonce'])) {
             $this->save_settings();
@@ -45,6 +48,7 @@ class Settings_Tab implements Tab_Interface {
             $this->add_location();
         }
     }
+
     
     /**
      * Initialize settings sections
@@ -188,11 +192,15 @@ class Settings_Tab implements Tab_Interface {
                 break;
         }
         
+        // Clean output buffer before redirect
+        ob_clean();
+        
         // Redirect back to settings page with success message
         wp_redirect(add_query_arg(['message' => 'settings_saved'], wp_get_referer()));
         exit;
     }
-    
+
+
     /**
      * Add ZIP code
      */
@@ -321,6 +329,14 @@ class Settings_Tab implements Tab_Interface {
      * Render tab content
      */
     public function render() {
+        // Check for redirect transient before any output
+        $redirect = get_transient('vandel_settings_redirect');
+        if ($redirect && (time() - $redirect['time']) < 30) {
+            delete_transient('vandel_settings_redirect');
+            wp_redirect($redirect['url']);
+            exit;
+        }
+        
         // Get current section
         $section = isset($_GET['section']) ? sanitize_key($_GET['section']) : 'general';
         
