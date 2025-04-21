@@ -995,3 +995,44 @@ if (file_exists(VANDEL_PLUGIN_DIR . 'includes/location/class-location-service.ph
         }
     });
 }
+
+
+// Load Booking AJAX Handler
+if (file_exists(VANDEL_PLUGIN_DIR . 'includes/ajax/class-booking-ajax-handler.php')) {
+require_once VANDEL_PLUGIN_DIR . 'includes/ajax/class-booking-ajax-handler.php';
+    add_action('init', function() {
+        if (class_exists('\\VandelBooking\\Ajax\\BookingAjaxHandler')) {
+            new \VandelBooking\Ajax\BookingAjaxHandler();
+        }
+    });
+}
+
+// Enqueue scripts for Bookings Tab
+function vandel_enqueue_bookings_tab_scripts($hook) {
+// Only load on our plugin's dashboard page
+if ($hook !== 'toplevel_page_vandel-dashboard' ||
+!isset($_GET['tab']) ||
+$_GET['tab'] !== 'bookings') {
+return;
+}
+// Enqueue Select2 for enhanced dropdowns
+wp_enqueue_style('select2', 'https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css');
+wp_enqueue_script('select2', 'https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js', ['jquery'], null, true);
+
+// Enqueue date range picker
+wp_enqueue_style('daterangepicker', 'https://cdn.jsdelivr.net/npm/daterangepicker@3.1.0/daterangepicker.css');
+wp_enqueue_script('moment', 'https://cdn.jsdelivr.net/npm/moment@2.29.1/moment.min.js', [], null, true);
+wp_enqueue_script('daterangepicker', 'https://cdn.jsdelivr.net/npm/daterangepicker@3.1.0/daterangepicker.min.js', ['jquery', 'moment'], null, true);
+
+// Enqueue custom bookings tab JS and CSS
+wp_enqueue_script('vandel-bookings-tab', VANDEL_PLUGIN_URL . 'assets/js/admin/bookings-tab.js', ['jquery', 'select2', 'daterangepicker'], VANDEL_VERSION, true);
+
+// Localize script with necessary data
+wp_localize_script('vandel-bookings-tab', 'vandelBookingsTab', [
+    'ajaxUrl' => admin_url('admin-ajax.php'),
+    'nonce' => wp_create_nonce('vandel_bookings_tab_nonce'),
+    'noActionSelected' => __('Please select a bulk action.', 'vandel-booking'),
+    'noRowsSelected' => __('Please select at least one booking.', 'vandel-booking')
+]);
+}
+add_action('admin_enqueue_scripts', 'vandel_enqueue_bookings_tab_scripts');

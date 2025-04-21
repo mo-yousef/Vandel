@@ -546,4 +546,5 @@ class AjaxHandler {
         
         return $total;
     }
+
 }
