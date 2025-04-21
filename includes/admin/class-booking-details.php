@@ -1663,40 +1663,38 @@ private function display_status_messages() {
 
 <script>
 jQuery(document).ready(function($) {
-    // Handle status button clicks
-    $('.vandel-booking-actions a').on('click', function(e) {
-        // Don't intercept the "Back to Bookings" button
-        if ($(this).text().trim().indexOf('Back to Bookings') >= 0) {
-            return true;
-        }
+// Handle status button clicks
+$('.vandel-booking-actions a').on('click', function(e) {
+    // Don't intercept the "Back to Bookings" button
+    if ($(this).text().trim().indexOf('Back to Bookings') >= 0) {
+        return true;
+    }
 
-        e.preventDefault();
-        var actionUrl = $(this).attr('href');
-        var actionType = '';
-        
-        if (actionUrl.indexOf('action=approve') >= 0) {
-            actionType = 'confirm';
-        } else if (actionUrl.indexOf('action=complete') >= 0) {
-            actionType = 'complete';
-        } else if (actionUrl.indexOf('action=cancel') >= 0) {
-            actionType = 'cancel';
-        } else if (actionUrl.indexOf('action=download_invoice') >= 0) {
-            // For invoice, let's use a direct form submission to avoid AJAX issues
-            var $form = $('<form>', {
-                'method': 'get',
-                'action': actionUrl
-            });
-            $('body').append($form);
-            $form.submit();
-            return false;
-        }
-        
-        if (actionType) {
-            updateBookingStatus(actionType, <?php echo $booking->id; ?>);
-        }
-        
+    e.preventDefault();
+    var actionUrl = $(this).attr('href');
+    
+    // Special handling for invoice downloads
+    if (actionUrl.indexOf('action=download_invoice') >= 0) {
+        // Use direct window location for downloads
+        window.location.href = actionUrl;
         return false;
-    });
+    }
+    
+    var actionType = '';
+    if (actionUrl.indexOf('action=approve') >= 0) {
+        actionType = 'confirm';
+    } else if (actionUrl.indexOf('action=complete') >= 0) {
+        actionType = 'complete';
+    } else if (actionUrl.indexOf('action=cancel') >= 0) {
+        actionType = 'cancel';
+    }
+    
+    if (actionType) {
+        updateBookingStatus(actionType, <?php echo $booking->id; ?>);
+    }
+    
+    return false;
+});
     
     // Function to update booking status via AJAX
     function updateBookingStatus(action, bookingId) {
@@ -1752,6 +1750,11 @@ jQuery(document).ready(function($) {
         }
     });
 });
+
+
+
+
+
 </script>
 
 <style>
