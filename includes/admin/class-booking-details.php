@@ -38,140 +38,134 @@ class BookingDetails {
         add_action('admin_init', [$this, 'handleBookingActions'], 5);
     }
     
-    /**
-     * Handle booking actions
-     */
-    public function handleBookingActions() {
-        // Only process if we're on our dashboard page with booking-details tab
-        if (!isset($_GET['page']) || $_GET['page'] !== 'vandel-dashboard' || 
-            !isset($_GET['tab']) || $_GET['tab'] !== 'booking-details') {
+/**
+ * Handle booking actions
+ */
+public function handleBookingActions() {
+    // Only process if we're on our dashboard page with booking-details tab
+    if (!isset($_GET['page']) || $_GET['page'] !== 'vandel-dashboard' || 
+        !isset($_GET['tab']) || $_GET['tab'] !== 'booking-details') {
+        return;
+    }
+    
+    $booking_id = isset($_GET['booking_id']) ? intval($_GET['booking_id']) : 0;
+    if ($booking_id === 0) {
+        return;
+    }
+    
+    // Handle status changes and invoice download
+    if (isset($_GET['action']) && isset($_GET['_wpnonce'])) {
+        $action = sanitize_key($_GET['action']);
+        $nonce = $_GET['_wpnonce'];
+        $expected_nonce_action = $action . '_booking_' . $booking_id;
+        
+        // Verify nonce
+        if (!wp_verify_nonce($nonce, $expected_nonce_action)) {
+            wp_die(__('Security check failed. Please try again.', 'vandel-booking'));
             return;
         }
         
-        $booking_id = isset($_GET['booking_id']) ? intval($_GET['booking_id']) : 0;
-        if ($booking_id === 0) {
-            return;
+        // Special handling for invoice download
+        if ($action === 'download_invoice') {
+            $this->downloadInvoice($booking_id);
+            exit; // Exit after sending the invoice
         }
         
-        // Handle status changes
-        if (isset($_GET['action']) && isset($_GET['_wpnonce'])) {
-            $action = sanitize_key($_GET['action']);
-            $nonce = $_GET['_wpnonce'];
-            $expected_nonce_action = $action . '_booking_' . $booking_id;
-            
-            // Verify nonce
-            if (!wp_verify_nonce($nonce, $expected_nonce_action)) {
-                wp_die(__('Security check failed. Please try again.', 'vandel-booking'));
-                return;
-            }
-            
-            switch ($action) {
-                case 'approve':
-                    $this->updateBookingStatus($booking_id, 'confirmed');
-                    wp_redirect(admin_url('admin.php?page=vandel-dashboard&tab=booking-details&booking_id=' . $booking_id . '&message=booking_approved'));
-                    exit;
-                    
-                case 'cancel':
-                    $this->updateBookingStatus($booking_id, 'canceled');
-                    wp_redirect(admin_url('admin.php?page=vandel-dashboard&tab=booking-details&booking_id=' . $booking_id . '&message=booking_canceled'));
-                    exit;
-                    
-                case 'complete':
-                    $this->updateBookingStatus($booking_id, 'completed');
-                    wp_redirect(admin_url('admin.php?page=vandel-dashboard&tab=booking-details&booking_id=' . $booking_id . '&message=booking_completed'));
-                    exit;
-                    
-                case 'download_invoice':
-                    $this->downloadInvoice($booking_id);
-                    exit;
-            }
-        }
+        // Other actions will be handled by AJAX now
+    }
+    
+    // Handle adding notes
+    if (isset($_POST['add_booking_note']) && isset($_POST['booking_note_nonce']) && 
+        wp_verify_nonce($_POST['booking_note_nonce'], 'add_booking_note')) {
         
-        // Handle adding notes
-        if (isset($_POST['add_booking_note']) && isset($_POST['booking_note_nonce']) && 
-            wp_verify_nonce($_POST['booking_note_nonce'], 'add_booking_note')) {
-            
-            $note_content = isset($_POST['note_content']) ? sanitize_textarea_field($_POST['note_content']) : '';
-            
-            if (!empty($note_content)) {
-                $this->addBookingNote($booking_id, $note_content);
-                wp_redirect(admin_url('admin.php?page=vandel-dashboard&tab=booking-details&booking_id=' . $booking_id . '&message=note_added'));
-                exit;
-            }
-        }
+        $note_content = isset($_POST['note_content']) ? sanitize_textarea_field($_POST['note_content']) : '';
         
-        // Handle updating booking details
-        if (isset($_POST['update_booking']) && isset($_POST['booking_update_nonce']) && 
-            wp_verify_nonce($_POST['booking_update_nonce'], 'update_booking_' . $booking_id)) {
-            
-            $this->updateBookingDetails($booking_id, $_POST);
-            wp_redirect(admin_url('admin.php?page=vandel-dashboard&tab=booking-details&booking_id=' . $booking_id . '&message=booking_updated'));
+        if (!empty($note_content)) {
+            $this->addBookingNote($booking_id, $note_content);
+            wp_redirect(admin_url('admin.php?page=vandel-dashboard&tab=booking-details&booking_id=' . $booking_id . '&message=note_added'));
             exit;
         }
     }
     
-    /**
-     * Update booking status
-     * 
-     * @param int $booking_id Booking ID
-     * @param string $status New status
-     * @return bool Success
-     */
-    private function updateBookingStatus($booking_id, $status) {
-        // Try to use BookingManager
-        if ($this->booking_manager && method_exists($this->booking_manager, 'updateBookingStatus')) {
-            return $this->booking_manager->updateBookingStatus($booking_id, $status);
+    // Handle updating booking details
+    if (isset($_POST['update_booking']) && isset($_POST['booking_update_nonce']) && 
+        wp_verify_nonce($_POST['booking_update_nonce'], 'update_booking_' . $booking_id)) {
+        
+        $result = $this->updateBookingDetails($booking_id, $_POST);
+        if ($result) {
+            wp_redirect(admin_url('admin.php?page=vandel-dashboard&tab=booking-details&booking_id=' . $booking_id . '&message=booking_updated'));
+        } else {
+            wp_redirect(admin_url('admin.php?page=vandel-dashboard&tab=booking-details&booking_id=' . $booking_id . '&message=update_failed'));
         }
-        
-        // Fallback if BookingManager not available
-        global $wpdb;
-        $bookings_table = $wpdb->prefix . 'vandel_bookings';
-        
-        // Check if table exists
-        if ($wpdb->get_var("SHOW TABLES LIKE '$bookings_table'") !== $bookings_table) {
-            return false;
-        }
-        
-        // Get current status for comparison
-        $old_status = $wpdb->get_var($wpdb->prepare(
-            "SELECT status FROM $bookings_table WHERE id = %d",
-            $booking_id
-        ));
-        
-        if ($old_status === null) {
-            return false;
-        }
-        
-        // Update the status
-        $result = $wpdb->update(
-            $bookings_table,
-            ['status' => $status],
-            ['id' => $booking_id],
-            ['%s'],
-            ['%d']
-        );
-        
-        if ($result === false) {
-            return false;
-        }
-        
-        // Trigger status change action for other plugins
-        if ($old_status !== $status) {
-            do_action('vandel_booking_status_changed', $booking_id, $old_status, $status);
-            
-            // Add note about status change
-            $this->addBookingNote(
-                $booking_id,
-                sprintf(__('Status changed from %s to %s', 'vandel-booking'), 
-                    ucfirst($old_status),
-                    ucfirst($status)
-                ),
-                'system'
-            );
-        }
-        
-        return true;
+        exit;
     }
+}
+    
+/**
+ * Update booking status
+ * 
+ * @param int $booking_id Booking ID
+ * @param string $status New status
+ * @return bool Success
+ */
+private function updateBookingStatus($booking_id, $status) {
+    // Try to use BookingManager
+    if ($this->booking_manager && method_exists($this->booking_manager, 'updateBookingStatus')) {
+        $result = $this->booking_manager->updateBookingStatus($booking_id, $status);
+        if ($result) {
+            return true;
+        }
+    }
+    
+    // Fallback if BookingManager not available or failed
+    global $wpdb;
+    $bookings_table = $wpdb->prefix . 'vandel_bookings';
+    
+    // Check if table exists
+    if ($wpdb->get_var("SHOW TABLES LIKE '$bookings_table'") !== $bookings_table) {
+        return false;
+    }
+    
+    // Get current status for comparison
+    $old_status = $wpdb->get_var($wpdb->prepare(
+        "SELECT status FROM $bookings_table WHERE id = %d",
+        $booking_id
+    ));
+    
+    if ($old_status === null) {
+        return false;
+    }
+    
+    // Update the status
+    $result = $wpdb->update(
+        $bookings_table,
+        ['status' => $status],
+        ['id' => $booking_id],
+        ['%s'],
+        ['%d']
+    );
+    
+    if ($result === false) {
+        return false;
+    }
+    
+    // Trigger status change action for other plugins
+    if ($old_status !== $status) {
+        do_action('vandel_booking_status_changed', $booking_id, $old_status, $status);
+        
+        // Add note about status change
+        $this->addBookingNote(
+            $booking_id,
+            sprintf(__('Status changed from %s to %s', 'vandel-booking'), 
+                ucfirst($old_status),
+                ucfirst($status)
+            ),
+            'system'
+        );
+    }
+    
+    return true;
+}
     
     /**
      * Add booking note
@@ -343,36 +337,145 @@ class BookingDetails {
         return true;
     }
     
-    /**
-     * Generate and download booking invoice (simplified version)
-     * 
-     * @param int $booking_id Booking ID
-     */
-    private function downloadInvoice($booking_id) {
-        // Get booking data
-        $booking = null;
-        
-        if ($this->booking_manager && method_exists($this->booking_manager, 'getBooking')) {
-            $booking = $this->booking_manager->getBooking($booking_id);
-        } else {
-            // Fallback to direct database query
-            global $wpdb;
-            $bookings_table = $wpdb->prefix . 'vandel_bookings';
-            $booking = $wpdb->get_row($wpdb->prepare(
-                "SELECT * FROM $bookings_table WHERE id = %d",
-                $booking_id
-            ));
-        }
-        
-        if (!$booking) {
-            wp_die(__('Booking not found', 'vandel-booking'));
-            return;
-        }
-        
-        // Generate simple HTML invoice
-        $this->generateHtmlInvoice($booking);
-        exit;
+/**
+ * Generate and download booking invoice
+ * 
+ * @param int $booking_id Booking ID
+ */
+private function downloadInvoice($booking_id) {
+    // Get booking data
+    $booking = null;
+    
+    if ($this->booking_manager && method_exists($this->booking_manager, 'getBooking')) {
+        $booking = $this->booking_manager->getBooking($booking_id);
+    } else {
+        // Fallback to direct database query
+        global $wpdb;
+        $bookings_table = $wpdb->prefix . 'vandel_bookings';
+        $booking = $wpdb->get_row($wpdb->prepare(
+            "SELECT * FROM $bookings_table WHERE id = %d",
+            $booking_id
+        ));
     }
+    
+    if (!$booking) {
+        wp_die(__('Booking not found', 'vandel-booking'));
+        return;
+    }
+    
+    // Get service info
+    $service = get_post($booking->service);
+    $service_name = $service ? $service->post_title : __('Unknown Service', 'vandel-booking');
+    
+    // Business info
+    $business_name = get_option('vandel_business_name', get_bloginfo('name'));
+    $business_address = get_option('vandel_business_address', '');
+    
+    // Format dates
+    $booking_date = new \DateTime($booking->booking_date);
+    $invoice_date = new \DateTime();
+    
+    // Generate invoice number
+    $invoice_number = 'INV-' . $booking->id . '-' . date('Ymd');
+    
+    // Start output buffering to capture HTML content
+    ob_start();
+    
+    // Generate invoice HTML
+    echo '<!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="utf-8">
+        <title>Invoice #' . $invoice_number . '</title>
+        <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+            .container { width: 800px; margin: 0 auto; padding: 20px; }
+            .header { margin-bottom: 30px; }
+            .header:after { content: ""; display: table; clear: both; }
+            .business-info { float: left; width: 50%; }
+            .invoice-info { float: right; width: 50%; text-align: right; }
+            .client-info { margin-bottom: 30px; }
+            table { width: 100%; border-collapse: collapse; margin-bottom: 30px; }
+            th, td { padding: 10px; text-align: left; border-bottom: 1px solid #ddd; }
+            th { background-color: #f5f5f5; font-weight: bold; }
+            .text-right { text-align: right; }
+            .total-row { font-weight: bold; }
+            .footer { margin-top: 50px; text-align: center; font-size: 12px; color: #777; }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <div class="business-info">
+                    <h1>' . $business_name . '</h1>
+                    <p>' . nl2br($business_address) . '</p>
+                </div>
+                <div class="invoice-info">
+                    <h2>INVOICE</h2>
+                    <p><strong>Invoice #:</strong> ' . $invoice_number . '</p>
+                    <p><strong>Date:</strong> ' . $invoice_date->format(get_option('date_format')) . '</p>
+                    <p><strong>Booking ID:</strong> #' . $booking->id . '</p>
+                </div>
+            </div>
+            
+            <div class="client-info">
+                <h3>Bill To:</h3>
+                <p>' . $booking->customer_name . '</p>
+                <p>Email: ' . $booking->customer_email . '</p>';
+                
+                if (!empty($booking->phone)) {
+                    echo '<p>Phone: ' . $booking->phone . '</p>';
+                }
+                
+            echo '</div>
+            
+            <table>
+                <tr>
+                    <th width="5%">#</th>
+                    <th width="50%">Description</th>
+                    <th width="15%" class="text-right">Price</th>
+                    <th width="15%" class="text-right">Quantity</th>
+                    <th width="15%" class="text-right">Amount</th>
+                </tr>
+                
+                <tr>
+                    <td>1</td>
+                    <td>' . $service_name . '<br>Date: ' . $booking_date->format(get_option('date_format') . ' ' . get_option('time_format')) . '</td>
+                    <td class="text-right">' . \VandelBooking\Helpers::formatPrice($booking->total_price) . '</td>
+                    <td class="text-right">1</td>
+                    <td class="text-right">' . \VandelBooking\Helpers::formatPrice($booking->total_price) . '</td>
+                </tr>
+                
+                <tr class="total-row">
+                    <td colspan="4" class="text-right">Total</td>
+                    <td class="text-right">' . \VandelBooking\Helpers::formatPrice($booking->total_price) . '</td>
+                </tr>
+            </table>
+            
+            <div class="payment-info">
+                <h3>Payment Information</h3>
+                <p><strong>Status:</strong> ' . ucfirst($booking->status) . '</p>
+                <p>Thank you for your business!</p>
+            </div>
+            
+            <div class="footer">
+                <p>This is an electronically generated invoice and does not require a signature.</p>
+            </div>
+        </div>
+    </body>
+    </html>';
+    
+    $html_content = ob_get_clean();
+    
+    // Set headers for download
+    header('Content-Type: text/html; charset=utf-8');
+    header('Content-Disposition: attachment; filename="invoice_' . $invoice_number . '.html"');
+    header('Cache-Control: max-age=0');
+    
+    // Output the HTML content
+    echo $html_content;
+    exit;
+}
     
     /**
      * Generate HTML invoice
@@ -668,48 +771,52 @@ class BookingDetails {
         return floatval($total);
     }
     
-    /**
-     * Display status messages
-     */
-    private function display_status_messages() {
-        if (!isset($_GET['message'])) {
-            return;
-        }
-        
-        $message_type = 'success';
-        $message = '';
-        
-        switch ($_GET['message']) {
-            case 'booking_approved':
-                $message = __('Booking confirmed successfully.', 'vandel-booking');
-                break;
-                
-            case 'booking_canceled':
-                $message = __('Booking canceled successfully.', 'vandel-booking');
-                break;
-                
-            case 'booking_completed':
-                $message = __('Booking marked as completed.', 'vandel-booking');
-                break;
-                
-            case 'note_added':
-                $message = __('Note added successfully.', 'vandel-booking');
-                break;
-                
-            case 'booking_updated':
-                $message = __('Booking details updated successfully.', 'vandel-booking');
-                break;
-        }
-        
-        if (!empty($message)) {
-            printf(
-                '<div class="notice notice-%s is-dismissible"><p>%s</p></div>',
-                esc_attr($message_type),
-                esc_html($message)
-            );
-        }
+/**
+ * Display status messages
+ */
+private function display_status_messages() {
+    if (!isset($_GET['message'])) {
+        return;
     }
     
+    $message_type = 'success';
+    $message = '';
+    
+    switch ($_GET['message']) {
+        case 'booking_approved':
+            $message = __('Booking confirmed successfully.', 'vandel-booking');
+            break;
+            
+        case 'booking_canceled':
+            $message = __('Booking canceled successfully.', 'vandel-booking');
+            break;
+            
+        case 'booking_completed':
+            $message = __('Booking marked as completed.', 'vandel-booking');
+            break;
+            
+        case 'note_added':
+            $message = __('Note added successfully.', 'vandel-booking');
+            break;
+            
+        case 'booking_updated':
+            $message = __('Booking details updated successfully.', 'vandel-booking');
+            break;
+            
+        case 'update_failed':
+            $message = __('Failed to update booking. Please try again.', 'vandel-booking');
+            $message_type = 'error';
+            break;
+    }
+    
+    if (!empty($message)) {
+        printf(
+            '<div class="notice notice-%s is-dismissible"><p>%s</p></div>',
+            esc_attr($message_type),
+            esc_html($message)
+        );
+    }
+}
     /**
      * Render booking details
      * 
@@ -1510,26 +1617,171 @@ class BookingDetails {
         
         <script>
         document.addEventListener('DOMContentLoaded', function() {
-            // Toggle edit mode
+            // Toggle between view and edit modes
             const editToggle = document.querySelector('.vandel-edit-toggle');
             if (editToggle) {
+                const viewMode = document.getElementById('booking-info-view');
+                const editMode = document.getElementById('booking-info-edit');
+                
                 editToggle.addEventListener('click', function() {
-                    const viewMode = document.getElementById('booking-info-view');
-                    const editMode = document.getElementById('booking-info-edit');
+                    const target = this.getAttribute('data-target');
                     
-                    if (viewMode.style.display === 'none') {
-                        viewMode.style.display = 'block';
-                        editMode.style.display = 'none';
-                        this.innerHTML = '<span class="dashicons dashicons-edit"></span> <?php _e('Edit', 'vandel-booking'); ?>';
-                    } else {
+                    if (target === 'booking-info-edit') {
+                        // Switch to edit mode
                         viewMode.style.display = 'none';
                         editMode.style.display = 'block';
-                        this.innerHTML = '<span class="dashicons dashicons-no"></span> <?php _e('Cancel', 'vandel-booking'); ?>';
+                        this.innerHTML = '<span class="dashicons dashicons-no"></span> <?php _e("Cancel", "vandel-booking"); ?>';
+                        this.setAttribute('data-target', 'booking-info-view');
+                    } else {
+                        // Switch back to view mode
+                        viewMode.style.display = 'block';
+                        editMode.style.display = 'none';
+                        this.innerHTML = '<span class="dashicons dashicons-edit"></span> <?php _e("Edit", "vandel-booking"); ?>';
+                        this.setAttribute('data-target', 'booking-info-edit');
                     }
                 });
             }
+            
+            // Handle all other edit toggle buttons
+            document.querySelectorAll('.vandel-edit-toggle').forEach(function(button) {
+                button.addEventListener('click', function() {
+                    const target = this.getAttribute('data-target');
+                    if (target) {
+                        const targetElement = document.getElementById(target);
+                        if (targetElement) {
+                            if (targetElement.style.display === 'none' || !targetElement.style.display) {
+                                targetElement.style.display = 'block';
+                            } else {
+                                targetElement.style.display = 'none';
+                            }
+                        }
+                    }
+                });
+            });
         });
         </script>
+
+<script>
+jQuery(document).ready(function($) {
+    // Handle status button clicks
+    $('.vandel-booking-actions a').on('click', function(e) {
+        // Don't intercept the "Back to Bookings" button
+        if ($(this).text().trim().indexOf('Back to Bookings') >= 0) {
+            return true;
+        }
+
+        e.preventDefault();
+        var actionUrl = $(this).attr('href');
+        var actionType = '';
+        
+        if (actionUrl.indexOf('action=approve') >= 0) {
+            actionType = 'confirm';
+        } else if (actionUrl.indexOf('action=complete') >= 0) {
+            actionType = 'complete';
+        } else if (actionUrl.indexOf('action=cancel') >= 0) {
+            actionType = 'cancel';
+        } else if (actionUrl.indexOf('action=download_invoice') >= 0) {
+            // For invoice, let's use a direct form submission to avoid AJAX issues
+            var $form = $('<form>', {
+                'method': 'get',
+                'action': actionUrl
+            });
+            $('body').append($form);
+            $form.submit();
+            return false;
+        }
+        
+        if (actionType) {
+            updateBookingStatus(actionType, <?php echo $booking->id; ?>);
+        }
+        
+        return false;
+    });
+    
+    // Function to update booking status via AJAX
+    function updateBookingStatus(action, bookingId) {
+        $.ajax({
+            url: '<?php echo admin_url('admin-ajax.php'); ?>',
+            type: 'POST',
+            data: {
+                action: 'vandel_update_booking_status',
+                booking_id: bookingId,
+                status: action,
+                security: '<?php echo wp_create_nonce('vandel_booking_status_nonce'); ?>'
+            },
+            beforeSend: function() {
+                // Show loading state
+                $('body').append('<div class="vandel-loading-overlay"><div class="vandel-spinner"></div></div>');
+            },
+            success: function(response) {
+                if (response.success) {
+                    // Show success message and reload
+                    alert('Booking status updated successfully!');
+                    window.location.reload();
+                } else {
+                    alert(response.data.message || 'Error updating booking status');
+                }
+            },
+            error: function(xhr, status, error) {
+                console.error(xhr.responseText);
+                alert('An error occurred while updating the booking status: ' + error);
+            },
+            complete: function() {
+                // Remove loading overlay
+                $('.vandel-loading-overlay').remove();
+            }
+        });
+    }
+    
+    // Toggle edit mode for booking info
+    $('.vandel-edit-toggle').on('click', function() {
+        var target = $(this).data('target');
+        
+        if (target === 'booking-info-edit') {
+            // Switch to edit mode
+            $('#booking-info-view').hide();
+            $('#booking-info-edit').show();
+            $(this).html('<span class="dashicons dashicons-no"></span> <?php _e('Cancel', 'vandel-booking'); ?>');
+            $(this).data('target', 'booking-info-view');
+        } else {
+            // Switch back to view mode
+            $('#booking-info-view').show();
+            $('#booking-info-edit').hide();
+            $(this).html('<span class="dashicons dashicons-edit"></span> <?php _e('Edit', 'vandel-booking'); ?>');
+            $(this).data('target', 'booking-info-edit');
+        }
+    });
+});
+</script>
+
+<style>
+.vandel-loading-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(255, 255, 255, 0.7);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+}
+
+.vandel-spinner {
+    border: 4px solid #f3f3f3;
+    border-top: 4px solid #3498db;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    animation: spin 2s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+</style>
         <?php
     }
 }
